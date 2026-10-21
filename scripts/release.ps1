@@ -33,6 +33,8 @@ try {
 
   pnpm --dir extension zip
   pnpm --dir extension zip:firefox
+  # The same checks AMO runs on upload; a warning stops the release here instead.
+  pnpm --dir extension exec web-ext lint --source-dir dist/firefox-mv2 --warnings-as-errors
   pnpm --dir extension sign:firefox
   pnpm site:deploy
 } finally { Pop-Location }
