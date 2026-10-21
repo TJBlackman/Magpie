@@ -2,7 +2,7 @@
 
 A browser extension that collects streaming video from the page you are watching and saves it as one file. Chrome and Firefox from one codebase. Personal project, no store listing. Download the latest build and install steps at [magpie.trevorblackman.dev](https://magpie.trevorblackman.dev).
 
-What works in v0.1:
+What works in v0.2:
 
 | Delivery | Detect | Download | Verified by |
 |---|---|---|---|
@@ -66,6 +66,12 @@ pnpm exec web-ext sign --channel=unlisted --source-dir dist/firefox-mv2 --api-ke
 ```
 
 Then open the resulting `.xpi` in Firefox.
+
+## Settings and the queue
+
+Open Settings from the popup or the Downloads page. "Maximum concurrent downloads" (default 2, range 1 to 10) caps how many downloads run at once. Every extra Download click joins a first in, first out queue and starts when a running download finishes. Raising the limit starts queued downloads right away. Cancel removes a queued download without starting it.
+
+The media list shows the page title first and the stream's host and file name underneath. Plain files show bytes of total, percent, speed and time left. HLS shows segments done, percent, speed and an estimate of time left.
 
 ## How a download works
 

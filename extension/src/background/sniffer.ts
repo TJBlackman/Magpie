@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { candidateId, detect } from '../core/detect';
 import type { Candidate, Envelope } from '../core/types';
+import { pageTitleFor } from './pagetitle';
 
 /**
  * Observe (never block) responses and collect media candidates per tab.
@@ -10,6 +11,8 @@ import type { Candidate, Envelope } from '../core/types';
 export class Sniffer {
   private byTab = new Map<number, Map<string, Candidate>>();
   private restored: Promise<void>;
+  /** Last time each tab's page title was read, to keep popup opens cheap. */
+  private titleReadAt = new Map<number, number>();
 
   constructor() {
     this.restored = this.restore();
@@ -36,8 +39,44 @@ export class Sniffer {
     return [...(this.byTab.get(tabId)?.values() ?? [])].sort((a, b) => b.seenAt - a.seenAt);
   }
 
+  /**
+   * Re-read page titles (og:title and friends) for the tab, or every tab, and
+   * store them on the candidates so the UI can lead with a title, not a URL.
+   * Titles change after the stream starts on many sites, so this runs again
+   * whenever the UI asks, at most every few seconds per tab.
+   */
+  async refreshTitles(tabId?: number, force = false): Promise<boolean> {
+    await this.restored;
+    const tabIds = tabId === undefined ? [...this.byTab.keys()] : [tabId];
+    let changed = false;
+    await Promise.all(
+      tabIds.map(async (t) => {
+        const list = [...(this.byTab.get(t)?.values() ?? [])];
+        if (!list.length) return;
+        if (!force && Date.now() - (this.titleReadAt.get(t) ?? 0) < 3000) return;
+        this.titleReadAt.set(t, Date.now());
+        // One read per page the tab has shown streams for.
+        const byPage = new Map<string, Candidate[]>();
+        for (const c of list) byPage.set(c.pageUrl, [...(byPage.get(c.pageUrl) ?? []), c]);
+        for (const group of byPage.values()) {
+          const title = await pageTitleFor(group[0]!);
+          if (!title) continue;
+          for (const c of group) {
+            if (c.pageTitle !== title) {
+              c.pageTitle = title;
+              changed = true;
+            }
+          }
+        }
+      }),
+    );
+    if (changed) void this.persist();
+    return changed;
+  }
+
   clear(tabId: number): void {
     this.byTab.delete(tabId);
+    this.titleReadAt.delete(tabId);
     void this.persist();
     void this.badge(tabId);
   }
@@ -93,7 +132,15 @@ export class Sniffer {
     tabMap.set(id, candidate);
     void this.persist();
     void this.badge(details.tabId);
-    const env: Envelope = { magpie: 'ui', event: { type: 'candidates', tabId: details.tabId } };
+    this.notify(details.tabId);
+    // The page usually finishes setting its title shortly after playback starts.
+    setTimeout(() => {
+      void this.refreshTitles(details.tabId, true).then((changed) => changed && this.notify(details.tabId));
+    }, 1500);
+  }
+
+  private notify(tabId: number) {
+    const env: Envelope = { magpie: 'ui', event: { type: 'candidates', tabId } };
     browser.runtime.sendMessage(env).catch(() => {});
   }
 

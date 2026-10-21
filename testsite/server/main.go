@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -69,6 +70,10 @@ func main() {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		http.ServeFile(w, r, filepath.Join(media, "hls-fmp4", "720p", name))
 	})
+
+	// Slow: the media tree throttled to about 2 MB/s per request, so progress
+	// bars and the download queue can be watched mid flight.
+	mux.Handle("/slow/", noCache(withMime(throttle(http.StripPrefix("/slow/", http.FileServer(http.Dir(media))), 2<<20))))
 
 	mux.Handle("/", noCache(withMime(http.FileServer(http.Dir(public)))))
 
@@ -163,4 +168,38 @@ type statusRecorder struct {
 func (s *statusRecorder) WriteHeader(code int) {
 	s.status = code
 	s.ResponseWriter.WriteHeader(code)
+}
+
+// throttle caps each response at bytesPerSec by sleeping between small writes.
+func throttle(next http.Handler, bytesPerSec int) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(&slowWriter{ResponseWriter: w, rate: bytesPerSec}, r)
+	})
+}
+
+type slowWriter struct {
+	http.ResponseWriter
+	rate int
+}
+
+func (s *slowWriter) Write(p []byte) (int, error) {
+	const chunk = 16 << 10
+	written := 0
+	for len(p) > 0 {
+		n := len(p)
+		if n > chunk {
+			n = chunk
+		}
+		m, err := s.ResponseWriter.Write(p[:n])
+		written += m
+		if err != nil {
+			return written, err
+		}
+		if f, ok := s.ResponseWriter.(http.Flusher); ok {
+			f.Flush()
+		}
+		time.Sleep(time.Duration(n) * time.Second / time.Duration(s.rate))
+		p = p[n:]
+	}
+	return written, nil
 }

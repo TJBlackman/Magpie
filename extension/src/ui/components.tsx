@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Candidate, Inspection, Job } from '../core/types';
 import { api, showDownload } from './api';
-import { fmtBytes, kindLabel, shortUrl } from './format';
+import { fmtBytes, fmtEta, fmtRate, jobProgress, kindLabel, sourceLabel } from './format';
 
 export function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'shine' | 'warn' | 'bad' | 'good' }) {
   const cls = {
@@ -32,6 +32,7 @@ export function CandidateRow({ candidate }: { candidate: Candidate }) {
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(0);
 
   const toggle = async () => {
     const next = !open;
@@ -51,20 +52,32 @@ export function CandidateRow({ candidate }: { candidate: Candidate }) {
     const r = await api.start(candidate.id, variantId);
     setBusy(false);
     if (!r.ok) setError(r.error);
+    else setAdded((n) => n + 1);
   };
+
+  const source = sourceLabel(candidate.url);
+  const title = candidate.pageTitle || source;
 
   return (
     <div className="rounded border border-edge bg-panel" data-testid="candidate" data-url={candidate.url}>
-      <button type="button" onClick={toggle} className="flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-zinc-800/60">
-        <Badge tone={candidate.kind === 'dash' ? 'warn' : 'shine'}>{kindLabel(candidate.kind)}</Badge>
-        <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-zinc-300" title={candidate.url}>
-          {shortUrl(candidate.url)}
-        </span>
-        {candidate.contentLength ? <span className="text-[11px] text-mute">{fmtBytes(candidate.contentLength)}</span> : null}
+      <button type="button" onClick={toggle} className="flex w-full items-start gap-2 px-2 py-1.5 text-left hover:bg-zinc-800/60">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[12.5px] font-medium text-zinc-100" data-testid="candidate-title" title={title}>
+            {title}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mute">
+            <Badge tone={candidate.kind === 'dash' ? 'warn' : 'shine'}>{kindLabel(candidate.kind)}</Badge>
+            <span className="min-w-0 flex-1 truncate" title={candidate.url}>
+              {source}
+            </span>
+            {candidate.contentLength ? <span>{fmtBytes(candidate.contentLength)}</span> : null}
+          </div>
+        </div>
+        <span className={`mt-0.5 text-mute transition ${open ? 'rotate-90' : ''}`}>{'›'}</span>
       </button>
       {open && (
         <div className="border-t border-edge px-2 py-1.5">
-          {busy && !inspection && <div className="text-mute">Inspecting…</div>}
+          {busy && !inspection && <div className="text-mute">Inspecting...</div>}
           {error && <div className="text-red-300">{error}</div>}
           {inspection?.notes.map((n) => (
             <div key={n} className="mb-1 text-amber-300">
@@ -85,18 +98,85 @@ export function CandidateRow({ candidate }: { candidate: Candidate }) {
               ))}
             </ul>
           )}
+          {added > 0 && <div className="mt-1 text-[11px] text-mute">Added to Downloads{added > 1 ? ` (${added} times)` : ''}.</div>}
         </div>
       )}
     </div>
   );
 }
 
+/** Smoothed bytes per second for an active job, from the byte counts it reports. */
+function useRate(bytes: number, active: boolean): number {
+  const last = useRef<{ t: number; b: number } | null>(null);
+  const [rate, setRate] = useState(0);
+  useEffect(() => {
+    if (!active) {
+      last.current = null;
+      setRate(0);
+      return;
+    }
+    const now = Date.now();
+    const prev = last.current;
+    if (prev && now > prev.t && bytes > prev.b) {
+      const sample = ((bytes - prev.b) * 1000) / (now - prev.t);
+      setRate((r) => (r ? r * 0.7 + sample * 0.3 : sample));
+    }
+    if (!prev || bytes !== prev.b) last.current = { t: now, b: bytes };
+  }, [bytes, active]);
+  return rate;
+}
+
+function statusText(job: Job, pct: number | null, rate: number): string {
+  switch (job.state) {
+    case 'queued':
+      return job.queuePosition ? `Waiting, #${job.queuePosition} in queue` : 'Waiting';
+    case 'inspecting':
+      return 'Starting';
+    case 'muxing':
+      return 'Finishing';
+    case 'saving':
+      return 'Saving to your downloads';
+    case 'downloading': {
+      const parts: string[] = [];
+      if (job.kind === 'file') {
+        parts.push(job.bytesTotal ? `${fmtBytes(job.bytes)} of ${fmtBytes(job.bytesTotal)}` : fmtBytes(job.bytes));
+      } else {
+        parts.push(`${job.segmentsDone} of ${job.segmentsTotal} segments`, fmtBytes(job.bytes));
+      }
+      if (pct !== null) parts.push(`${Math.floor(pct * 100)}%`);
+      if (rate > 0) {
+        parts.push(fmtRate(rate));
+        const remaining = job.bytesTotal
+          ? job.bytesTotal - job.bytes
+          : job.segmentsDone && job.segmentsTotal
+            ? (job.segmentsTotal - job.segmentsDone) * (job.bytes / job.segmentsDone)
+            : NaN;
+        const eta = fmtEta(remaining / rate);
+        if (eta) parts.push(eta);
+      }
+      return parts.join(' · ');
+    }
+    default:
+      return fmtBytes(job.bytes);
+  }
+}
+
 export function JobRow({ job }: { job: Job }) {
-  const pct = job.segmentsTotal ? Math.round((job.segmentsDone / job.segmentsTotal) * 100) : 0;
   const active = ['queued', 'inspecting', 'downloading', 'muxing', 'saving'].includes(job.state);
-  const tone = job.state === 'done' ? 'good' : job.state === 'error' ? 'bad' : job.state === 'cancelled' ? 'default' : 'shine';
+  const pct = jobProgress(job);
+  const rate = useRate(job.bytes, job.state === 'downloading');
+  const tone = job.state === 'done' ? 'good' : job.state === 'error' ? 'bad' : job.state === 'cancelled' || job.state === 'queued' ? 'default' : 'shine';
+  const indeterminate = active && pct === null;
+  const barColor = job.state === 'error' ? 'bg-red-400' : job.state === 'cancelled' ? 'bg-zinc-500' : 'bg-shine';
   return (
-    <div className="rounded border border-edge bg-panel px-2 py-1.5" data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename}>
+    <div
+      className="rounded border border-edge bg-panel px-2 py-1.5"
+      data-testid="job"
+      data-job-id={job.id}
+      data-state={job.state}
+      data-filename={job.filename}
+      data-pct={pct === null ? '' : Math.floor(pct * 100)}
+    >
       <div className="flex items-center gap-2">
         <Badge tone={tone}>{job.state}</Badge>
         <span className="min-w-0 flex-1 truncate" title={job.title}>
@@ -114,17 +194,18 @@ export function JobRow({ job }: { job: Job }) {
         )}
         {!active && (
           <Button tone="ghost" onClick={() => api.removeJob(job.id)}>
-            ×
+            {'×'}
           </Button>
         )}
       </div>
-      <div className="mt-1 flex items-center gap-2 text-[11px] text-mute">
-        <div className="h-1 flex-1 overflow-hidden rounded bg-edge">
-          <div className={`h-full ${job.state === 'error' ? 'bg-red-400' : 'bg-shine'}`} style={{ width: `${job.state === 'done' ? 100 : pct}%` }} />
-        </div>
-        <span>
-          {job.kind === 'file' ? fmtBytes(job.bytes) : `${job.segmentsDone}/${job.segmentsTotal} · ${fmtBytes(job.bytes)}`}
-        </span>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded bg-edge">
+        <div
+          className={`h-full rounded ${barColor} ${indeterminate ? 'bar-indeterminate' : 'transition-[width] duration-300'}`}
+          style={indeterminate ? undefined : { width: `${(pct ?? 0) * 100}%` }}
+        />
+      </div>
+      <div className="mt-1 text-[11px] text-mute" data-testid="job-status">
+        {statusText(job, pct, rate)}
       </div>
       {job.error && <div className="mt-1 text-red-300">{job.error}</div>}
     </div>

@@ -22,6 +22,9 @@ export function Popup() {
         <Button tone="ghost" onClick={openManager}>
           Downloads
         </Button>
+        <Button tone="ghost" onClick={() => void api.openSettings()}>
+          Settings
+        </Button>
       </header>
 
       <section>

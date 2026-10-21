@@ -1,5 +1,6 @@
-import { useCandidates, useJobs } from '../../src/ui/api';
-import { CandidateRow, JobRow } from '../../src/ui/components';
+import { api, useCandidates, useJobs } from '../../src/ui/api';
+import { Button, CandidateRow, JobRow } from '../../src/ui/components';
+import { shortUrl } from '../../src/ui/format';
 import type { Candidate } from '../../src/core/types';
 
 export function Manager() {
@@ -7,7 +8,7 @@ export function Manager() {
   const [candidates] = useCandidates(undefined);
   const byPage = new Map<string, Candidate[]>();
   for (const c of candidates) {
-    const key = `${c.tabId}|${c.pageTitle || c.pageUrl}`;
+    const key = `${c.tabId}|${c.pageUrl}`;
     byPage.set(key, [...(byPage.get(key) ?? []), c]);
   }
 
@@ -15,7 +16,10 @@ export function Manager() {
     <div className="mx-auto flex max-w-3xl flex-col gap-4 p-4">
       <header className="flex items-baseline gap-3">
         <h1 className="text-lg font-semibold">Magpie</h1>
-        <span className="text-mute">downloads and detected media across all tabs</span>
+        <span className="flex-1 text-mute">downloads and detected media across all tabs</span>
+        <Button tone="ghost" onClick={() => void api.openSettings()}>
+          Settings
+        </Button>
       </header>
 
       <section>
@@ -38,7 +42,9 @@ export function Manager() {
         ) : (
           [...byPage.entries()].map(([key, list]) => (
             <div key={key} className="mb-3">
-              <div className="mb-1 truncate text-zinc-300">{key.split('|').slice(1).join('|')}</div>
+              <div className="mb-1 truncate text-[11px] text-mute" title={list[0]!.pageUrl}>
+                {shortUrl(list[0]!.pageUrl)}
+              </div>
               <div className="flex flex-col gap-1">
                 {list.map((c) => (
                   <CandidateRow key={c.id} candidate={c} />

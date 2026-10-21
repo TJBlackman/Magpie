@@ -27,7 +27,11 @@ export async function handle(engine: Engine, req: EngineRequest): Promise<Result
     case 'inspect':
       return engine.inspect(req.candidate);
     case 'start':
+      engine.configure(req.settings);
       return engine.start(req.candidate, req.variantId);
+    case 'configure':
+      engine.configure(req.settings);
+      return ok(null);
     case 'cancel':
       engine.cancel(req.jobId);
       return ok(null);

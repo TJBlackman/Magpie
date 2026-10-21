@@ -1,6 +1,7 @@
 import { parseHls, variantLabel, type HlsMedia, type HlsSegment } from '../core/hls';
 import { buildFilename } from '../core/filename';
 import { err, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
+import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../core/settings';
 import { decryptSegment } from './crypto';
 import { fetchBytes, fetchText, orderedPool } from './fetcher';
 import { passthroughSink, sniffContainer, tsSink, type Sink } from './mux';
@@ -15,9 +16,19 @@ interface Running {
   abort: AbortController;
 }
 
+interface Queued {
+  job: Job;
+  candidate: Candidate;
+  variant: Variant;
+  media?: HlsMedia;
+}
+
 export class Engine {
   private jobs = new Map<string, Job>();
   private running = new Map<string, Running>();
+  /** Jobs waiting for a free slot, oldest first. */
+  private queue: Queued[] = [];
+  private maxConcurrent = DEFAULT_SETTINGS.maxConcurrent;
   private inspections = new Map<string, { candidate: Candidate; inspection: Inspection; media?: HlsMedia }>();
 
   constructor(private readonly platform: Platform) {
@@ -28,14 +39,30 @@ export class Engine {
     return [...this.jobs.values()].sort((a, b) => b.startedAt - a.startedAt);
   }
 
+  /** Apply settings. Raising the limit starts queued jobs right away. */
+  configure(settings: Settings): void {
+    this.maxConcurrent = normalizeSettings(settings).maxConcurrent;
+    this.pump();
+  }
+
   remove(jobId: string): void {
     const r = this.running.get(jobId);
     if (r) r.abort.abort();
+    this.queue = this.queue.filter((q) => q.job.id !== jobId);
     this.jobs.delete(jobId);
     this.emit();
   }
 
   cancel(jobId: string): void {
+    const waiting = this.queue.find((q) => q.job.id === jobId);
+    if (waiting) {
+      this.queue = this.queue.filter((q) => q !== waiting);
+      waiting.job.state = 'cancelled';
+      waiting.job.queuePosition = undefined;
+      waiting.job.finishedAt = Date.now();
+      this.emit();
+      return;
+    }
     const r = this.running.get(jobId);
     if (r) {
       r.abort.abort();
@@ -131,14 +158,26 @@ export class Engine {
       startedAt: Date.now(),
     };
     this.jobs.set(job.id, job);
-    const abort = new AbortController();
-    this.running.set(job.id, { job, abort });
-    this.emit();
-    void this.run(job, candidate, variant, entry.media, abort.signal).finally(() => {
-      this.running.delete(job.id);
-      this.emit();
-    });
+    this.queue.push({ job, candidate, variant, media: entry.media });
+    this.pump();
     return ok(job);
+  }
+
+  /** Start queued jobs, oldest first, while there are free slots. */
+  private pump(): void {
+    while (this.running.size < this.maxConcurrent && this.queue.length > 0) {
+      const { job, candidate, variant, media } = this.queue.shift()!;
+      const abort = new AbortController();
+      this.running.set(job.id, { job, abort });
+      job.queuePosition = undefined;
+      job.state = 'inspecting';
+      void this.run(job, candidate, variant, media, abort.signal).finally(() => {
+        this.running.delete(job.id);
+        this.pump();
+      });
+    }
+    this.queue.forEach((q, i) => (q.job.queuePosition = i + 1));
+    this.emit();
   }
 
   private async run(job: Job, candidate: Candidate, variant: Variant, prefetched: HlsMedia | undefined, signal: AbortSignal) {
@@ -152,10 +191,19 @@ export class Engine {
         job.state = 'downloading';
         job.segmentsTotal = 1;
         this.emit();
-        await streamFile(variant.uri, write, signal, (b) => {
-          job.bytes = b;
-          this.emitThrottled();
-        });
+        await streamFile(
+          variant.uri,
+          write,
+          signal,
+          (b) => {
+            job.bytes = b;
+            this.emitThrottled();
+          },
+          (total) => {
+            job.bytesTotal = total;
+            this.emit();
+          },
+        );
         job.segmentsDone = 1;
       } else {
         job.state = 'inspecting';
@@ -262,9 +310,19 @@ export class Engine {
   }
 }
 
-async function streamFile(url: string, write: (c: Uint8Array) => Promise<void>, signal: AbortSignal, onBytes: (b: number) => void) {
+async function streamFile(
+  url: string,
+  write: (c: Uint8Array) => Promise<void>,
+  signal: AbortSignal,
+  onBytes: (b: number) => void,
+  onTotal: (total: number | undefined) => void,
+) {
   const res = await fetch(url, { credentials: 'include', cache: 'no-store', signal });
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status} for ${url}`);
+  // Content-Length is the full size for a plain 200. A compressed body would
+  // make it the wire size instead, so ignore it when Content-Encoding is set.
+  const len = Number(res.headers.get('content-length'));
+  onTotal(len > 0 && !res.headers.get('content-encoding') ? len : undefined);
   const reader = res.body.getReader();
   let total = 0;
   for (;;) {

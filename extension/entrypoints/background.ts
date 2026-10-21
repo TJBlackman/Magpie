@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import { Sniffer } from '../src/background/sniffer';
 import { setHeaderRule } from '../src/background/headers';
 import { pageTitleFor } from '../src/background/pagetitle';
+import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { err, ok, type EngineRequest, type Envelope, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
@@ -10,6 +11,23 @@ export default defineBackground(() => {
   sniffer.listen();
 
   let latestJobs: Job[] = [];
+
+  let settings: Settings = DEFAULT_SETTINGS;
+  const settingsReady = browser.storage.local
+    .get(SETTINGS_KEY)
+    .then((r) => void (settings = normalizeSettings((r as Record<string, unknown>)[SETTINGS_KEY])))
+    .catch(() => {});
+  browser.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local' || !changes[SETTINGS_KEY]) return;
+    settings = normalizeSettings(changes[SETTINGS_KEY].newValue);
+    void pushSettings();
+  });
+
+  /** Tell a running engine about new settings. A Chrome engine that is not up yet gets them with its next start. */
+  async function pushSettings() {
+    if (direct) await direct({ type: 'configure', settings });
+    else if (!import.meta.env.FIREFOX && (await offscreenExists())) await toEngine({ type: 'configure', settings });
+  }
 
   // Firefox (MV2, persistent page): the engine runs right here.
   // Chrome (MV3): the engine runs in an offscreen document; we forward.
@@ -26,6 +44,8 @@ export default defineBackground(() => {
         },
       });
       direct = (req) => handle(engine, req);
+      await settingsReady;
+      engine.configure(settings);
     })();
   }
 
@@ -54,7 +74,11 @@ export default defineBackground(() => {
         return ok(tab ? { id: tab.id, title: tab.title, url: tab.url } : null);
       }
       case 'candidates':
+        await sniffer.refreshTitles(req.tabId);
         return ok(await sniffer.forTab(req.tabId));
+      case 'openSettings':
+        await browser.runtime.openOptionsPage();
+        return ok(null);
       case 'clearCandidates':
         sniffer.clear(req.tabId);
         return ok(null);
@@ -67,7 +91,8 @@ export default defineBackground(() => {
         const c = (await sniffer.forTab()).find((x) => x.id === req.candidateId);
         if (!c) return err('Candidate no longer known (tab navigated?).');
         const pageTitle = (await pageTitleFor(c)) || c.pageTitle;
-        return toEngine({ type: 'start', candidate: { ...c, pageTitle }, variantId: req.variantId });
+        await settingsReady;
+        return toEngine({ type: 'start', candidate: { ...c, pageTitle }, variantId: req.variantId, settings });
       }
       case 'cancel':
         return toEngine({ type: 'cancel', jobId: req.jobId });

@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 import { useEffect, useState } from 'react';
 import type { Candidate, Envelope, Inspection, Job, Result, UiRequest } from '../core/types';
+import { SETTINGS_KEY, normalizeSettings, type Settings } from '../core/settings';
 
 export async function call<T>(req: UiRequest): Promise<Result<T>> {
   const env: Envelope = { magpie: 'bg', req };
@@ -21,7 +22,27 @@ export const api = {
   cancel: (jobId: string) => call<null>({ type: 'cancel', jobId }),
   removeJob: (jobId: string) => call<null>({ type: 'removeJob', jobId }),
   jobs: () => call<Job[]>({ type: 'jobs' }),
+  openSettings: () => call<null>({ type: 'openSettings' }),
 };
+
+/** Current settings plus a saver. null until loaded. Follows changes made elsewhere. */
+export function useSettings(): [Settings | null, (next: Settings) => Promise<void>] {
+  const [settings, setSettings] = useState<Settings | null>(null);
+  useEffect(() => {
+    void browser.storage.local.get(SETTINGS_KEY).then((r) => setSettings(normalizeSettings((r as Record<string, unknown>)[SETTINGS_KEY])));
+    const listener = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+      if (area === 'local' && changes[SETTINGS_KEY]) setSettings(normalizeSettings(changes[SETTINGS_KEY].newValue));
+    };
+    browser.storage.onChanged.addListener(listener);
+    return () => browser.storage.onChanged.removeListener(listener);
+  }, []);
+  const save = async (next: Settings) => {
+    const clean = normalizeSettings(next);
+    setSettings(clean);
+    await browser.storage.local.set({ [SETTINGS_KEY]: clean });
+  };
+  return [settings, save];
+}
 
 /** Subscribe to broadcast events from the background / engine. */
 export function useEvents(handler: (event: Extract<Envelope, { magpie: 'ui' }>['event']) => void) {
@@ -35,13 +56,25 @@ export function useEvents(handler: (event: Extract<Envelope, { magpie: 'ui' }>['
   }, [handler]);
 }
 
+/** Running jobs first (oldest first), then the queue in order, then finished jobs newest first. */
+export function orderJobs(jobs: Job[]): Job[] {
+  const rank = (j: Job) => (j.state === 'queued' ? 1 : ['done', 'error', 'cancelled'].includes(j.state) ? 2 : 0);
+  return [...jobs].sort((a, b) => {
+    const r = rank(a) - rank(b);
+    if (r) return r;
+    if (rank(a) === 0) return a.startedAt - b.startedAt;
+    if (rank(a) === 1) return (a.queuePosition ?? 0) - (b.queuePosition ?? 0);
+    return (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt);
+  });
+}
+
 export function useJobs(): Job[] {
   const [jobs, setJobs] = useState<Job[]>([]);
   useEffect(() => {
-    void api.jobs().then((r) => r.ok && setJobs(r.value));
+    void api.jobs().then((r) => r.ok && setJobs(orderJobs(r.value)));
   }, []);
   useEvents((e) => {
-    if (e.type === 'jobs') setJobs(e.jobs);
+    if (e.type === 'jobs') setJobs(orderJobs(e.jobs));
   });
   return jobs;
 }

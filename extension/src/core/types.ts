@@ -1,3 +1,5 @@
+import type { Settings } from './settings';
+
 export type MediaKind = 'hls' | 'dash' | 'file';
 
 /** A piece of media the sniffer saw a tab load. */
@@ -58,6 +60,10 @@ export interface Job {
   segmentsTotal: number;
   segmentsDone: number;
   bytes: number;
+  /** Full size when the server tells us (plain files); drives the progress bar. */
+  bytesTotal?: number;
+  /** 1 based place in the queue while state is 'queued'. */
+  queuePosition?: number;
   error?: string;
   startedAt: number;
   finishedAt?: number;
@@ -73,12 +79,14 @@ export type UiRequest =
   | { type: 'cancel'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string }
-  | { type: 'activeTab' };
+  | { type: 'activeTab' }
+  | { type: 'openSettings' };
 
 /** Messages the background forwards to the engine host. */
 export type EngineRequest =
   | { type: 'inspect'; candidate: Candidate }
-  | { type: 'start'; candidate: Candidate; variantId: string }
+  | { type: 'start'; candidate: Candidate; variantId: string; settings: Settings }
+  | { type: 'configure'; settings: Settings }
   | { type: 'cancel'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string };
