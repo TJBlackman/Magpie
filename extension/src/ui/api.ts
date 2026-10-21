@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Candidate, Envelope, Inspection, Job, Result, UiRequest } from '../core/types';
 import { SETTINGS_KEY, normalizeSettings, type Settings } from '../core/settings';
 
@@ -81,9 +81,13 @@ export function useJobs(): Job[] {
 
 export function useCandidates(tabId: number | undefined, enabled = true): [Candidate[], () => void] {
   const [list, setList] = useState<Candidate[]>([]);
+  const seq = useRef(0);
   const refresh = () => {
     if (!enabled) return;
-    void api.candidates(tabId).then((r) => r.ok && setList(r.value));
+    // Only the newest request may update the list, so a slow older answer
+    // cannot bring back items the user just cleared.
+    const mine = ++seq.current;
+    void api.candidates(tabId).then((r) => r.ok && mine === seq.current && setList(r.value));
   };
   useEffect(refresh, [tabId, enabled]);
   useEvents((e) => {

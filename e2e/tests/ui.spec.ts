@@ -85,3 +85,16 @@ test('settings limit concurrent downloads and extra clicks queue up', async ({ m
   expect(queued).toContain('Waiting, #2 in queue');
   expect(queued).toContain('Waiting, #1 in queue');
 });
+
+test('clear empties the popup list right away', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/hls-ts.html');
+  const popup = await magpie.context.newPage();
+  await popup.goto(`chrome-extension://${magpie.extensionId}/popup.html`);
+  await page.bringToFront();
+  await popup.reload();
+  await expect(popup.getByTestId('candidate').first()).toBeVisible({ timeout: 15_000 });
+  await popup.getByRole('button', { name: 'clear' }).click();
+  await expect(popup.getByTestId('candidate')).toHaveCount(0, { timeout: 2_000 });
+  await expect(popup.getByText('Nothing yet.')).toBeVisible();
+});

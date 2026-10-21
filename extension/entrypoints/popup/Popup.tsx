@@ -7,7 +7,7 @@ export function Popup() {
   useEffect(() => {
     void api.activeTab().then((r) => r.ok && setTab(r.value));
   }, []);
-  const [candidates] = useCandidates(tab?.id, tab !== null);
+  const [candidates, refreshCandidates] = useCandidates(tab?.id, tab !== null);
   const jobs = useJobs();
   const active = jobs.filter((j) => !['done', 'error', 'cancelled'].includes(j.state));
   const recent = jobs.filter((j) => ['done', 'error', 'cancelled'].includes(j.state)).slice(0, 3);
@@ -31,7 +31,7 @@ export function Popup() {
         <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wide text-mute">
           <span>Media on this page ({candidates.length})</span>
           {tab && candidates.length > 0 && (
-            <Button tone="ghost" onClick={() => api.clearCandidates(tab.id)}>
+            <Button tone="ghost" onClick={() => void api.clearCandidates(tab.id).then(refreshCandidates)}>
               clear
             </Button>
           )}

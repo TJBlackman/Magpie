@@ -79,6 +79,8 @@ export class Sniffer {
     this.titleReadAt.delete(tabId);
     void this.persist();
     void this.badge(tabId);
+    // Open popups and the Downloads page re-read their list.
+    this.notify(tabId);
   }
 
   private async onResponse(details: chrome.webRequest.OnHeadersReceivedDetails) {
