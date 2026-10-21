@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.output/
+.wxt/
+testsite/public/media/
+testsite/server/magpie-testsite
+testsite/server/magpie-testsite.exe
+e2e/test-results/
+e2e/downloads/
+e2e/user-data/
+*.log

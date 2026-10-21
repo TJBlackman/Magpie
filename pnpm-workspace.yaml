@@ -1,0 +1,4 @@
+packages:
+  - extension
+  - testsite
+  - e2e

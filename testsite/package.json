@@ -1,0 +1,13 @@
+{
+  "name": "magpie-testsite",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "fixtures": "wsl -u trevor -- bash fixtures/gen.sh",
+    "serve": "go run ./server"
+  },
+  "dependencies": {
+    "dashjs": "^5.0.0",
+    "hls.js": "^1.6.0"
+  }
+}

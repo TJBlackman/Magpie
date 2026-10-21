@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Magpie test site</title>
+<link rel="stylesheet" href="/site.css">
+</head>
+<body>
+<h1>Magpie test site</h1>
+<p>Each page plays one delivery style. Open the Magpie popup after pressing play.</p>
+<ol>
+  <li><a href="/progressive.html">Progressive MP4</a> (plain file, <code>&lt;video src&gt;</code>)</li>
+  <li><a href="/hls-ts.html">HLS, MPEG-TS segments</a></li>
+  <li><a href="/hls-fmp4.html">HLS, fMP4, 3 renditions</a> (master playlist, quality picker)</li>
+  <li><a href="/hls-altaudio.html">HLS, separate audio rendition</a> (phase 2: merge)</li>
+  <li><a href="/hls-aes.html">HLS, AES-128 encrypted</a></li>
+  <li><a href="/hls-byterange.html">HLS, byte range single file</a></li>
+  <li><a href="/dash.html">DASH</a> (detected, phase 2: download)</li>
+  <li><a href="/gated.html">Gated</a> (segments need the session cookie and a site Referer)</li>
+  <li><a href="/hidden.html">Hidden</a> (manifest URL without extension, wrong MIME; phase 3: MSE capture)</li>
+</ol>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "magpie",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "pnpm --dir extension build:all",
+    "build:chrome": "pnpm --dir extension build",
+    "build:firefox": "pnpm --dir extension build:firefox",
+    "typecheck": "pnpm --dir extension typecheck",
+    "test:unit": "pnpm --dir extension test",
+    "fixtures": "wsl -u trevor -- bash testsite/fixtures/gen.sh",
+    "server:build": "go build -C testsite/server -o magpie-testsite.exe .",
+    "server": "testsite\\server\\magpie-testsite.exe -root testsite",
+    "test:e2e": "pnpm --dir e2e test",
+    "test:firefox": "node e2e/firefox-smoke.mjs",
+    "test": "pnpm build && pnpm test:unit && pnpm test:e2e && pnpm test:firefox"
+  }
+}
