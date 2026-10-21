@@ -28,11 +28,13 @@ extension/   WXT + React + Tailwind v4. Builds dist/chrome-mv3 and dist/firefox-
   entrypoints/offscreen/      Chrome only: hosts the engine (service workers cannot make blob URLs)
   entrypoints/popup/          media on this tab, quality picker, active jobs
   entrypoints/manager/        all tabs, all jobs
+  entrypoints/options/        settings page (max concurrent downloads)
   src/core/                   HLS parser, detection rules, filenames (pure, unit tested)
   src/engine/                 fetch pool, AES, TS to MP4 remux, OPFS output, job state
   src/background/             sniffer and per browser Referer rules (DNR on Chrome, webRequest on Firefox)
 testsite/    Go server + ffmpeg fixture script + player pages (hls.js, dash.js, native)
 e2e/         Playwright (Chrome, loads the unpacked build) and a Selenium smoke test for Firefox
+website/     magpie.trevorblackman.dev: static site/ plus wrangler config and deploy script
 ```
 
 Roughly 90 percent of the code is shared. The browser specific parts are `src/background/headers.ts` and the two engine hosts (`entrypoints/background.ts` for Firefox, `entrypoints/offscreen/` for Chrome).
@@ -104,4 +106,12 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 
 ## Website
 
-https://magpie.trevorblackman.dev serves the zips and install steps. The site project is `C:\Users\Trevor\Projects\magpie.trevorblackman.dev` (Cloudflare Worker static assets, custom domain). To ship a new version: bump `extension/package.json`, `pnpm --dir extension zip && pnpm --dir extension zip:firefox`, then run that project's `deploy.ps1 -Version x.y.z` and update the version strings in its `site/index.html`.
+`website/` is https://magpie.trevorblackman.dev, a Cloudflare Worker serving static assets from `website/site` on a custom domain. `website/site/_headers` sets `Cache-Control: no-transform` so Cloudflare cannot inject its analytics beacon, and the font and browser logos are self hosted, so the page makes no third party requests.
+
+To ship a new version:
+
+1. Bump `version` in `extension/package.json`.
+2. `pnpm --dir extension zip && pnpm --dir extension zip:firefox`
+3. `pnpm site:deploy`
+
+The deploy script copies the zips into `website/site`, rewrites the download links and version label in `index.html`, deletes zips from older versions, and runs `wrangler deploy`. Commit the `index.html` change afterwards. The zips themselves are gitignored.

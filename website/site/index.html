@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magpie: a private video downloader</title>
+<meta name="description" content="A private video downloader for Chrome and Firefox. No ads, no tracking, no telemetry. Runs entirely in your browser.">
+<link rel="icon" href="/icon.png">
+<link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* Inter, served from this site. No third party font requests. */
+  @font-face { font-family:Inter; font-style:normal; font-weight:400 800; font-display:swap; src:url(/fonts/inter-latin.woff2) format("woff2"); }
+  :root { --bg:#070a12; --fg:#eef1f8; --mute:#98a2b8; --glass:rgba(255,255,255,.05); --edge:rgba(255,255,255,.1); --c1:#6a5fc4; --c2:#3f9aab; --c3:#a8577e; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 Inter, system-ui, sans-serif; overflow-x:hidden; }
+  .glow { position:fixed; inset:-20%; z-index:-1; filter:blur(120px); opacity:.2; }
+  .glow i { position:absolute; border-radius:50%; width:55vw; height:55vw; animation:drift 18s ease-in-out infinite alternate; }
+  .glow i:nth-child(1){ background:var(--c1); top:-10%; left:-10%; }
+  .glow i:nth-child(2){ background:var(--c2); top:30%; right:-15%; animation-delay:-6s; }
+  .glow i:nth-child(3){ background:var(--c3); bottom:-20%; left:25%; animation-delay:-12s; width:40vw; height:40vw; }
+  @keyframes drift { to { transform:translate(8vw, 6vh) scale(1.1); } }
+  body::before { content:""; position:fixed; inset:0; z-index:-1; background-image:linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px); background-size:48px 48px; mask-image:radial-gradient(ellipse at top, #000 20%, transparent 70%); }
+
+  .wrap { max-width:1080px; margin:0 auto; padding:0 24px; }
+  nav { display:flex; justify-content:space-between; align-items:center; padding:22px 0; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; }
+  .brand img { width:30px; height:30px; border-radius:9px; }
+  nav .pill { font-size:13px; color:var(--mute); border:1px solid var(--edge); background:var(--glass); padding:6px 12px; border-radius:999px; backdrop-filter:blur(10px); }
+  nav .pill b { color:var(--fg); font-weight:600; }
+
+  .hero { text-align:center; padding:96px 0 72px; }
+  .badge { display:inline-flex; gap:8px; align-items:center; font-size:13px; color:var(--mute); border:1px solid var(--edge); background:var(--glass); padding:6px 14px 6px 8px; border-radius:999px; margin-bottom:28px; backdrop-filter:blur(10px); }
+  .badge i { width:8px; height:8px; border-radius:50%; background:#4fbf82; box-shadow:0 0 6px rgba(61,220,132,.5); }
+  h1 { font-size:clamp(44px, 7vw, 80px); font-weight:800; letter-spacing:-.04em; line-height:1.02; margin:0; }
+  h1 span { background:linear-gradient(90deg, var(--c2), var(--c1) 50%, var(--c3)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .hero p { color:var(--mute); font-size:19px; max-width:56ch; margin:24px auto 0; }
+  .ctas { display:flex; gap:12px; justify-content:center; margin-top:40px; flex-wrap:wrap; }
+  .btn { display:inline-flex; align-items:center; gap:10px; padding:14px 22px; border-radius:12px; text-decoration:none; font-weight:600; font-size:15px; color:var(--fg); border:1px solid var(--edge); background:var(--glass); backdrop-filter:blur(12px); transition:transform .15s, border-color .15s, box-shadow .15s; }
+  .btn:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.3); }
+  .btn.primary { background:linear-gradient(135deg, var(--c1), var(--c2)); border:0; box-shadow:0 8px 28px rgba(106,95,196,.15); }
+  .btn.primary:hover { box-shadow:0 10px 32px rgba(106,95,196,.25); }
+  .btn svg { width:20px; height:20px; }
+
+  .window { margin:64px auto 0; max-width:820px; border:1px solid var(--edge); border-radius:18px; background:linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02)); backdrop-filter:blur(20px); box-shadow:0 40px 120px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1); overflow:hidden; text-align:left; }
+  .window .top { display:flex; gap:7px; padding:12px 16px; border-bottom:1px solid var(--edge); }
+  .window .top i { width:11px; height:11px; border-radius:50%; background:rgba(255,255,255,.15); }
+  .window .body { padding:22px; display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; }
+  .row { min-width:0; display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--edge); border-radius:12px; background:rgba(0,0,0,.25); font-size:14px; }
+  .row .q { flex:none; font-weight:700; font-size:12px; padding:3px 8px; border-radius:6px; background:linear-gradient(135deg, var(--c1), var(--c2)); }
+  .row .t { flex:1; min-width:0; color:var(--mute); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .bar { height:6px; border-radius:3px; background:rgba(255,255,255,.1); flex:0 1 96px; min-width:40px; overflow:hidden; }
+  .row .bar b { display:block; height:100%; background:linear-gradient(90deg, var(--c2), var(--c1)); animation:fill 3s ease-in-out infinite; }
+  @keyframes fill { 0%{width:0} 70%{width:100%} 100%{width:100%} }
+
+  section { padding:80px 0 0; }
+  h2 { font-size:34px; font-weight:800; letter-spacing:-.03em; margin:0 0 8px; text-align:center; }
+  .sub { color:var(--mute); text-align:center; margin:0 0 40px; }
+  .cards { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .card { position:relative; border:1px solid var(--edge); border-radius:20px; padding:28px; background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015)); backdrop-filter:blur(16px); box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+  .card::before { content:""; position:absolute; inset:-1px; border-radius:21px; padding:1px; background:linear-gradient(135deg, rgba(106,95,196,.35), transparent 40%, transparent 60%, rgba(63,154,171,.35)); -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; opacity:0; transition:opacity .2s; }
+  .card:hover::before { opacity:1; }
+  .card h3 { margin:0; font-size:22px; font-weight:700; line-height:1.2; display:flex; align-items:center; gap:10px; }
+  .card h3 .logo { width:28px; height:28px; display:block; flex:none; }
+  .card h3 .logos { display:flex; flex:none; }
+  .card h3 .logos .logo { width:26px; height:26px; padding:2px; border-radius:50%; background:#141824; box-sizing:content-box; }
+  .card h3 .logos .logo + .logo { margin-left:-7px; }
+  .card .meta { color:var(--mute); font-size:14px; margin:6px 0 20px; }
+  .card ol { padding:0; margin:22px 0 0; list-style:none; counter-reset:s; }
+  .card li { counter-increment:s; display:flex; gap:12px; padding:9px 0; font-size:15px; color:#d5dbe8; }
+  .card li::before { content:counter(s); flex:none; width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,.08); border:1px solid var(--edge); font-size:12px; font-weight:700; display:grid; place-items:center; }
+  code { font-family:ui-monospace, Consolas, monospace; font-size:13.5px; background:rgba(0,0,0,.35); border:1px solid var(--edge); padding:1px 7px; border-radius:6px; color:#c9d4ff; }
+  .note { margin-top:18px; font-size:13.5px; color:#ffd7a0; background:rgba(255,170,60,.08); border:1px solid rgba(255,170,60,.25); border-radius:10px; padding:10px 12px; }
+
+  .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+  .steps div { border:1px solid var(--edge); border-radius:16px; padding:22px; background:var(--glass); }
+  .steps .n { font-size:12px; font-weight:700; color:var(--c2); letter-spacing:.1em; text-transform:uppercase; margin-bottom:10px; }
+  .steps h4 { margin:0 0 6px; font-size:16px; }
+  .steps p { margin:0; color:var(--mute); font-size:14px; }
+
+  .matrix { border:1px solid var(--edge); border-radius:16px; overflow:hidden; background:var(--glass); backdrop-filter:blur(10px); }
+  .matrix div { display:grid; grid-template-columns:1fr auto 1.1fr; gap:16px; padding:14px 20px; border-top:1px solid var(--edge); font-size:14.5px; align-items:center; }
+  .matrix div:first-child { border-top:0; color:var(--mute); font-size:12px; text-transform:uppercase; letter-spacing:.1em; }
+  .matrix .r { color:var(--mute); }
+  .chip { font-size:12px; font-weight:600; padding:3px 10px; border-radius:999px; }
+  .chip.ok { background:rgba(61,220,132,.15); color:#6ff0a6; } .chip.soon { background:rgba(255,194,77,.15); color:#ffd27a; } .chip.no { background:rgba(255,92,120,.15); color:#ff93a8; }
+
+  nav .right { display:flex; align-items:center; gap:14px; }
+  nav .gh { display:inline-flex; align-items:center; gap:7px; color:var(--mute); text-decoration:none; font-size:14px; font-weight:500; }
+  nav .gh:hover { color:var(--fg); }
+  nav .gh svg { width:18px; height:18px; }
+
+  .nos { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:26px; }
+  .nos span { display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:#d5dbe8; border:1px solid var(--edge); background:var(--glass); padding:7px 14px; border-radius:999px; }
+  .nos svg { width:15px; height:15px; color:#ff93a8; }
+
+  .privacy { display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; }
+  .privacy div.p { border:1px solid var(--edge); border-radius:18px; padding:24px; background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); }
+  .privacy .ico { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; background:rgba(106,95,196,.18); border:1px solid rgba(106,95,196,.35); margin-bottom:14px; }
+  .privacy .ico svg { width:20px; height:20px; color:#c9c3f5; }
+  .privacy h3 { margin:0 0 6px; font-size:17px; font-weight:700; }
+  .privacy p { margin:0; color:var(--mute); font-size:14.5px; }
+  .privacy p a { color:#c9d4ff; }
+  .proof { margin-top:16px; border:1px dashed rgba(255,255,255,.18); border-radius:14px; padding:16px 20px; color:var(--mute); font-size:14px; }
+  .proof b { color:var(--fg); }
+
+  footer { margin:80px 0 48px; text-align:center; color:var(--mute); font-size:13px; }
+  footer .line { color:var(--fg); font-weight:600; margin-bottom:6px; }
+  footer a { color:var(--mute); }
+  @media (max-width:760px) { .cards, .privacy { grid-template-columns:1fr; } .window .body { grid-template-columns:minmax(0, 1fr); } nav .gh span { display:none; } .steps { grid-template-columns:1fr 1fr; } .matrix div { grid-template-columns:1fr auto; } .matrix .r { display:none; } }
+</style>
+</head>
+<body>
+<div class="glow"><i></i><i></i><i></i></div>
+<div class="wrap">
+  <nav>
+    <div class="brand"><img src="/icon.png" alt="">Magpie</div>
+    <div class="right"><a class="gh" href="https://github.com/TJBlackman/Magpie"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0012 .5z"/></svg><span>Source</span></a><div class="pill">v<b>0.2.1</b> &middot; Chrome + Firefox</div></div>
+  </nav>
+
+  <div class="hero">
+    <div class="badge"><i></i>A private video downloader you run yourself</div>
+    <h1>Save the video.<br><span>Keep your privacy.</span></h1>
+    <p>Magpie saves the stream behind any player as one clean MP4. There is no company in the middle. You install it, it runs in your browser, and what you watch stays on your machine.</p>
+    <div class="nos">
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>No ads</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>No tracking</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>No telemetry</span>
+      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>No account</span>
+    </div>
+    <div class="ctas">
+      <a class="btn primary" href="/magpie-0.2.1-chrome.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Download for Chrome</a>
+      <a class="btn" href="/magpie-0.2.1-firefox.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Download for Firefox</a>
+    </div>
+
+    <div class="window">
+      <div class="top"><i></i><i></i><i></i></div>
+      <div class="body">
+        <div class="row"><span class="q">1080p</span><span class="t">master.m3u8 &middot; fMP4 &middot; 20.0 s</span><span class="bar"><b></b></span></div>
+        <div class="row"><span class="q">720p</span><span class="t">stream.m3u8 &middot; TS &middot; AES-128</span><span class="bar"><b style="animation-delay:-1s"></b></span></div>
+        <div class="row"><span class="q">MP4</span><span class="t">lecture-03.mp4 &middot; 48 MB</span><span class="bar"><b style="animation-delay:-2s"></b></span></div>
+        <div class="row"><span class="q">480p</span><span class="t">index.m3u8 &middot; byterange</span><span class="bar"><b style="animation-delay:-.5s"></b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Install</h2>
+    <p class="sub">Unsigned developer build. Takes about a minute.</p>
+    <div class="cards">
+      <div class="card chrome">
+        <h3><span class="logos"><img class="logo" src="/icons/chrome.svg" alt="Chrome" width="26" height="26"><img class="logo" src="/icons/edge.svg" alt="Edge" width="26" height="26"><img class="logo" src="/icons/brave.svg" alt="Brave" width="26" height="26"></span>Chromium based browsers</h3>
+        <div class="meta">Chrome, Edge, Brave, or any browser built on Chromium 116 or newer.</div>
+        <a class="btn primary" href="/magpie-0.2.1-chrome.zip" download>Download zip</a>
+        <ol>
+          <li><span>Unzip the download to a folder you will keep.</span></li>
+          <li><span>Open <code>chrome://extensions</code>. In Edge it is <code>edge://extensions</code>, in Brave <code>brave://extensions</code>.</span></li>
+          <li><span>Turn on <b>Developer mode</b>. It is in the top right, or the left sidebar in Edge.</span></li>
+          <li><span>Click <b>Load unpacked</b> and pick the unzipped folder.</span></li>
+          <li><span>Pin Magpie from the extensions menu in the toolbar.</span></li>
+        </ol>
+      </div>
+      <div class="card firefox">
+        <h3><img class="logo" src="/icons/firefox.svg" alt="" width="28" height="28">Firefox</h3>
+        <div class="meta">Firefox 115 or newer.</div>
+        <a class="btn" href="/magpie-0.2.1-firefox.zip" download>Download zip</a>
+        <ol>
+          <li><span>Open <code>about:debugging#/runtime/this-firefox</code>.</span></li>
+          <li><span>Click <b>Load Temporary Add-on</b>.</span></li>
+          <li><span>Pick the downloaded zip. No need to unzip.</span></li>
+        </ol>
+        <div class="note">Firefox removes temporary add-ons when it closes. A signed build that survives restarts is coming. Until then, repeat the three steps after a restart.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <p class="sub">Four clicks, one file.</p>
+    <div class="steps">
+      <div><div class="n">01</div><h4>Press play</h4><p>Open a page with a video and start it.</p></div>
+      <div><div class="n">02</div><h4>Open the popup</h4><p>The badge counts the streams Magpie found on this tab.</p></div>
+      <div><div class="n">03</div><h4>Pick a quality</h4><p>Click a stream, choose a rendition, hit Download.</p></div>
+      <div><div class="n">04</div><h4>Done</h4><p>One MP4 in your downloads folder. History lives under Downloads.</p></div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <h2>Private by design</h2>
+    <p class="sub">Most video downloaders pay for themselves with your attention or your data. This one has nothing to sell.</p>
+    <div class="privacy">
+      <div class="p">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 4l18 14"/></svg></div>
+        <h3>No ads, no upsells</h3>
+        <p>No banners, no sponsored links, no "premium" tier, no nag screens. Every feature is in the free download because there is only the free download.</p>
+      </div>
+      <div class="p">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><path d="M3 3l18 18"/></svg></div>
+        <h3>No tracking, no telemetry</h3>
+        <p>No analytics, no crash reports, no usage pings, no list of what you saved. The only requests Magpie makes are for the video you asked for, sent to the site already serving it.</p>
+      </div>
+      <div class="p">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
+        <h3>No account, no server</h3>
+        <p>Nothing to sign up for and no cloud converter. Segments are fetched, decrypted and stitched inside your browser, then handed straight to your downloads folder.</p>
+      </div>
+      <div class="p">
+        <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/></svg></div>
+        <h3>You run it yourself</h3>
+        <p>The whole source is on <a href="https://github.com/TJBlackman/Magpie">GitHub</a>. Read it, build it from scratch, or load the zip from this page. No store listing, no auto updates you did not ask for.</p>
+      </div>
+    </div>
+    <div class="proof"><b>Check it yourself.</b> Inspect Magpie from <code>chrome://extensions</code> or <code>about:debugging</code> and watch the Network tab while you download. You will see requests to the video's own site and nothing else. This website follows the same rule: no analytics, no cookies, no third party scripts or fonts.</div>
+  </section>
+
+  <section>
+    <h2>What it handles</h2>
+    <p class="sub">Verified frame for frame against ffmpeg reference encodes.</p>
+    <div class="matrix">
+      <div><span>Stream type</span><span>Status</span><span class="r">Result</span></div>
+      <div><span>Plain MP4 or WebM file</span><span class="chip ok">Works</span><span class="r">Saved as is</span></div>
+      <div><span>HLS with TS segments</span><span class="chip ok">Works</span><span class="r">Joined and remuxed to MP4</span></div>
+      <div><span>HLS with fMP4 segments, multiple qualities</span><span class="chip ok">Works</span><span class="r">Quality picker, saved as MP4</span></div>
+      <div><span>HLS with AES-128 encryption</span><span class="chip ok">Works</span><span class="r">Decrypted during download</span></div>
+      <div><span>Sites that check cookies or Referer</span><span class="chip ok">Works</span><span class="r">Your session rides along</span></div>
+      <div><span>DASH</span><span class="chip soon">Soon</span><span class="r">Detected today, download next</span></div>
+      <div><span>HLS with a separate audio track</span><span class="chip soon">Soon</span><span class="r">Video only for now</span></div>
+      <div><span>DRM (Widevine, PlayReady, FairPlay)</span><span class="chip no">Never</span><span class="r">Not supported by design</span></div>
+    </div>
+  </section>
+
+  <footer><div class="line">No ads. No tracking. No telemetry.</div>A personal project by Trevor Blackman. <a href="https://github.com/TJBlackman/Magpie">Source on GitHub</a>. Only download video you have the right to keep.</footer>
+</div>
+</body>
+</html>

@@ -9,3 +9,8 @@ e2e/test-results/
 e2e/downloads/
 e2e/user-data/
 *.log
+
+# website
+website/.wrangler
+website/site/magpie-*.zip
+website/site/icon.png

@@ -1,0 +1,14 @@
+{
+  "name": "magpie-trevorblackman-dev",
+  "compatibility_date": "2026-08-21",
+  "assets": {
+    "directory": "./site",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    {
+      "pattern": "magpie.trevorblackman.dev",
+      "custom_domain": true
+    }
+  ]
+}
