@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAttributes, parseHls } from './hls';
+import { liveStartIndex, parseAttributes, parseHls, type HlsMedia } from './hls';
 import { detect } from './detect';
 
 describe('parseAttributes', () => {
@@ -77,5 +77,20 @@ describe('detect', () => {
   it('flags <video src> and big xhr files', () => {
     expect(detect({ url: 'https://a/clip.mp4', mime: 'video/mp4', resourceType: 'media', contentLength: null })).toBe('file');
     expect(detect({ url: 'https://a/clip.mp4', mime: 'video/mp4', resourceType: 'xmlhttprequest', contentLength: 5e7 })).toBe('file');
+  });
+});
+
+describe('liveStartIndex', () => {
+  const media = (durations: number[]) => ({ segments: durations.map((duration) => ({ duration })) }) as unknown as HlsMedia;
+  it('takes the whole window when it is shorter than the lead in', () => {
+    expect(liveStartIndex(media([4, 4, 4, 4, 4]), 30)).toBe(0);
+  });
+  it('keeps at most the lead in from a long window', () => {
+    expect(liveStartIndex(media([10, 10, 10, 10, 10, 10]), 30)).toBe(3);
+    expect(liveStartIndex(media(Array(1800).fill(2)), 30)).toBe(1785);
+  });
+  it('always keeps the newest segment', () => {
+    expect(liveStartIndex(media([60]), 30)).toBe(0);
+    expect(liveStartIndex(media([]), 30)).toBe(0);
   });
 });

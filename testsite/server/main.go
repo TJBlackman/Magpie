@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -74,6 +75,11 @@ func main() {
 	// Slow: the media tree throttled to about 2 MB/s per request, so progress
 	// bars and the download queue can be watched mid flight.
 	mux.Handle("/slow/", noCache(withMime(throttle(http.StripPrefix("/slow/", http.FileServer(http.Dir(media))), 2<<20))))
+
+	// Live: the hls-ts clip, and an fMP4 rendition whose timestamps start hours
+	// in, replayed as live streams, see liveSim.
+	mux.Handle("/live/", noCache(withMime(&liveSim{prefix: "/live/", dir: filepath.Join(media, "hls-ts"), starts: map[string]time.Time{}})))
+	mux.Handle("/live-fmp4/", noCache(withMime(&liveSim{prefix: "/live-fmp4/", dir: filepath.Join(media, "hls-live-fmp4"), starts: map[string]time.Time{}})))
 
 	mux.Handle("/", noCache(withMime(http.FileServer(http.Dir(public)))))
 
@@ -202,4 +208,82 @@ func (s *slowWriter) Write(p []byte) (int, error) {
 		p = p[n:]
 	}
 	return written, nil
+}
+
+// liveSim replays a VOD rendition in dir as a live stream at
+// <prefix><session>/{master.m3u8,index.m3u8,init and segment files}. Each
+// session id gets its own clock from its first playlist request. Two segments
+// are out at the start and one more each target duration; the window keeps the
+// newest four, and EXT-X-ENDLIST follows the last segment, about 12 s in.
+type liveSim struct {
+	prefix string
+	dir    string
+	mu     sync.Mutex
+	starts map[string]time.Time
+}
+
+func (l *liveSim) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, l.prefix), "/")
+	if len(parts) != 2 || parts[0] == "" {
+		http.NotFound(w, r)
+		return
+	}
+	session, file := parts[0], parts[1]
+	switch file {
+	case "master.m3u8":
+		fmt.Fprint(w, "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=2200000,RESOLUTION=1280x720\nindex.m3u8\n")
+	case "index.m3u8":
+		l.playlist(w, session)
+	default:
+		http.ServeFile(w, r, filepath.Join(l.dir, filepath.Base(file)))
+	}
+}
+
+func (l *liveSim) playlist(w http.ResponseWriter, session string) {
+	data, err := os.ReadFile(filepath.Join(l.dir, "index.m3u8"))
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	target := 4
+	var infs, names []string
+	head := "#EXT-X-VERSION:3\n"
+	for _, line := range strings.Split(strings.ReplaceAll(string(data), "\r", ""), "\n") {
+		switch {
+		case strings.HasPrefix(line, "#EXT-X-MAP:"):
+			head = "#EXT-X-VERSION:7\n" + line + "\n"
+		case strings.HasPrefix(line, "#EXT-X-TARGETDURATION:"):
+			fmt.Sscanf(line, "#EXT-X-TARGETDURATION:%d", &target)
+		case strings.HasPrefix(line, "#EXTINF:"):
+			infs = append(infs, line)
+		case line != "" && !strings.HasPrefix(line, "#"):
+			names = append(names, line)
+		}
+	}
+
+	l.mu.Lock()
+	start, ok := l.starts[session]
+	if !ok {
+		start = time.Now()
+		l.starts[session] = start
+	}
+	l.mu.Unlock()
+
+	n := 2 + int(time.Since(start)/(time.Duration(target)*time.Second))
+	if n > len(names) {
+		n = len(names)
+	}
+	from := n - 4
+	if from < 0 {
+		from = 0
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "#EXTM3U\n%s#EXT-X-TARGETDURATION:%d\n#EXT-X-MEDIA-SEQUENCE:%d\n", head, target, from)
+	for i := from; i < n; i++ {
+		fmt.Fprintf(&b, "%s\n%s\n", infs[i], names[i])
+	}
+	if n == len(names) {
+		b.WriteString("#EXT-X-ENDLIST\n")
+	}
+	fmt.Fprint(w, b.String())
 }

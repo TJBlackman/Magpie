@@ -47,6 +47,11 @@ ffmpeg -hide_banner -loglevel error -y -i src/720.mp4 -i src/480.mp4 -i src/360.
   -hls_segment_filename "hls-fmp4/%v/seg%03d.m4s" -hls_fmp4_init_filename init.mp4 \
   "hls-fmp4/%v/index.m3u8"
 
+echo "== 3b hls-live-fmp4 (the 720p rendition with fragment times 2 hours in, like a long running live stream)"
+rm -rf hls-live-fmp4
+cp -r hls-fmp4/720p hls-live-fmp4
+python3 "$here/shift_tfdt.py" hls-live-fmp4 7200
+
 echo "== 4 hls-altaudio (video and audio in separate renditions)"
 mkdir -p hls-altaudio
 ffmpeg -hide_banner -loglevel error -y -i src/720.mp4 \

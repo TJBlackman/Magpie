@@ -96,6 +96,8 @@ async function main() {
     }
 
     for (const [page, urlPart, expectName] of [
+      // Live first, while it is the only master playlist in the manager's all tabs list.
+      ['/live.html', '/master.m3u8', /^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/],
       ['/hls-ts.html', '/media/hls-ts/index.m3u8', 'Harbor at Dusk.mp4'],
       ['/gated.html', '/gated/media/index.m3u8', 'Gated HLS.mp4'],
       ['/hls-fmp4.html', '/media/hls-fmp4/master.m3u8', 'Night Train, multi rendition [720p].mp4'],
@@ -131,7 +133,7 @@ async function main() {
       }
       const filename = await job.getAttribute('data-filename');
       console.log('  filename', filename);
-      if (filename !== expectName) failures.push(`${page}: filename ${filename}, expected ${expectName}`);
+      if (expectName instanceof RegExp ? !expectName.test(filename) : filename !== expectName) failures.push(`${page}: filename ${filename}, expected ${expectName}`);
       // Read back what Firefox actually saved, once its own download record says complete.
       const saved = await driver.wait(async () => {
         const json = await driver.executeAsyncScript(

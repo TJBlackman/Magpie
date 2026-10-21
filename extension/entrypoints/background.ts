@@ -4,7 +4,7 @@ import { Sniffer } from '../src/background/sniffer';
 import { setHeaderRule } from '../src/background/headers';
 import { pageTitleFor } from '../src/background/pagetitle';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
-import { err, ok, type EngineRequest, type Envelope, type Job, type Result, type UiRequest } from '../src/core/types';
+import { err, ok, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
   const sniffer = new Sniffer();
@@ -38,6 +38,7 @@ export default defineBackground(() => {
       const engine = hostEngine({
         setHeaderRule,
         saveBlob: (blobUrl, filename) => saveBlob(blobUrl, filename),
+        whenSaved: (id) => downloadSettled(id),
         jobsChanged: (jobs) => {
           latestJobs = jobs;
           broadcastJobs(jobs);
@@ -58,6 +59,16 @@ export default defineBackground(() => {
     return res ?? err('Engine did not answer.');
   }
 
+  // Inspect each new HLS manifest right away: a master's variant playlists then
+  // fold under it, and a playlist without an end shows as live. The engine keeps
+  // the result, so expanding the row later costs nothing.
+  sniffer.onManifest = (c) => {
+    if (c.kind !== 'hls') return;
+    toEngine({ type: 'inspect', candidate: c })
+      .then((r) => r.ok && sniffer.learn(c.id, r.value as Inspection))
+      .catch(() => {});
+  };
+
   async function saveBlob(blobUrl: string, filename: string): Promise<number | undefined> {
     try {
       return await browser.downloads.download({ url: blobUrl, filename, saveAs: false, conflictAction: 'uniquify' });
@@ -65,6 +76,24 @@ export default defineBackground(() => {
       console.error('download failed', e);
       throw e;
     }
+  }
+
+  /** Resolves when a download is no longer in progress. */
+  function downloadSettled(id: number): Promise<void> {
+    return new Promise((resolve) => {
+      const check = async () => {
+        const [d] = await browser.downloads.search({ id }).catch(() => []);
+        if (d && d.state === 'in_progress') return false;
+        browser.downloads.onChanged.removeListener(onChanged);
+        resolve();
+        return true;
+      };
+      const onChanged = (delta: { id: number; state?: { current?: string } }) => {
+        if (delta.id === id && delta.state?.current && delta.state.current !== 'in_progress') void check();
+      };
+      browser.downloads.onChanged.addListener(onChanged);
+      void check();
+    });
   }
 
   async function handleUi(req: UiRequest): Promise<Result<unknown>> {
@@ -83,12 +112,12 @@ export default defineBackground(() => {
         sniffer.clear(req.tabId);
         return ok(null);
       case 'inspect': {
-        const c = (await sniffer.forTab()).find((x) => x.id === req.candidateId);
+        const c = await sniffer.get(req.candidateId);
         if (!c) return err('Candidate no longer known (tab navigated?).');
         return toEngine({ type: 'inspect', candidate: c });
       }
       case 'start': {
-        const c = (await sniffer.forTab()).find((x) => x.id === req.candidateId);
+        const c = await sniffer.get(req.candidateId);
         if (!c) return err('Candidate no longer known (tab navigated?).');
         const pageTitle = (await pageTitleFor(c)) || c.pageTitle;
         await settingsReady;
@@ -96,6 +125,8 @@ export default defineBackground(() => {
       }
       case 'cancel':
         return toEngine({ type: 'cancel', jobId: req.jobId });
+      case 'stop':
+        return toEngine({ type: 'stop', jobId: req.jobId });
       case 'removeJob':
         return toEngine({ type: 'removeJob', jobId: req.jobId });
       case 'jobs': {

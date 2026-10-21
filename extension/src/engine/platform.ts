@@ -10,6 +10,11 @@ export interface Platform {
   setHeaderRule(host: string, referer: string, origin: string): Promise<void>;
   /** Hand a finished file to the browser's download manager. */
   saveBlob(blobUrl: string, filename: string, jobId: string): Promise<number | undefined>;
+  /**
+   * Resolves once the download manager is done with a download (complete or
+   * interrupted). Only the Firefox host has it, the one place files live in memory.
+   */
+  whenSaved?(downloadId: number): Promise<void>;
   /** Push job list changes to whoever is listening (popup, manager, background). */
   jobsChanged(jobs: Job[]): void;
 }

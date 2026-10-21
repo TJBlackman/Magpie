@@ -69,13 +69,23 @@ function ffmpeg(args: string[]): string {
   return execFileSync('ffmpeg', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 }
 
+/** Container start time and duration in seconds, via ffprobe. */
+export function probeTimes(file: string): { start: number; duration: number } {
+  const args = ['-v', 'error', '-show_entries', 'format=start_time,duration', '-of', 'default=nw=1', wslPath(file)];
+  const out =
+    process.platform === 'win32'
+      ? execFileSync('wsl', ['-u', 'trevor', '--', 'ffprobe', ...args], { encoding: 'utf8' })
+      : execFileSync('ffprobe', args, { encoding: 'utf8' });
+  const get = (k: string) => Number(new RegExp(`${k}=([0-9.]+)`).exec(out)?.[1]);
+  return { start: get('start_time'), duration: get('duration') };
+}
+
 function wslPath(winPath: string): string {
   if (process.platform !== 'win32') return winPath;
   return winPath.replace(/^([A-Za-z]):\\/, (_, d) => `/mnt/${d.toLowerCase()}/`).replace(/\\/g, '/');
 }
 
-/** Decoded video frame hashes of `file` must equal the reference rendition. */
-export function expectFramesMatch(file: string, rendition: '720' | '480' | '360') {
+function frameHashes(file: string, rendition: '720' | '480' | '360') {
   const got = ffmpeg(['-hide_banner', '-loglevel', 'error', '-i', wslPath(file), '-map', '0:v', '-f', 'framemd5', '-'])
     .split('\n')
     .filter((l) => l && !l.startsWith('#'))
@@ -84,8 +94,23 @@ export function expectFramesMatch(file: string, rendition: '720' | '480' | '360'
     .split('\n')
     .filter((l) => l && !l.startsWith('#'))
     .map(hashOnly);
+  return { got, want };
+}
+
+/** Decoded video frame hashes of `file` must equal the reference rendition. */
+export function expectFramesMatch(file: string, rendition: '720' | '480' | '360') {
+  const { got, want } = frameHashes(file, rendition);
   expect(got.length, 'frame count').toBe(want.length);
   expect(got, 'decoded frame hashes').toEqual(want);
+}
+
+/** `file` must hold the first frames of the reference, at least `min` and fewer than all. Returns the count. */
+export function expectFramesPrefix(file: string, rendition: '720' | '480' | '360', min: number): number {
+  const { got, want } = frameHashes(file, rendition);
+  expect(got.length, 'frame count').toBeGreaterThanOrEqual(min);
+  expect(got.length, 'frame count').toBeLessThan(want.length);
+  expect(got, 'decoded frame hashes').toEqual(want.slice(0, got.length));
+  return got.length;
 }
 
 function hashOnly(line: string): string {

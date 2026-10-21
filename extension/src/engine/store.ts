@@ -13,12 +13,19 @@ export class OutputFile {
 
   private static opfs: Promise<FileSystemDirectoryHandle | null> | null = null;
 
-  constructor(private readonly name: string) {}
+  constructor(readonly name: string) {}
 
-  /** The OPFS jobs directory, or null when the browser refuses OPFS here. */
+  /**
+   * The OPFS jobs directory, or null when the browser refuses OPFS here.
+   * Without persistent storage both browsers cap the extension at 10 GiB, about
+   * five hours of a 5 Mbps stream. The unlimitedStorage permission lifts that in
+   * Chrome; Firefox also needs persist(), which it grants that permission silently.
+   */
   static dir(): Promise<FileSystemDirectoryHandle | null> {
     OutputFile.opfs ??= navigator.storage
-      .getDirectory()
+      .persist()
+      .catch(() => false)
+      .then(() => navigator.storage.getDirectory())
       .then((root) => root.getDirectoryHandle('jobs', { create: true }))
       .catch((e: unknown) => {
         console.warn('OPFS unavailable, buffering downloads in memory:', e);
@@ -51,6 +58,21 @@ export class OutputFile {
       await this.writable.write(chunk as unknown as ArrayBufferView<ArrayBuffer>);
     }
     this.bytes += chunk.byteLength;
+  }
+
+  /**
+   * Replace the first bytes of the file with `bytes` of the same length, e.g.
+   * an init segment with real durations once a live recording ends. Call it
+   * right before finish(): later appends would land after `bytes`, not at the end.
+   */
+  async overwriteStart(bytes: Uint8Array): Promise<void> {
+    if (this.parts) {
+      if (this.parts[0]?.size !== bytes.byteLength) throw new Error('overwriteStart: first chunk has a different size');
+      this.parts[0] = new Blob([bytes as unknown as ArrayBufferView<ArrayBuffer>]);
+      return;
+    }
+    if (!this.writable) throw new Error('output not open');
+    await this.writable.write({ type: 'write', position: 0, data: bytes as unknown as ArrayBufferView<ArrayBuffer> });
   }
 
   async finish(): Promise<File> {

@@ -227,6 +227,23 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
   };
 }
 
+/**
+ * Where a live recording starts: the earliest segment that keeps at most
+ * `leadInSec` of already published media, and always the newest segment. A
+ * player shows the stream a few segments behind the newest one, so this covers
+ * what the user just watched without pulling an hour long DVR window.
+ */
+export function liveStartIndex(media: HlsMedia, leadInSec: number): number {
+  let start = media.segments.length;
+  let total = 0;
+  while (start > 0) {
+    total += media.segments[start - 1]!.duration;
+    if (total > leadInSec && start < media.segments.length) break;
+    start--;
+  }
+  return start;
+}
+
 export function variantLabel(v: HlsVariant): string {
   const parts: string[] = [];
   if (v.resolution) parts.push(v.resolution);

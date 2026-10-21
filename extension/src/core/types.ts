@@ -15,6 +15,14 @@ export interface Candidate {
   /** Referer the page's own request carried, replayed on our fetches. */
   referer: string;
   seenAt: number;
+  /** The player keeps reloading this manifest, or its playlist has no end: a live stream. */
+  live?: boolean;
+  /** How often the page reloaded this manifest after the first sighting. */
+  reloads?: number;
+  /** Set on a variant or rendition playlist whose master is listed; such rows are hidden. */
+  parentId?: string;
+  /** For a master playlist: the variant and rendition playlist URLs it lists. */
+  children?: string[];
 }
 
 export interface Variant {
@@ -34,8 +42,12 @@ export interface Inspection {
   candidateId: string;
   kind: MediaKind;
   variants: Variant[];
-  /** Human readable notes, e.g. "live stream, only listed segments will be saved". */
+  /** Human readable notes, e.g. "live stream, records until you press Stop". */
   notes: string[];
+  /** Media playlist without EXT-X-ENDLIST. Unknown for a master. */
+  live?: boolean;
+  /** For a master playlist: every variant and rendition playlist URL it lists. */
+  children?: string[];
 }
 
 export type JobState =
@@ -64,6 +76,12 @@ export interface Job {
   bytesTotal?: number;
   /** 1 based place in the queue while state is 'queued'. */
   queuePosition?: number;
+  /** Recording a live stream: runs until Stop or the stream ends. */
+  live?: boolean;
+  /** Seconds of media saved so far (live recordings). */
+  duration?: number;
+  /** Something the user should know that is not an error, e.g. a gap in a recording. */
+  note?: string;
   error?: string;
   startedAt: number;
   finishedAt?: number;
@@ -77,6 +95,7 @@ export type UiRequest =
   | { type: 'inspect'; candidateId: string }
   | { type: 'start'; candidateId: string; variantId: string }
   | { type: 'cancel'; jobId: string }
+  | { type: 'stop'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string }
   | { type: 'activeTab' }
@@ -88,6 +107,7 @@ export type EngineRequest =
   | { type: 'start'; candidate: Candidate; variantId: string; settings: Settings }
   | { type: 'configure'; settings: Settings }
   | { type: 'cancel'; jobId: string }
+  | { type: 'stop'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string };
 

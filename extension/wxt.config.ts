@@ -17,7 +17,8 @@ export default defineConfig({
     const common = {
       name: 'Magpie',
       description: 'Collects shiny streaming video (HLS, DASH, plain files) and saves it to disk.',
-      permissions: ['webRequest', 'downloads', 'storage', 'tabs'],
+      // unlimitedStorage: downloads are assembled in OPFS, which is otherwise capped at 10 GiB.
+      permissions: ['webRequest', 'downloads', 'storage', 'unlimitedStorage', 'tabs'],
       host_permissions: ['<all_urls>'],
     };
     if (browser === 'firefox') {

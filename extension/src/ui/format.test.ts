@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { fmtEta, jobProgress, sourceLabel } from './format';
+import { fmtClock, fmtEta, jobProgress, sourceLabel } from './format';
+import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
 const base = { state: 'downloading', kind: 'file', bytes: 0, segmentsDone: 0, segmentsTotal: 0 };
@@ -38,5 +39,22 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ maxConcurrent: 0 }).maxConcurrent).toBe(1);
     expect(normalizeSettings({ maxConcurrent: 99 }).maxConcurrent).toBe(10);
     expect(normalizeSettings({ maxConcurrent: 'x' }).maxConcurrent).toBe(2);
+  });
+});
+
+describe('live recordings', () => {
+  it('have no percentage while recording', () => {
+    expect(jobProgress({ ...base, kind: 'hls', live: true, segmentsDone: 5 })).toBeNull();
+  });
+  it('show the recorded length as a clock', () => {
+    expect(fmtClock(42.7)).toBe('0:42');
+    expect(fmtClock(725)).toBe('12:05');
+    expect(fmtClock(3729)).toBe('1:02:09');
+  });
+  it('get the start time in the filename', () => {
+    expect(withTimestamp('Harbor Cam [720p].mp4', new Date(2026, 9, 21, 15, 4))).toBe('Harbor Cam [720p] 2026-10-21 15.04.mp4');
+  });
+  it('number the parts of a recording saved in parts', () => {
+    expect(withPart('Harbor Cam 2026-10-21 15.04.mp4', 2)).toBe('Harbor Cam 2026-10-21 15.04 part 2.mp4');
   });
 });

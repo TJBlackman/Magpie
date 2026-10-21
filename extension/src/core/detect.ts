@@ -51,6 +51,53 @@ export function detect(input: DetectInput): MediaKind | null {
   return null;
 }
 
+/**
+ * The manifest URL without LL-HLS delivery directives (_HLS_msn, _HLS_part,
+ * _HLS_skip). Players add them on every reload of a live playlist and the HLS
+ * spec reserves the _HLS_ prefix for them, so they never identify a stream.
+ * Without them the server answers with the current playlist right away.
+ */
+export function manifestUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    for (const k of [...u.searchParams.keys()]) if (k.startsWith('_HLS_')) u.searchParams.delete(k);
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+/** Timestamps, counters, cache busters and session tokens: values that change between reloads of one stream. */
+function volatile(value: string): boolean {
+  return /^\d{6,}$/.test(value) || (value.length >= 16 && /\d/.test(value) && /[a-z]/i.test(value));
+}
+
+/**
+ * True when two manifest URLs look like reloads of one stream: same origin and
+ * path, and every query parameter that differs (or is missing on one side)
+ * carries a volatile value on both sides where present. `?cam=1` and `?cam=2`
+ * stay apart; `?_=1729500000000` and `?_=1729500002000` do not.
+ */
+export function sameStream(a: string, b: string): boolean {
+  let ua: URL;
+  let ub: URL;
+  try {
+    ua = new URL(manifestUrl(a));
+    ub = new URL(manifestUrl(b));
+  } catch {
+    return false;
+  }
+  if (ua.origin !== ub.origin || ua.pathname !== ub.pathname) return false;
+  const names = new Set([...ua.searchParams.keys(), ...ub.searchParams.keys()]);
+  for (const k of names) {
+    const va = ua.searchParams.getAll(k).join(',');
+    const vb = ub.searchParams.getAll(k).join(',');
+    if (va === vb) continue;
+    if ((va && !volatile(va)) || (vb && !volatile(vb))) return false;
+  }
+  return true;
+}
+
 /** Produce a stable id for a URL so repeated sightings dedupe. */
 export function candidateId(tabId: number, url: string): string {
   let h = 2166136261;

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Candidate, Inspection, Job } from '../core/types';
 import { api, showDownload } from './api';
-import { fmtBytes, fmtEta, fmtRate, jobProgress, kindLabel, sourceLabel } from './format';
+import { fmtBytes, fmtClock, fmtEta, fmtRate, jobProgress, kindLabel, sourceLabel } from './format';
 
 export function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'shine' | 'warn' | 'bad' | 'good' }) {
   const cls = {
@@ -67,6 +67,11 @@ export function CandidateRow({ candidate }: { candidate: Candidate }) {
           </div>
           <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mute">
             <Badge tone={candidate.kind === 'dash' ? 'warn' : 'shine'}>{kindLabel(candidate.kind)}</Badge>
+            {candidate.live && (
+              <span data-testid="live-badge">
+                <Badge tone="bad">LIVE</Badge>
+              </span>
+            )}
             <span className="min-w-0 flex-1 truncate" title={candidate.url}>
               {source}
             </span>
@@ -138,6 +143,11 @@ function statusText(job: Job, pct: number | null, rate: number): string {
       return 'Saving to your downloads';
     case 'downloading': {
       const parts: string[] = [];
+      if (job.live) {
+        parts.push(`Recording ${fmtClock(job.duration ?? 0)}`, fmtBytes(job.bytes));
+        if (rate > 0) parts.push(fmtRate(rate));
+        return parts.join(' · ');
+      }
       if (job.kind === 'file') {
         parts.push(job.bytesTotal ? `${fmtBytes(job.bytes)} of ${fmtBytes(job.bytesTotal)}` : fmtBytes(job.bytes));
       } else {
@@ -168,6 +178,7 @@ export function JobRow({ job }: { job: Job }) {
   const tone = job.state === 'done' ? 'good' : job.state === 'error' ? 'bad' : job.state === 'cancelled' || job.state === 'queued' ? 'default' : 'shine';
   const indeterminate = active && pct === null;
   const barColor = job.state === 'error' ? 'bg-red-400' : job.state === 'cancelled' ? 'bg-zinc-500' : 'bg-shine';
+  const recording = job.live && job.state === 'downloading';
   return (
     <div
       className="rounded border border-edge bg-panel px-2 py-1.5"
@@ -178,12 +189,17 @@ export function JobRow({ job }: { job: Job }) {
       data-pct={pct === null ? '' : Math.floor(pct * 100)}
     >
       <div className="flex items-center gap-2">
-        <Badge tone={tone}>{job.state}</Badge>
+        <Badge tone={recording ? 'bad' : tone}>{recording ? 'recording' : job.state}</Badge>
         <span className="min-w-0 flex-1 truncate" title={job.title}>
           {job.filename}
         </span>
+        {recording && (
+          <Button tone="shine" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
+            Stop
+          </Button>
+        )}
         {active && (
-          <Button tone="ghost" onClick={() => api.cancel(job.id)}>
+          <Button tone="ghost" onClick={() => api.cancel(job.id)} title={recording ? 'Stop recording and throw it away' : undefined}>
             Cancel
           </Button>
         )}
@@ -207,6 +223,7 @@ export function JobRow({ job }: { job: Job }) {
       <div className="mt-1 text-[11px] text-mute" data-testid="job-status">
         {statusText(job, pct, rate)}
       </div>
+      {job.note && <div className="mt-1 text-amber-300">{job.note}</div>}
       {job.error && <div className="mt-1 text-red-300">{job.error}</div>}
     </div>
   );

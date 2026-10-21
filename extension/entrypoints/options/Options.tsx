@@ -38,7 +38,7 @@ export function Options() {
           Maximum concurrent downloads
         </label>
         <p className="mt-1 text-[12px] text-mute">
-          Downloads past this number wait in a queue and start in the order you clicked them as soon as a running one finishes.
+          Downloads past this number wait in a queue and start in the order you clicked them as soon as a running one finishes. Live recordings do not count, since they run until you stop them.
         </p>
         <div className="mt-3 flex items-center gap-2">
           <Button onClick={() => setMax(settings.maxConcurrent - 1)} disabled={settings.maxConcurrent <= 1} title="One fewer">

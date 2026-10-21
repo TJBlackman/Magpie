@@ -1,18 +1,34 @@
 import { browser } from 'wxt/browser';
-import { candidateId, detect } from '../core/detect';
-import type { Candidate, Envelope } from '../core/types';
+import { candidateId, detect, manifestUrl, sameStream } from '../core/detect';
+import type { Candidate, Envelope, Inspection } from '../core/types';
 import { pageTitleFor } from './pagetitle';
+
+/** Reloads after the first sighting that mark a manifest as live. Players fetch a VOD manifest once. */
+const LIVE_RELOADS = 2;
+/** URLs remembered per tab. A live stream whose URL changes on every reload adds one each time. */
+const MAX_URLS = 2000;
 
 /**
  * Observe (never block) responses and collect media candidates per tab.
  * State lives in memory and, where available, storage.session so a restarted
  * Chrome service worker can recover it.
+ *
+ * One stream is one candidate. A live player reloads its manifest every few
+ * seconds, often with a new URL each time (LL-HLS directives, cache busters,
+ * fresh tokens); those reloads update the existing candidate instead of
+ * adding rows. Variant playlists of a listed master are kept but hidden.
  */
 export class Sniffer {
   private byTab = new Map<number, Map<string, Candidate>>();
+  /** Per tab: every URL a candidate has carried, to its candidate id. */
+  private urls = new Map<number, Map<string, string>>();
+  /** Per tab: origin + path values that several streams share at once, so URLs there never merge. */
+  private shared = new Map<number, Set<string>>();
   private restored: Promise<void>;
   /** Last time each tab's page title was read, to keep popup opens cheap. */
   private titleReadAt = new Map<number, number>();
+  /** Called once per new manifest. The background inspects it and reports back through learn(). */
+  onManifest: ((c: Candidate) => void) | null = null;
 
   constructor() {
     this.restored = this.restore();
@@ -31,12 +47,48 @@ export class Sniffer {
     });
   }
 
+  /** Candidates to show, newest first. Variant playlists of a listed master are left out. */
   async forTab(tabId?: number): Promise<Candidate[]> {
     await this.restored;
-    if (tabId === undefined) {
-      return [...this.byTab.values()].flatMap((m) => [...m.values()]).sort((a, b) => b.seenAt - a.seenAt);
+    const list = tabId === undefined ? [...this.byTab.values()].flatMap((m) => [...m.values()]) : [...(this.byTab.get(tabId)?.values() ?? [])];
+    return list.filter((c) => !c.parentId).sort((a, b) => b.seenAt - a.seenAt);
+  }
+
+  /** Any candidate by id, hidden ones included. */
+  async get(id: string): Promise<Candidate | undefined> {
+    await this.restored;
+    for (const m of this.byTab.values()) {
+      const c = m.get(id);
+      if (c) return c;
     }
-    return [...(this.byTab.get(tabId)?.values() ?? [])].sort((a, b) => b.seenAt - a.seenAt);
+    return undefined;
+  }
+
+  /**
+   * Apply what inspecting a manifest found: a playlist without an end is live,
+   * and a master's variant and rendition playlists get hidden under it.
+   */
+  learn(id: string, inspection: Inspection): void {
+    const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
+    if (!c) return;
+    let changed = false;
+    if (inspection.live && !c.live) {
+      this.markLive(c);
+      changed = true;
+    }
+    if (inspection.children?.length) {
+      c.children = inspection.children.map(manifestUrl);
+      for (const other of this.byTab.get(c.tabId)?.values() ?? []) {
+        if (other === c || other.parentId || !listsChild(c, other.url)) continue;
+        other.parentId = c.id;
+        if (other.live) c.live = true;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    void this.persist();
+    void this.badge(c.tabId);
+    this.notify(c.tabId);
   }
 
   /**
@@ -76,6 +128,8 @@ export class Sniffer {
 
   clear(tabId: number): void {
     this.byTab.delete(tabId);
+    this.urls.delete(tabId);
+    this.shared.delete(tabId);
     this.titleReadAt.delete(tabId);
     void this.persist();
     void this.badge(tabId);
@@ -95,21 +149,33 @@ export class Sniffer {
     if (!kind) return;
 
     await this.restored;
-    const id = candidateId(details.tabId, details.url);
-    let tabMap = this.byTab.get(details.tabId);
-    if (!tabMap) {
-      tabMap = new Map();
-      this.byTab.set(details.tabId, tabMap);
+    const tabId = details.tabId;
+    const url = kind === 'file' ? details.url : manifestUrl(details.url);
+    const tabMap = getOrSet(this.byTab, tabId, () => new Map<string, Candidate>());
+    const urls = getOrSet(this.urls, tabId, () => new Map<string, string>());
+    const shared = getOrSet(this.shared, tabId, () => new Set<string>());
+
+    const known = tabMap.get(urls.get(url) ?? '');
+    if (known) {
+      if (known.url === url) return this.touch(known);
+      // An older URL of a merged stream came back while the newer one is in use:
+      // two streams share this path. Stop merging there; this URL gets its own row.
+      shared.add(pathOf(url));
+      urls.delete(url);
+    } else if (kind !== 'file' && !shared.has(pathOf(url))) {
+      const twin = [...tabMap.values()].find((c) => c.kind === kind && sameStream(c.url, url));
+      if (twin) {
+        // The newest URL carries the freshest token, so downloads use it.
+        twin.url = url;
+        this.remember(tabId, url, twin.id);
+        return this.touch(twin);
+      }
     }
-    const existing = tabMap.get(id);
-    if (existing) {
-      existing.seenAt = Date.now();
-      return;
-    }
+
     let pageUrl = '';
     let pageTitle = '';
     try {
-      const tab = await browser.tabs.get(details.tabId);
+      const tab = await browser.tabs.get(tabId);
       pageUrl = tab.url ?? '';
       pageTitle = tab.title ?? '';
     } catch {
@@ -119,10 +185,12 @@ export class Sniffer {
     // origin, so prefer the tab URL there (CDNs often check the full Referer).
     const d = details as unknown as { documentUrl?: string; initiator?: string };
     const referer = d.documentUrl || pageUrl || d.initiator || '';
+    let id = candidateId(tabId, url);
+    if (tabMap.has(id)) id = candidateId(tabId, `${url}#${Date.now()}`);
     const candidate: Candidate = {
       id,
-      tabId: details.tabId,
-      url: details.url,
+      tabId,
+      url,
       kind,
       mime: mime.split(';')[0]!.trim(),
       contentLength: Number.isFinite(contentLength) ? contentLength : null,
@@ -131,14 +199,44 @@ export class Sniffer {
       referer: referer || pageUrl,
       seenAt: Date.now(),
     };
+    const parent = kind === 'file' ? undefined : [...tabMap.values()].find((m) => listsChild(m, url));
+    if (parent) candidate.parentId = parent.id;
     tabMap.set(id, candidate);
+    this.remember(tabId, url, id);
     void this.persist();
-    void this.badge(details.tabId);
-    this.notify(details.tabId);
+    if (kind !== 'file') this.onManifest?.(candidate);
+    if (parent) return;
+    void this.badge(tabId);
+    this.notify(tabId);
     // The page usually finishes setting its title shortly after playback starts.
     setTimeout(() => {
-      void this.refreshTitles(details.tabId, true).then((changed) => changed && this.notify(details.tabId));
+      void this.refreshTitles(tabId, true).then((changed) => changed && this.notify(tabId));
     }, 1500);
+  }
+
+  /** Another sighting of a known candidate. Manifests that keep reloading are live. */
+  private touch(c: Candidate) {
+    c.seenAt = Date.now();
+    if (c.kind === 'file') return;
+    c.reloads = (c.reloads ?? 0) + 1;
+    if (c.live || c.reloads < LIVE_RELOADS) return;
+    this.markLive(c);
+    void this.persist();
+    this.notify(c.tabId);
+  }
+
+  /** A live variant makes its master live too, since the master is the row the user sees. */
+  private markLive(c: Candidate) {
+    c.live = true;
+    const parent = c.parentId ? this.byTab.get(c.tabId)?.get(c.parentId) : undefined;
+    if (parent) parent.live = true;
+  }
+
+  private remember(tabId: number, url: string, id: string) {
+    const urls = getOrSet(this.urls, tabId, () => new Map<string, string>());
+    urls.delete(url);
+    urls.set(url, id);
+    if (urls.size > MAX_URLS) urls.delete(urls.keys().next().value!);
   }
 
   private notify(tabId: number) {
@@ -147,7 +245,7 @@ export class Sniffer {
   }
 
   private async badge(tabId: number) {
-    const n = this.byTab.get(tabId)?.size ?? 0;
+    const n = [...(this.byTab.get(tabId)?.values() ?? [])].filter((c) => !c.parentId).length;
     const action = (browser as unknown as { action?: typeof browser.action; browserAction?: typeof browser.action }).action
       ?? (browser as unknown as { browserAction?: typeof browser.action }).browserAction;
     if (!action) return;
@@ -176,15 +274,34 @@ export class Sniffer {
     try {
       const { candidates } = (await s.get('candidates')) as { candidates?: Candidate[] };
       for (const c of candidates ?? []) {
-        let m = this.byTab.get(c.tabId);
-        if (!m) {
-          m = new Map();
-          this.byTab.set(c.tabId, m);
-        }
-        m.set(c.id, c);
+        getOrSet(this.byTab, c.tabId, () => new Map<string, Candidate>()).set(c.id, c);
+        this.remember(c.tabId, c.url, c.id);
       }
     } catch {
       /* nothing saved */
     }
   }
+}
+
+/** True when `master` lists `url` as one of its variant or rendition playlists. */
+function listsChild(master: Candidate, url: string): boolean {
+  return !!master.children?.some((child) => child === manifestUrl(url) || sameStream(child, url));
+}
+
+function pathOf(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.origin + u.pathname;
+  } catch {
+    return url;
+  }
+}
+
+function getOrSet<K, V>(map: Map<K, V>, key: K, make: () => V): V {
+  let v = map.get(key);
+  if (v === undefined) {
+    v = make();
+    map.set(key, v);
+  }
+  return v;
 }

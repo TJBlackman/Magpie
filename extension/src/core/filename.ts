@@ -36,3 +36,17 @@ function hostOf(url: string): string {
     return 'video';
   }
 }
+
+/** "Cam 2026-10-21 15.04.mp4" becomes "Cam 2026-10-21 15.04 part 2.mp4". */
+export function withPart(filename: string, part: number): string {
+  const dot = filename.lastIndexOf('.');
+  return dot > 0 ? `${filename.slice(0, dot)} part ${part}${filename.slice(dot)}` : `${filename} part ${part}`;
+}
+
+/** "Cam.mp4" becomes "Cam 2026-10-21 15.04.mp4", so recordings of one live stream do not collide. */
+export function withTimestamp(filename: string, at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const stamp = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}.${pad(at.getMinutes())}`;
+  const dot = filename.lastIndexOf('.');
+  return dot > 0 ? `${filename.slice(0, dot)} ${stamp}${filename.slice(dot)}` : `${filename} ${stamp}`;
+}

@@ -35,6 +35,9 @@ export async function handle(engine: Engine, req: EngineRequest): Promise<Result
     case 'cancel':
       engine.cancel(req.jobId);
       return ok(null);
+    case 'stop':
+      engine.stop(req.jobId);
+      return ok(null);
     case 'removeJob':
       engine.remove(req.jobId);
       return ok(null);

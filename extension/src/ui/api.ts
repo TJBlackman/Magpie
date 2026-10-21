@@ -20,6 +20,7 @@ export const api = {
   inspect: (candidateId: string) => call<Inspection>({ type: 'inspect', candidateId }),
   start: (candidateId: string, variantId: string) => call<Job>({ type: 'start', candidateId, variantId }),
   cancel: (jobId: string) => call<null>({ type: 'cancel', jobId }),
+  stop: (jobId: string) => call<null>({ type: 'stop', jobId }),
   removeJob: (jobId: string) => call<null>({ type: 'removeJob', jobId }),
   jobs: () => call<Job[]>({ type: 'jobs' }),
   openSettings: () => call<null>({ type: 'openSettings' }),

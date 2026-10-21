@@ -30,6 +30,7 @@ export function sourceLabel(url: string): string {
 export function jobProgress(job: {
   state: string;
   kind: string;
+  live?: boolean;
   bytes: number;
   bytesTotal?: number;
   segmentsDone: number;
@@ -42,6 +43,7 @@ export function jobProgress(job: {
     return job.state === 'saving' ? 1 : null;
   }
   if (job.state === 'muxing' || job.state === 'saving') return 1;
+  if (job.live) return null;
   return job.segmentsTotal ? job.segmentsDone / job.segmentsTotal : null;
 }
 
@@ -56,6 +58,15 @@ export function fmtEta(seconds: number): string {
   const m = Math.floor(s / 60);
   if (m < 60) return `${m}m ${s % 60}s left`;
   return `${Math.floor(m / 60)}h ${m % 60}m left`;
+}
+
+/** Recorded length as a clock: "0:42", "12:05", "1:02:09". */
+export function fmtClock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 }
 
 export function kindLabel(kind: string): string {
