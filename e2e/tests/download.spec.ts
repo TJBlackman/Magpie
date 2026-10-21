@@ -14,7 +14,9 @@ test('hls ts: segments joined and remuxed to mp4', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-ts.html');
   const manager = await magpie.manager();
-  const { jobId } = await download(manager, '/media/hls-ts/index.m3u8');
+  const { jobId, filename } = await download(manager, '/media/hls-ts/index.m3u8');
+  // og:title wins over <title>, and the "| Magpie Test Site" suffix is dropped.
+  expect(filename).toBe('Harbor at Dusk.mp4');
   const file = await magpie.exportJob(manager, jobId, 'hls-ts.mp4');
   expectFramesMatch(file, '720');
 });
@@ -25,7 +27,7 @@ test('hls fmp4 master: quality picker, picks 480p', async ({ magpie }) => {
   const manager = await magpie.manager();
   // Variants are sorted by bandwidth descending: 720p, 480p, 360p.
   const { jobId, filename } = await download(manager, '/media/hls-fmp4/master.m3u8', 1);
-  expect(filename).toContain('[480p]');
+  expect(filename).toBe('Night Train, multi rendition [480p].mp4');
   const file = await magpie.exportJob(manager, jobId, 'hls-fmp4-480.mp4');
   expectFramesMatch(file, '480');
 });
@@ -52,7 +54,8 @@ test('gated: segment fetches carry the session cookie and site Referer', async (
   const page = await magpie.context.newPage();
   await playAndWait(page, '/gated.html');
   const manager = await magpie.manager();
-  const { jobId } = await download(manager, '/gated/media/index.m3u8');
+  const { jobId, filename } = await download(manager, '/gated/media/index.m3u8');
+  expect(filename).toBe('Gated HLS.mp4');
   const file = await magpie.exportJob(manager, jobId, 'gated.mp4');
   expectFramesMatch(file, '720');
 });

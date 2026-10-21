@@ -39,6 +39,7 @@ export default defineConfig({
         ...common.permissions,
         'offscreen',
         'declarativeNetRequest',
+        'scripting',
       ],
       minimum_chrome_version: '116',
       ...(manifestVersion === 3 ? {} : {}),

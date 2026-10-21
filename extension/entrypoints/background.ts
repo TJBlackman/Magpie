@@ -2,6 +2,7 @@ import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { Sniffer } from '../src/background/sniffer';
 import { setHeaderRule } from '../src/background/headers';
+import { pageTitleFor } from '../src/background/pagetitle';
 import { err, ok, type EngineRequest, type Envelope, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
@@ -65,7 +66,8 @@ export default defineBackground(() => {
       case 'start': {
         const c = (await sniffer.forTab()).find((x) => x.id === req.candidateId);
         if (!c) return err('Candidate no longer known (tab navigated?).');
-        return toEngine({ type: 'start', candidate: c, variantId: req.variantId });
+        const pageTitle = (await pageTitleFor(c)) || c.pageTitle;
+        return toEngine({ type: 'start', candidate: { ...c, pageTitle }, variantId: req.variantId });
       }
       case 'cancel':
         return toEngine({ type: 'cancel', jobId: req.jobId });

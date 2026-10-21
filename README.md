@@ -92,6 +92,8 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 - Only the first audio track is kept when video and audio are in the same segments; separate audio renditions are not merged yet.
 - A live playlist saves only the segments listed at the moment you click.
 - `web-ext lint` warns about `innerHTML` in React's bundle and nothing else.
+- Firefox refuses OPFS when it runs in "Always use private browsing mode". Magpie then holds the download in memory until it saves, so RAM use equals the file size. `pnpm test:firefox:private` covers this mode.
+- Filenames come from the page at the moment you click Download: JSON-LD video name, then `og:title`, `twitter:title`, `<title>`, `<h1>`, with a trailing or leading site name removed. If the tab has moved to another page, the title seen when the stream was detected is used instead.
 - Firefox is tested through Selenium, not Playwright, because Playwright's Firefox build cannot load extensions.
 
 ## Website

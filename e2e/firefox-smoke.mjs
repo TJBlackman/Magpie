@@ -7,16 +7,19 @@
 import { Builder, By, until } from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ext = join(root, 'extension', 'dist', 'firefox-mv2');
-const downloads = join(root, 'e2e', 'downloads');
+// PRIVATE=1 runs Firefox with "Always use private browsing mode", where OPFS is refused.
+const PRIVATE = !!process.env.PRIVATE || process.argv.includes('--private');
+const downloads = join(root, 'e2e', 'downloads', PRIVATE ? 'firefox-private' : 'firefox');
 const refDir = join(root, 'testsite', 'public', 'media', 'ref');
 const UUID = '7d1c4b2e-5a6f-4e3d-9c8b-magpie000001'.replace('magpie000001', '1a2b3c4d5e6f');
 const ADDON_ID = 'magpie@trevorblackman.dev';
+rmSync(downloads, { recursive: true, force: true });
 mkdirSync(downloads, { recursive: true });
 
 let server = null;
@@ -65,6 +68,7 @@ async function main() {
   opts.setPreference('browser.download.useDownloadDir', true);
   opts.setPreference('browser.download.manager.showWhenStarting', false);
   opts.setPreference('xpinstall.signatures.required', false);
+  if (PRIVATE) opts.setPreference('browser.privatebrowsing.autostart', true);
 
   // geckodriver flag that lets Marionette switch to the chrome context
   // (needed to open moz-extension:// tabs).
@@ -73,11 +77,28 @@ async function main() {
   const failures = [];
   try {
     await driver.installAddon(ext, true);
+    if (PRIVATE) {
+      // Same as ticking "Run in Private Windows" on the add-on page.
+      await driver.setContext(firefox.Context.CHROME);
+      const r = await driver.executeAsyncScript(`
+        const done = arguments[0];
+        (async () => {
+          const { ExtensionPermissions } = ChromeUtils.importESModule('resource://gre/modules/ExtensionPermissions.sys.mjs');
+          const { AddonManager } = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
+          await ExtensionPermissions.add('${ADDON_ID}', { permissions: ['internal:privateBrowsingAllowed'], origins: [] });
+          await (await AddonManager.getAddonByID('${ADDON_ID}')).reload();
+          done('ok');
+        })().catch((e) => done(String(e)));
+      `);
+      if (r !== 'ok') throw new Error('could not allow private browsing: ' + r);
+      await driver.setContext(firefox.Context.CONTENT);
+      await new Promise((r) => setTimeout(r, 1500));
+    }
 
-    for (const [page, urlPart, out] of [
-      ['/hls-ts.html', '/media/hls-ts/index.m3u8', 'firefox-hls-ts.mp4'],
-      ['/gated.html', '/gated/media/index.m3u8', 'firefox-gated.mp4'],
-      ['/hls-fmp4.html', '/media/hls-fmp4/master.m3u8', 'firefox-hls-fmp4.mp4'],
+    for (const [page, urlPart, expectName] of [
+      ['/hls-ts.html', '/media/hls-ts/index.m3u8', 'Harbor at Dusk.mp4'],
+      ['/gated.html', '/gated/media/index.m3u8', 'Gated HLS.mp4'],
+      ['/hls-fmp4.html', '/media/hls-fmp4/master.m3u8', 'Night Train, multi rendition [720p].mp4'],
     ]) {
       console.log(`== ${page}`);
       await driver.switchTo().newWindow('tab');
@@ -108,26 +129,27 @@ async function main() {
         failures.push(`${page}: ${text}`);
         continue;
       }
-      const jobId = await job.getAttribute('data-job-id');
-      const b64 = await driver.executeAsyncScript(
-        `const [id, done] = arguments;
-         (async () => {
-           const root = await navigator.storage.getDirectory();
-           const dir = await root.getDirectoryHandle('jobs');
-           const fh = await dir.getFileHandle(id + '.bin');
-           const buf = new Uint8Array(await (await fh.getFile()).arrayBuffer());
-           let s = '';
-           for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + 0x8000)));
-           done(btoa(s));
-         })().catch((e) => done('ERR:' + e));`,
-        jobId,
-      );
-      if (String(b64).startsWith('ERR:')) {
-        failures.push(`${page}: OPFS read ${b64}`);
+      const filename = await job.getAttribute('data-filename');
+      console.log('  filename', filename);
+      if (filename !== expectName) failures.push(`${page}: filename ${filename}, expected ${expectName}`);
+      // Read back what Firefox actually saved, once its own download record says complete.
+      const saved = await driver.wait(async () => {
+        const json = await driver.executeAsyncScript(
+          `const [name, done] = arguments;
+           browser.downloads.search({ state: 'complete' })
+             .then((r) => done(JSON.stringify(r.filter((d) => d.filename.includes(name.slice(0, -4))).map((d) => d.filename))))
+             .catch(() => done('[]'));`,
+          filename,
+        );
+        const [path] = JSON.parse(json);
+        return path && existsSync(path) && statSync(path).size > 0 ? path : null;
+      }, 30_000, `${filename} never completed`).catch(() => null);
+      if (!saved) {
+        failures.push(`${page}: ${filename} not saved (found: ${readdirSync(downloads).join(', ')})`);
         continue;
       }
-      const file = join(downloads, out);
-      writeFileSync(file, Buffer.from(b64, 'base64'));
+      if (!saved.endsWith(filename)) failures.push(`${page}: saved as ${saved}, expected ${filename}`);
+      const file = saved;
       const got = frameHashes(file);
       const want = refHashes('720');
       const same = got.length === want.length && got.every((h, i) => h === want[i]);

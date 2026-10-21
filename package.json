@@ -13,6 +13,7 @@
     "server": "testsite\\server\\magpie-testsite.exe -root testsite",
     "test:e2e": "pnpm --dir e2e test",
     "test:firefox": "node e2e/firefox-smoke.mjs",
+    "test:firefox:private": "node e2e/firefox-smoke.mjs --private",
     "test": "pnpm build && pnpm test:unit && pnpm test:e2e && pnpm test:firefox"
   }
 }
