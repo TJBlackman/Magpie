@@ -93,3 +93,7 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 - A live playlist saves only the segments listed at the moment you click.
 - `web-ext lint` warns about `innerHTML` in React's bundle and nothing else.
 - Firefox is tested through Selenium, not Playwright, because Playwright's Firefox build cannot load extensions.
+
+## Website
+
+https://magpie.trevorblackman.dev serves the zips and install steps. The site project is `C:\Users\Trevor\Projects\magpie.trevorblackman.dev` (Cloudflare Worker static assets, custom domain). To ship a new version: bump `extension/package.json`, `pnpm --dir extension zip && pnpm --dir extension zip:firefox`, then run that project's `deploy.ps1 -Version x.y.z` and update the version strings in its `site/index.html`.
