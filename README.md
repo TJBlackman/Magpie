@@ -59,15 +59,21 @@ To poke at the test site by hand: `pnpm server`, then open http://127.0.0.1:8787
 
 Chrome: `chrome://extensions`, Developer mode, Load unpacked, pick `extension/dist/chrome-mv3`. It stays installed.
 
-Firefox: a temporary load from `about:debugging` disappears on restart. For a permanent install, sign it unlisted (AMO issues the signature automatically within minutes, nothing is published):
+Firefox: a temporary load from `about:debugging` disappears on restart. The permanent install is the signed `.xpi` from the website, or `extension/dist/magpie-extension-<version>-firefox.xpi` after `pnpm release`. Drag it onto a Firefox window.
+
+## Signing for Firefox
+
+Mozilla signs the Firefox build on the unlisted channel. AMO signs it automatically in a few minutes and never publishes it.
+
+The AMO API key is stored once per machine in Windows Credential Manager, as a generic credential named `magpie/addons.mozilla.org`. Windows encrypts it to your account. Get the JWT issuer and secret from https://addons.mozilla.org/developers/addon/api/key/, then run this in a terminal and paste them at the prompts:
 
 ```powershell
-cd extension
-pnpm zip:firefox
-pnpm exec web-ext sign --channel=unlisted --source-dir dist/firefox-mv2 --api-key ... --api-secret ...
+pnpm amo:key
 ```
 
-Then open the resulting `.xpi` in Firefox.
+It stores the key and checks it against AMO. `extension/scripts/sign-firefox.ps1 -Check` tests the stored key again, and `-Forget` deletes it. Signing passes the key to `web-ext` through environment variables of that one process, so it never lands in the repo, a file, or a command line.
+
+AMO refuses to sign a version number twice, so every signed build needs a new version.
 
 ## Settings and the queue
 
@@ -110,8 +116,10 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 
 To ship a new version:
 
-1. Bump `version` in `extension/package.json`.
-2. `pnpm --dir extension zip && pnpm --dir extension zip:firefox`
-3. `pnpm site:deploy`
+```powershell
+pnpm release                  # 0.2.1 -> 0.2.2
+pnpm release -Bump minor      # 0.2.1 -> 0.3.0
+pnpm release -Version 0.2.2   # exact version
+```
 
-The deploy script copies the zips into `website/site`, rewrites the download links and version label in `index.html`, deletes zips from older versions, and runs `wrangler deploy`. Commit the `index.html` change afterwards. The zips themselves are gitignored.
+`scripts/release.ps1` runs typecheck and unit tests, bumps `extension/package.json`, builds both zips, has Mozilla sign the Firefox build (`pnpm sign:firefox`), and runs `website/deploy.ps1`. The deploy script copies the Chrome zip and signed xpi into `website/site`, rewrites the download links and version label in `index.html`, deletes files from older versions, runs `wrangler deploy`, and warns if the xpi is not served as `application/x-xpinstall`. Commit `extension/package.json` and `index.html` afterwards. The zips and xpi themselves are gitignored.

@@ -13,4 +13,5 @@ e2e/user-data/
 # website
 website/.wrangler
 website/site/magpie-*.zip
+website/site/magpie-*.xpi
 website/site/icon.png
