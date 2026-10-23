@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, openManager, useCandidates, useJobs } from '../../src/ui/api';
 import { Button, CandidateRow, JobRow } from '../../src/ui/components';
+import { isFinished } from '../../src/core/types';
 
 export function Popup() {
   const [tab, setTab] = useState<{ id: number; title: string; url: string } | null>(null);
@@ -9,8 +10,9 @@ export function Popup() {
   }, []);
   const [candidates, refreshCandidates] = useCandidates(tab?.id, tab !== null);
   const jobs = useJobs();
-  const active = jobs.filter((j) => !['done', 'error', 'cancelled'].includes(j.state));
-  const recent = jobs.filter((j) => ['done', 'error', 'cancelled'].includes(j.state)).slice(0, 3);
+  const active = jobs.filter((j) => !isFinished(j.state));
+  const finished = jobs.filter((j) => isFinished(j.state));
+  const recent = finished.slice(0, 3);
 
   return (
     <div className="flex w-[380px] flex-col gap-2 p-2">
@@ -51,7 +53,14 @@ export function Popup() {
 
       {(active.length > 0 || recent.length > 0) && (
         <section>
-          <div className="mb-1 text-[11px] uppercase tracking-wide text-mute">Downloads</div>
+          <div className="mb-1 flex items-center justify-between text-[11px] uppercase tracking-wide text-mute">
+            <span>Downloads</span>
+            {finished.length > 0 && (
+              <Button tone="ghost" onClick={() => void api.clearFinished()} title="Remove done, failed and cancelled downloads from the list">
+                clear finished
+              </Button>
+            )}
+          </div>
           <div className="flex flex-col gap-1">
             {[...active, ...recent].map((j) => (
               <JobRow key={j.id} job={j} />

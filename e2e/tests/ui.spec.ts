@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, playAndWait, test } from '../fixtures';
+import { download, expect, playAndWait, test } from '../fixtures';
 
 /** Record what the manager's job rows go through, so short lived states are not missed. */
 async function watchJobs(manager: Page) {
@@ -97,4 +97,28 @@ test('clear empties the popup list right away', async ({ magpie }) => {
   await popup.getByRole('button', { name: 'clear' }).click();
   await expect(popup.getByTestId('candidate')).toHaveCount(0, { timeout: 2_000 });
   await expect(popup.getByText('Nothing yet.')).toBeVisible();
+});
+
+test('clear finished drops done downloads and keeps running ones', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/progressive.html');
+  const slow = await magpie.context.newPage();
+  await playAndWait(slow, '/slow.html');
+  const manager = await magpie.manager();
+  await download(manager, '/media/progressive/clip.mp4');
+  await (await openSlowCandidate(manager)).click();
+  const jobs = manager.getByTestId('job');
+  await expect(jobs.and(manager.locator('[data-state="downloading"]'))).toHaveCount(1, { timeout: 15_000 });
+
+  const popup = await magpie.context.newPage();
+  await popup.goto(`chrome-extension://${magpie.extensionId}/popup.html`);
+  await expect(popup.getByTestId('job')).toHaveCount(2);
+  await expect(popup.getByRole('button', { name: 'clear finished' })).toBeVisible();
+
+  await manager.getByRole('button', { name: 'Clear finished' }).click();
+  await expect(jobs).toHaveCount(1, { timeout: 2_000 });
+  await expect(jobs.first()).not.toHaveAttribute('data-state', 'done');
+  await expect(manager.getByRole('button', { name: 'Clear finished' })).toHaveCount(0);
+  await expect(popup.getByTestId('job')).toHaveCount(1, { timeout: 2_000 });
+  await expect(popup.getByRole('button', { name: 'clear finished' })).toHaveCount(0);
 });

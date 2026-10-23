@@ -22,6 +22,7 @@ export const api = {
   cancel: (jobId: string) => call<null>({ type: 'cancel', jobId }),
   stop: (jobId: string) => call<null>({ type: 'stop', jobId }),
   removeJob: (jobId: string) => call<null>({ type: 'removeJob', jobId }),
+  clearFinished: () => call<null>({ type: 'clearFinished' }),
   jobs: () => call<Job[]>({ type: 'jobs' }),
   openSettings: () => call<null>({ type: 'openSettings' }),
 };

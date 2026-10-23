@@ -129,6 +129,8 @@ export default defineBackground(() => {
         return toEngine({ type: 'stop', jobId: req.jobId });
       case 'removeJob':
         return toEngine({ type: 'removeJob', jobId: req.jobId });
+      case 'clearFinished':
+        return toEngine({ type: 'clearFinished' });
       case 'jobs': {
         if (!import.meta.env.FIREFOX && !(await offscreenExists())) return ok(latestJobs);
         return toEngine({ type: 'jobs' });

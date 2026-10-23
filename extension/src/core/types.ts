@@ -60,6 +60,9 @@ export type JobState =
   | 'error'
   | 'cancelled';
 
+/** Done, failed or cancelled: nothing more will happen to the job. */
+export const isFinished = (state: JobState) => state === 'done' || state === 'error' || state === 'cancelled';
+
 export interface Job {
   id: string;
   candidateId: string;
@@ -98,6 +101,7 @@ export type UiRequest =
   | { type: 'stop'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string }
+  | { type: 'clearFinished' }
   | { type: 'activeTab' }
   | { type: 'openSettings' };
 
@@ -109,7 +113,8 @@ export type EngineRequest =
   | { type: 'cancel'; jobId: string }
   | { type: 'stop'; jobId: string }
   | { type: 'jobs' }
-  | { type: 'removeJob'; jobId: string };
+  | { type: 'removeJob'; jobId: string }
+  | { type: 'clearFinished' };
 
 /** Messages the engine host sends to the background (Chrome offscreen path). */
 export type EngineToBg =

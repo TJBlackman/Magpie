@@ -1,6 +1,6 @@
 import { liveStartIndex, parseHls, variantLabel, type HlsMedia, type HlsSegment } from '../core/hls';
 import { buildFilename, withPart, withTimestamp } from '../core/filename';
-import { err, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
+import { err, isFinished, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../core/settings';
 import { decryptSegment } from './crypto';
 import { fetchBytes, fetchText, HttpError, orderedPool } from './fetcher';
@@ -101,6 +101,17 @@ export class Engine {
     if (r) r.abort.abort();
     this.queue = this.queue.filter((q) => q.job.id !== jobId);
     this.jobs.delete(jobId);
+    this.emit();
+  }
+
+  /** Drop every finished job from the list. Saved files stay where they are. */
+  clearFinished(): void {
+    for (const job of this.list()) {
+      if (!isFinished(job.state)) continue;
+      // A cancelled job can still be unwinding; make sure it stops.
+      this.running.get(job.id)?.abort.abort();
+      this.jobs.delete(job.id);
+    }
     this.emit();
   }
 

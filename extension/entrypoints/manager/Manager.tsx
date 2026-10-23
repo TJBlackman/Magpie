@@ -1,11 +1,12 @@
 import { api, useCandidates, useJobs } from '../../src/ui/api';
 import { Button, CandidateRow, JobRow } from '../../src/ui/components';
 import { shortUrl } from '../../src/ui/format';
-import type { Candidate } from '../../src/core/types';
+import { isFinished, type Candidate } from '../../src/core/types';
 
 export function Manager() {
   const jobs = useJobs();
   const [candidates] = useCandidates(undefined);
+  const finished = jobs.filter((j) => isFinished(j.state)).length;
   const byPage = new Map<string, Candidate[]>();
   for (const c of candidates) {
     const key = `${c.tabId}|${c.pageUrl}`;
@@ -23,7 +24,14 @@ export function Manager() {
       </header>
 
       <section>
-        <h2 className="mb-2 text-[11px] uppercase tracking-wide text-mute">Downloads ({jobs.length})</h2>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-[11px] uppercase tracking-wide text-mute">Downloads ({jobs.length})</h2>
+          {finished > 0 && (
+            <Button tone="ghost" onClick={() => void api.clearFinished()} title="Remove done, failed and cancelled downloads from the list">
+              Clear finished
+            </Button>
+          )}
+        </div>
         {jobs.length === 0 ? (
           <div className="rounded border border-dashed border-edge p-4 text-center text-mute">No downloads yet.</div>
         ) : (
