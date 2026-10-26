@@ -72,8 +72,9 @@ test('archive size keeps the newest entries, and 0 turns the archive off', async
 
   await download(manager, '/media/progressive/clip.mp4');
   const entries = manager.getByTestId('archive-entry');
-  // A plain MP4's length comes from its movie header.
+  // A plain MP4's length comes from its movie header, and a plain file hides like a stream.
   await expect(entries.first()).toContainText('0:20');
+  await expect(candidate(manager, '/media/progressive/clip.mp4')).toHaveCount(0);
   await download(manager, '/media/hls-ts/index.m3u8');
   await expect(entries).toHaveCount(1);
   await expect(entries.first().getByTestId('archive-title')).toHaveText('Harbor at Dusk');

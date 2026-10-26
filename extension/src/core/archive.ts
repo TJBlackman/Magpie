@@ -42,15 +42,25 @@ export function epochLike(value: string): boolean {
   return false;
 }
 
-/** A query parameter that changes between visits to the same video. */
+/** A query parameter that changes between visits to the same video. A time shaped value under an id name (`id`, `vid`, `media_id`) is an id. */
 export function volatileParam(name: string, value: string): boolean {
   const n = name.toLowerCase();
-  return VOLATILE_NAMES.has(n) || VOLATILE_PREFIXES.some((p) => n.startsWith(p)) || epochLike(value);
+  return VOLATILE_NAMES.has(n) || VOLATILE_PREFIXES.some((p) => n.startsWith(p)) || (epochLike(value) && !n.endsWith('id'));
 }
 
-/** A long opaque value with letters and digits, other than a UUID: a signature or session token under an unknown name. */
+/**
+ * A long opaque value with letters and digits under an unknown name: a
+ * signature or session token. UUIDs and hex strings (ObjectIds, SHA-1 and MD5
+ * hashes) are kept, since sites use them as video ids.
+ */
 function tokenLike(value: string): boolean {
-  return value.length >= 16 && /\d/.test(value) && /[a-z]/i.test(value) && !UUID.test(value);
+  return value.length >= 16 && /\d/.test(value) && /[a-z]/i.test(value) && !UUID.test(value) && !/^[0-9a-f]+$/i.test(value);
+}
+
+/** A path segment that carries a token: `exp=...~acl=...~hmac=...` style, a known signing key, or a Unix time. */
+const PATH_TOKEN = /^(exp|expires|token|__token__|hdnts|hdntl|hdnea|hmac|sig|signature|acl|policy)=/i;
+function tokenSegment(segment: string): boolean {
+  return /~|%7e/i.test(segment) || PATH_TOKEN.test(segment) || epochLike(segment);
 }
 
 function parse(url: string): URL | null {
@@ -87,7 +97,7 @@ export function skeleton(url: string): string {
   if (!u) return url;
   const path = u.pathname
     .split('/')
-    .map((s) => (/[=~]|%3d|%7e/i.test(s) || epochLike(s) ? '*' : s))
+    .map((s) => (tokenSegment(s) ? '*' : s))
     .join('/');
   return build(u, path, (k, v) => !volatileParam(k, v) && !tokenLike(v));
 }
@@ -123,16 +133,26 @@ export function indexArchive(entries: ArchiveEntry[]): ArchiveIndex {
   return index;
 }
 
+type Seen = Pick<Candidate, 'url' | 'pageUrl' | 'live'>;
+
 /**
  * True when the candidate is a stream the archive already has: the same stream
  * key on any page, or the same page with the same stream shape. A live stream
  * never is; its next recording holds new footage.
+ *
+ * `siblings` are the other streams in the same tab. When one of them has the
+ * same page and shape but another stream key, the shape cannot tell the videos
+ * apart (a course page, a feed), so only the exact stream key counts.
  */
-export function isArchived(c: Pick<Candidate, 'url' | 'pageUrl' | 'live'>, index: ArchiveIndex): boolean {
+export function isArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []): boolean {
   if (c.live) return false;
-  if (index.src.has(streamKey(c.url))) return true;
+  const key = streamKey(c.url);
+  if (index.src.has(key)) return true;
   const p = pageKey(c.pageUrl);
-  return !!p && index.page.has(`${p} ${skeleton(c.url)}`);
+  if (!p) return false;
+  const shape = skeleton(c.url);
+  if (!index.page.has(`${p} ${shape}`)) return false;
+  return !siblings.some((s) => pageKey(s.pageUrl) === p && skeleton(s.url) === shape && streamKey(s.url) !== key);
 }
 
 /** The entry for a finished job. */

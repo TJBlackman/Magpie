@@ -29,8 +29,8 @@ export class Sniffer {
   private titleReadAt = new Map<number, number>();
   /** Called once per new manifest. The background inspects it and reports back through learn(). */
   onManifest: ((c: Candidate) => void) | null = null;
-  /** Candidates left out of the badge count: media the archive already has. */
-  isHidden: (c: Candidate) => boolean = () => false;
+  /** Candidates left out of the badge count: media the archive already has. `shown` is the tab's list. */
+  isHidden: (c: Candidate, shown: Candidate[]) => boolean = () => false;
 
   constructor() {
     this.restored = this.restore();
@@ -259,7 +259,8 @@ export class Sniffer {
   }
 
   private async badge(tabId: number) {
-    const n = [...(this.byTab.get(tabId)?.values() ?? [])].filter((c) => !c.parentId && !this.isHidden(c)).length;
+    const shown = [...(this.byTab.get(tabId)?.values() ?? [])].filter((c) => !c.parentId);
+    const n = shown.filter((c) => !this.isHidden(c, shown)).length;
     const action = (browser as unknown as { action?: typeof browser.action; browserAction?: typeof browser.action }).action
       ?? (browser as unknown as { browserAction?: typeof browser.action }).browserAction;
     if (!action) return;

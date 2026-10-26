@@ -117,8 +117,8 @@ export function Options() {
             className="mt-0.5 accent-cyan-400"
           />
           <span>
-            Remember downloads from private windows after the browser closes
-            <span className="mt-0.5 block text-mute">When this is off, they stay in the archive until the browser closes and Magpie then forgets them, like the rest of private browsing.</span>
+            Remember downloads from private windows
+            <span className="mt-0.5 block text-mute">When this is off, they stay in the archive until you close the last private window, and Magpie then forgets them, like the rest of private browsing.</span>
           </span>
         </label>
       </section>

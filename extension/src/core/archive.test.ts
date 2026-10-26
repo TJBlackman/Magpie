@@ -23,10 +23,10 @@ const entry = (over: Partial<ArchiveEntry> = {}): ArchiveEntry => ({
   ...over,
 });
 
-/** Is a candidate at `url` on `pageUrl` hidden once `downloaded` (on `downloadedPage`) is archived? */
-function hides(downloaded: string, downloadedPage: string, url: string, pageUrl: string, live = false): boolean {
+/** Is a candidate at `url` on `pageUrl` hidden once `downloaded` (on `downloadedPage`) is archived? `siblings` are other streams in the tab. */
+function hides(downloaded: string, downloadedPage: string, url: string, pageUrl: string, live = false, siblings: string[] = []): boolean {
   const e = makeEntry({ id: 'x', filename: 'f.mp4', finishedAt: 1 }, { url: downloaded, pageUrl: downloadedPage, pageTitle: 'T' });
-  return isArchived({ url, pageUrl, live }, indexArchive([e]));
+  return isArchived({ url, pageUrl, live }, indexArchive([e]), siblings.map((u) => ({ url: u, pageUrl })));
 }
 
 describe('streamKey', () => {
@@ -40,6 +40,11 @@ describe('streamKey', () => {
   it('keeps ids and sorts what is left', () => {
     expect(streamKey('https://cdn.example/play.m3u8?vid=1234567&cam=2')).toBe('https://cdn.example/play.m3u8?cam=2&vid=1234567');
   });
+  it('keeps a time shaped value under an id name', () => {
+    expect(streamKey('https://cdn.example/get.m3u8?id=1712345678&media_id=1712345678901&t=1712345678')).toBe(
+      'https://cdn.example/get.m3u8?id=1712345678&media_id=1712345678901',
+    );
+  });
 });
 
 describe('skeleton', () => {
@@ -47,6 +52,12 @@ describe('skeleton', () => {
     expect(skeleton('https://vod.example/exp=1793000000~acl=%2F*~hmac=ab12cd34/123/playlist.m3u8?s=aB3dE5fG7hJ9kL1mN3')).toBe(
       'https://vod.example/*/123/playlist.m3u8',
     );
+  });
+  it('keeps hex ids and segments that only look like key=value', () => {
+    expect(skeleton('https://a.example/v/id=123/stream.m3u8?asset=65f1a2b3c4d5e6f7a8b9c0d1&file=da39a3ee5e6b4b0d3255bfef95601890afd80709')).toBe(
+      'https://a.example/v/id=123/stream.m3u8?asset=65f1a2b3c4d5e6f7a8b9c0d1&file=da39a3ee5e6b4b0d3255bfef95601890afd80709',
+    );
+    expect(skeleton('https://a.example/hdntl=exp=1793000000/v/1712345678/index.m3u8')).toBe('https://a.example/*/v/*/index.m3u8');
   });
   it('keeps numeric ids and UUIDs', () => {
     expect(skeleton('https://cdn.example/play.m3u8?id=1850000000000000001&u=3f2b1c4d-5e6f-4a1b-9c8d-7e6f5a4b3c2d')).toBe(
@@ -91,9 +102,28 @@ describe('isArchived', () => {
   it('keeps two videos behind one endpoint apart', () => {
     expect(hides('https://cdn.example/play.m3u8?id=1234567', '', 'https://cdn.example/play.m3u8?id=1234568', '')).toBe(false);
     expect(hides('https://cdn.example/play.m3u8?id=1012345678', '', 'https://cdn.example/play.m3u8?id=1012345679', '')).toBe(false);
+    expect(hides('https://cdn.example/get.m3u8?id=1712345678', 'https://a.example/', 'https://cdn.example/get.m3u8?id=1798765432', 'https://b.example/')).toBe(false);
+    expect(hides('https://cdn.example/get.m3u8?vid=1712345678901', '', 'https://cdn.example/get.m3u8?vid=1712345678902', '')).toBe(false);
     const u1 = 'https://cdn.example/play.m3u8?vid=3f2b1c4d-5e6f-4a1b-9c8d-7e6f5a4b3c2d';
     const u2 = 'https://cdn.example/play.m3u8?vid=9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d';
     expect(hides(u1, 'https://site.example/feed', u2, 'https://site.example/feed')).toBe(false);
+  });
+  it('keeps lessons on one page apart when their ids are hex or sit in the path', () => {
+    const feed = 'https://a.example/course/7';
+    expect(hides('https://a.example/stream.m3u8?asset=65f1a2b3c4d5e6f7a8b9c0d1', feed, 'https://a.example/stream.m3u8?asset=65f1a2b3c4d5e6f7a8b9c0d2', feed)).toBe(false);
+    expect(hides('https://a.example/dl?file=da39a3ee5e6b4b0d3255bfef95601890afd80709', feed, 'https://a.example/dl?file=aa39a3ee5e6b4b0d3255bfef95601890afd80709', feed)).toBe(false);
+    expect(hides('https://a.example/v/id=123/index.m3u8', feed, 'https://a.example/v/id=456/index.m3u8', feed)).toBe(false);
+  });
+  it('drops the page rule when a sibling stream on the page has the same shape', () => {
+    const page = 'https://site.example/course/7';
+    const a = 'https://cdn.example/play.m3u8?k=Lesson1AbCdEfGh12';
+    const b = 'https://cdn.example/play.m3u8?k=Lesson2ZyXwVuTs34';
+    // Alone on the page, b looks like a fresh token for a.
+    expect(hides(a, page, b, page)).toBe(true);
+    // With a still listed next to it, they are two videos.
+    expect(hides(a, page, b, page, false, [a, b])).toBe(false);
+    // a itself still matches exactly.
+    expect(hides(a, page, a, page, false, [a, b])).toBe(true);
   });
   it('keeps two videos in one feed apart', () => {
     const a = 'https://video.twimg.example/ext_tw_video/1850000000000000001/pu/pl/AbCdEfGh12345678.m3u8?variant_version=1&tag=12';

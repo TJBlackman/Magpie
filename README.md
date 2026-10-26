@@ -94,9 +94,9 @@ A stream counts as downloaded when either holds:
 - Its URL equals an entry's once LL-HLS directives, signature and expiry parameters (`Signature`, `Expires`, `token`, `hdnts`, `X-Amz-*` and similar) and values that look like a Unix time from 2020 to 2049 are dropped. This works on any page, so the same video embedded elsewhere is recognized too.
 - It plays on the same page (hash and `utm_*` ignored) and its URL also matches once path segments holding a token (`exp=...~acl=...~hmac=...`) and long opaque query values are ignored. This catches CDNs that sign the path.
 
-Numeric ids, short ids and UUIDs always count, so `?id=1234567` and `?id=1234568`, or two videos in one feed, stay apart. Live streams are never hidden, since the next recording holds new footage.
+Numeric ids, hex ids (ObjectIds, hashes) and UUIDs always count, as does a time shaped value under a name ending in `id`, so `?id=1234567` and `?id=1234568` stay apart. When another stream on the same page has the same shape but a different URL (a course page, a feed), the page rule is off for that page and only the exact URL counts. Live streams are never hidden, since the next recording holds new footage.
 
-The archive lives in the extension's own storage and never leaves the browser. Entries from private windows (Chrome incognito with "Allow in Incognito", Firefox private windows including "Always use private browsing mode") go to `storage.session`, which the browser clears when it closes. "Remember downloads from private windows after the browser closes" in Settings keeps them with the rest.
+The archive lives in the extension's own storage and never leaves the browser. Entries from private windows (Chrome incognito with "Allow in Incognito", Firefox private windows including "Always use private browsing mode") are kept in `storage.session` and forgotten when the last private window closes, like the rest of private browsing. "Remember downloads from private windows" in Settings keeps them with the rest.
 
 Finished downloads no longer have a Show button, because the archive keeps no download id. The file is in your downloads folder under the name shown on hover.
 

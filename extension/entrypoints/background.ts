@@ -4,8 +4,9 @@ import { Sniffer } from '../src/background/sniffer';
 import { setHeaderRule } from '../src/background/headers';
 import { pageTitleFor } from '../src/background/pagetitle';
 import { Archive } from '../src/background/archive';
+import type { ArchiveEntry } from '../src/core/archive';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
-import { err, ok, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
+import { err, ok, type Candidate, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
   const sniffer = new Sniffer();
@@ -13,13 +14,28 @@ export default defineBackground(() => {
 
   // Media already in the archive is left out of the badge and flagged for the UI.
   const archive = new Archive();
-  sniffer.isHidden = (c) => archive.has(c);
+  sniffer.isHidden = (c, shown) => archive.has(c, shown);
   archive.onChange = (entries) => {
     const env: Envelope = { magpie: 'ui', event: { type: 'archive', entries } };
     browser.runtime.sendMessage(env).catch(() => {});
     void sniffer.rebadgeAll();
   };
   void archive.ready.then(() => sniffer.rebadgeAll());
+
+  // Private window entries go with the last private window, like the rest of private browsing.
+  async function forgetPrivateIfClosed() {
+    const windows = await browser.windows.getAll().catch(() => null);
+    if (windows && !windows.some((w) => w.incognito)) await archive.forgetPrivate();
+  }
+  browser.windows.onRemoved.addListener(() => void forgetPrivateIfClosed());
+  void archive.ready.then(forgetPrivateIfClosed);
+
+  /** A finished download from the engine. One from a private window that closed meanwhile is forgotten at once. */
+  async function archiveFinished(entry: ArchiveEntry): Promise<boolean> {
+    const added = await archive.add(entry);
+    if (entry.priv) await forgetPrivateIfClosed();
+    return added;
+  }
 
   let latestJobs: Job[] = [];
 
@@ -55,7 +71,7 @@ export default defineBackground(() => {
           latestJobs = jobs;
           broadcastJobs(jobs);
         },
-        archive: (entry) => archive.add(entry),
+        archive: archiveFinished,
       });
       direct = (req) => handle(engine, req);
       await settingsReady;
@@ -119,7 +135,9 @@ export default defineBackground(() => {
         await sniffer.refreshTitles(req.tabId);
         await archive.ready;
         const list = await sniffer.forTab(req.tabId);
-        return ok(list.map((c) => (archive.has(c) ? { ...c, archived: true } : c)));
+        const byTab = new Map<number, Candidate[]>();
+        for (const c of list) byTab.set(c.tabId, [...(byTab.get(c.tabId) ?? []), c]);
+        return ok(list.map((c) => (archive.has(c, byTab.get(c.tabId)) ? { ...c, archived: true } : c)));
       }
       case 'archive':
         return ok(await archive.list());
@@ -190,8 +208,7 @@ export default defineBackground(() => {
         sendResponse(ok(null));
       }
       if (r.type === 'archive') {
-        archive
-          .add(r.entry)
+        archiveFinished(r.entry)
           .then((added) => sendResponse(ok(added)))
           .catch((e) => sendResponse(err(String(e))));
         return true;

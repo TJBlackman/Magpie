@@ -2,7 +2,7 @@ import { liveStartIndex, parseHls, variantLabel, type HlsMedia, type HlsSegment 
 import { buildFilename, withPart, withTimestamp } from '../core/filename';
 import { err, isFinished, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../core/settings';
-import { makeEntry, type ArchiveEntry } from '../core/archive';
+import { makeEntry } from '../core/archive';
 import { decryptSegment } from './crypto';
 import { mp4Duration } from './duration';
 import { fetchBytes, fetchText, HttpError, orderedPool } from './fetcher';
@@ -351,7 +351,8 @@ export class Engine {
       }
       job.finishedAt = Date.now();
       // The job stays 'saving' until the archive answers, so the list never flashes a done row that then vanishes.
-      if (await this.archive(makeEntry(job, candidate, secs))) {
+      // A recording saved in parts is listed under its first part.
+      if (await this.archive(job, part > 1 ? withPart(job.filename, 1) : job.filename, candidate, secs)) {
         this.jobs.delete(job.id);
       } else {
         job.state = 'done';
@@ -370,10 +371,14 @@ export class Engine {
     }
   }
 
-  /** Move a finished download to the archive. False when the archive is off or did not answer. */
-  private async archive(entry: ArchiveEntry): Promise<boolean> {
+  /**
+   * Move a finished download to the archive. False when the archive is off or
+   * did not answer. Never throws: the file is saved, so nothing here may send
+   * the job down the error path that deletes it.
+   */
+  private async archive(job: Job, filename: string, candidate: Candidate, secs: number | undefined): Promise<boolean> {
     try {
-      return await this.platform.archive(entry);
+      return await this.platform.archive(makeEntry({ ...job, filename }, candidate, secs));
     } catch {
       return false;
     }

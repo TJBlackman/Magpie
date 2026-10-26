@@ -75,6 +75,9 @@ func main() {
 	// Slow: the media tree throttled to about 2 MB/s per request, so progress
 	// bars and the download queue can be watched mid flight.
 	mux.Handle("/slow/", noCache(withMime(throttle(http.StripPrefix("/slow/", http.FileServer(http.Dir(media))), 2<<20))))
+	// Crawl: the same at about 200 KB/s, so a download stays running for half a
+	// minute while a test clicks around it.
+	mux.Handle("/crawl/", noCache(withMime(throttle(http.StripPrefix("/crawl/", http.FileServer(http.Dir(media))), 200<<10))))
 
 	// Live: the hls-ts clip, and an fMP4 rendition whose timestamps start hours
 	// in, replayed as live streams, see liveSim.
