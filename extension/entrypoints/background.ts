@@ -48,7 +48,7 @@ export default defineBackground(() => {
     if (area !== 'local' || !changes[SETTINGS_KEY]) return;
     settings = normalizeSettings(changes[SETTINGS_KEY].newValue);
     void pushSettings();
-    void archive.configure(settings);
+    void archive.configure(settings).then(forgetPrivateIfClosed);
   });
 
   /** Tell a running engine about new settings. A Chrome engine that is not up yet gets them with its next start. */
