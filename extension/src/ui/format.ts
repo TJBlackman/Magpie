@@ -72,3 +72,23 @@ export function fmtClock(seconds: number): string {
 export function kindLabel(kind: string): string {
   return { hls: 'HLS', dash: 'DASH', file: 'FILE' }[kind] ?? kind.toUpperCase();
 }
+
+/** "Oct 26, 2026". `locale` is for tests; the UI uses the browser's. */
+export function fmtDate(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** "Oct 26, 2026, 10:42 AM", for tooltips. */
+export function fmtDateTime(ms: number, locale?: string): string {
+  return new Date(ms).toLocaleString(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+/** True for http and https URLs, the only ones the UI turns into links. */
+export function isWebUrl(url: string): boolean {
+  try {
+    const p = new URL(url).protocol;
+    return p === 'http:' || p === 'https:';
+  } catch {
+    return false;
+  }
+}

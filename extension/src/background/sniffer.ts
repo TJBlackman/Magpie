@@ -29,6 +29,8 @@ export class Sniffer {
   private titleReadAt = new Map<number, number>();
   /** Called once per new manifest. The background inspects it and reports back through learn(). */
   onManifest: ((c: Candidate) => void) | null = null;
+  /** Candidates left out of the badge count: media the archive already has. */
+  isHidden: (c: Candidate) => boolean = () => false;
 
   constructor() {
     this.restored = this.restore();
@@ -172,18 +174,21 @@ export class Sniffer {
       }
     }
 
+    // Firefox says whether the request came from a private window; Chrome only says so on the tab.
+    const d = details as unknown as { documentUrl?: string; initiator?: string; incognito?: boolean };
     let pageUrl = '';
     let pageTitle = '';
+    let incognito = d.incognito === true;
     try {
       const tab = await browser.tabs.get(tabId);
       pageUrl = tab.url ?? '';
       pageTitle = tab.title ?? '';
+      incognito ||= tab.incognito;
     } catch {
       /* tab gone */
     }
     // Firefox gives the full document URL; Chrome only gives the initiator
     // origin, so prefer the tab URL there (CDNs often check the full Referer).
-    const d = details as unknown as { documentUrl?: string; initiator?: string };
     const referer = d.documentUrl || pageUrl || d.initiator || '';
     let id = candidateId(tabId, url);
     if (tabMap.has(id)) id = candidateId(tabId, `${url}#${Date.now()}`);
@@ -199,6 +204,7 @@ export class Sniffer {
       referer: referer || pageUrl,
       seenAt: Date.now(),
     };
+    if (incognito) candidate.incognito = true;
     const parent = kind === 'file' ? undefined : [...tabMap.values()].find((m) => listsChild(m, url));
     if (parent) candidate.parentId = parent.id;
     tabMap.set(id, candidate);
@@ -222,6 +228,8 @@ export class Sniffer {
     if (c.live || c.reloads < LIVE_RELOADS) return;
     this.markLive(c);
     void this.persist();
+    // A live stream is never hidden as archived, so the count can change.
+    void this.badge(c.tabId);
     this.notify(c.tabId);
   }
 
@@ -239,13 +247,19 @@ export class Sniffer {
     if (urls.size > MAX_URLS) urls.delete(urls.keys().next().value!);
   }
 
+  /** Recount every tab's badge, e.g. after the archive changed. */
+  async rebadgeAll(): Promise<void> {
+    await this.restored;
+    await Promise.all([...this.byTab.keys()].map((t) => this.badge(t)));
+  }
+
   private notify(tabId: number) {
     const env: Envelope = { magpie: 'ui', event: { type: 'candidates', tabId } };
     browser.runtime.sendMessage(env).catch(() => {});
   }
 
   private async badge(tabId: number) {
-    const n = [...(this.byTab.get(tabId)?.values() ?? [])].filter((c) => !c.parentId).length;
+    const n = [...(this.byTab.get(tabId)?.values() ?? [])].filter((c) => !c.parentId && !this.isHidden(c)).length;
     const action = (browser as unknown as { action?: typeof browser.action; browserAction?: typeof browser.action }).action
       ?? (browser as unknown as { browserAction?: typeof browser.action }).browserAction;
     if (!action) return;

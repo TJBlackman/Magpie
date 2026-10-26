@@ -1,3 +1,4 @@
+import type { ArchiveEntry } from './archive';
 import type { Settings } from './settings';
 
 export type MediaKind = 'hls' | 'dash' | 'file';
@@ -23,6 +24,10 @@ export interface Candidate {
   parentId?: string;
   /** For a master playlist: the variant and rendition playlist URLs it lists. */
   children?: string[];
+  /** Seen in a private window. */
+  incognito?: boolean;
+  /** Set on copies sent to the UI when the archive already has this stream. Never stored. */
+  archived?: boolean;
 }
 
 export interface Variant {
@@ -103,7 +108,10 @@ export type UiRequest =
   | { type: 'removeJob'; jobId: string }
   | { type: 'clearFinished' }
   | { type: 'activeTab' }
-  | { type: 'openSettings' };
+  | { type: 'openSettings' }
+  | { type: 'archive' }
+  | { type: 'removeArchive'; id: string }
+  | { type: 'clearArchive' };
 
 /** Messages the background forwards to the engine host. */
 export type EngineRequest =
@@ -120,13 +128,14 @@ export type EngineRequest =
 export type EngineToBg =
   | { type: 'saveBlob'; blobUrl: string; filename: string; jobId: string }
   | { type: 'headerRule'; host: string; referer: string; origin: string }
-  | { type: 'jobsChanged'; jobs: Job[] };
+  | { type: 'jobsChanged'; jobs: Job[] }
+  | { type: 'archive'; entry: ArchiveEntry };
 
 export type Envelope =
   | { magpie: 'bg'; req: UiRequest }
   | { magpie: 'engine'; req: EngineRequest }
   | { magpie: 'engine-to-bg'; req: EngineToBg }
-  | { magpie: 'ui'; event: { type: 'jobs'; jobs: Job[] } | { type: 'candidates'; tabId: number } };
+  | { magpie: 'ui'; event: { type: 'jobs'; jobs: Job[] } | { type: 'candidates'; tabId: number } | { type: 'archive'; entries: ArchiveEntry[] } };
 
 export interface Ok<T> {
   ok: true;

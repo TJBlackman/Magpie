@@ -95,6 +95,8 @@ async function main() {
       await new Promise((r) => setTimeout(r, 1500));
     }
 
+    /** Job ids of archive rows already seen, so each case waits for its own. */
+    const seen = new Set();
     for (const [page, urlPart, expectName] of [
       // Live first, while it is the only master playlist in the manager's all tabs list.
       ['/live.html', '/master.m3u8', /^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/],
@@ -122,16 +124,26 @@ async function main() {
       await (await row.findElement(By.css('button'))).click();
       const dl = await driver.wait(until.elementLocated(By.xpath(`//*[@data-testid="candidate" and contains(@data-url,"${urlPart}")]//button[starts-with(normalize-space(.),"Download")]`)), 15_000);
       await dl.click();
-      const job = await driver.wait(until.elementLocated(By.css('[data-testid="job"]')), 10_000);
-      await driver.wait(async () => /done|error/.test((await job.getAttribute('data-state')) ?? ''), 90_000, 'job never finished');
-      const state = await job.getAttribute('data-state');
-      const text = await job.getText();
-      console.log('  job', state, text.replace(/\n/g, ' | '));
-      if (state !== 'done') {
+      // A finished job leaves the Downloads list and becomes the newest archive row.
+      const result = await driver.wait(
+        async () => {
+          const failed = await driver.findElements(By.css('[data-testid="job"][data-state="error"]'));
+          if (failed.length) return { failed: failed[0] };
+          const [entry] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-child'));
+          return entry && !seen.has(await entry.getAttribute('data-job-id')) ? { entry } : null;
+        },
+        90_000,
+        'job never finished',
+      );
+      if (result.failed) {
+        const text = await result.failed.getText();
+        console.log('  job error', text.replace(/\n/g, ' | '));
         failures.push(`${page}: ${text}`);
         continue;
       }
-      const filename = await job.getAttribute('data-filename');
+      seen.add(await result.entry.getAttribute('data-job-id'));
+      console.log('  archived', (await result.entry.getText()).replace(/\n/g, ' | '));
+      const filename = await result.entry.getAttribute('data-file');
       console.log('  filename', filename);
       if (expectName instanceof RegExp ? !expectName.test(filename) : filename !== expectName) failures.push(`${page}: filename ${filename}, expected ${expectName}`);
       // Read back what Firefox actually saved, once its own download record says complete.
@@ -157,9 +169,20 @@ async function main() {
       const same = got.length === want.length && got.every((h, i) => h === want[i]);
       console.log(`  frames ${got.length}/${want.length} ${same ? 'MATCH' : 'MISMATCH'}`);
       if (!same) failures.push(`${page}: frame hashes differ`);
-      // Remove the job so the next iteration sees a fresh first job row.
-      await (await job.findElement(By.xpath('.//button[normalize-space(.)="×"]'))).click();
     }
+
+    // Downloads from private windows stay out of storage.local unless the user keeps them.
+    const stored = JSON.parse(
+      await driver.executeAsyncScript(
+        `const done = arguments[0];
+         Promise.all([browser.storage.local.get('archive'), browser.storage.session.get('archive')])
+           .then(([l, s]) => done(JSON.stringify({ local: (l.archive ?? []).length, session: (s.archive ?? []).length })))
+           .catch((e) => done(JSON.stringify({ error: String(e) })));`,
+      ),
+    );
+    console.log('== archive storage', JSON.stringify(stored));
+    const want = PRIVATE ? { local: 0, session: seen.size } : { local: seen.size, session: 0 };
+    if (stored.local !== want.local || stored.session !== want.session) failures.push(`archive storage ${JSON.stringify(stored)}, expected ${JSON.stringify(want)}`);
   } finally {
     await driver.quit();
     if (server) server.kill();

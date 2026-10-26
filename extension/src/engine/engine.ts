@@ -2,7 +2,9 @@ import { liveStartIndex, parseHls, variantLabel, type HlsMedia, type HlsSegment 
 import { buildFilename, withPart, withTimestamp } from '../core/filename';
 import { err, isFinished, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../core/settings';
+import { makeEntry, type ArchiveEntry } from '../core/archive';
 import { decryptSegment } from './crypto';
+import { mp4Duration } from './duration';
 import { fetchBytes, fetchText, HttpError, orderedPool } from './fetcher';
 import { passthroughSink, patchDurations, sniffContainer, tsSink, type Sink, type Write } from './mux';
 import type { Platform } from './platform';
@@ -274,6 +276,8 @@ export class Engine {
     let part = 1;
     /** Bytes in parts already saved, so job.bytes keeps counting across parts. */
     let savedBytes = 0;
+    /** Length in seconds for the archive, when known. */
+    let secs: number | undefined;
     try {
       await this.platform.setHeaderRule(new URL(variant.uri).host, candidate.referer || candidate.pageUrl, originOf(candidate.pageUrl));
       await out.open();
@@ -316,7 +320,7 @@ export class Engine {
           const output: LiveOutput = {
             current: () => out,
             nextPart: async () => {
-              job.downloadId = await this.save(out, withPart(job.filename, part), job.id);
+              job.downloadId = (await this.save(out, withPart(job.filename, part), job.id)).id;
               savedBytes += out.bytes;
               part++;
               out = new OutputFile(`${job.id}.${part}.bin`);
@@ -324,6 +328,7 @@ export class Engine {
             },
           };
           await this.recordLive(variant.uri, media, output, write, job, candidate, signal, stop);
+          secs = job.duration;
         } else {
           if (media.segments.length === 0) throw new Error('Playlist has no segments');
           await this.platform.setHeaderRule(new URL(media.segments[0]!.uri).host, candidate.referer || candidate.pageUrl, originOf(candidate.pageUrl));
@@ -331,6 +336,7 @@ export class Engine {
           job.state = 'downloading';
           this.emit();
           await this.downloadHls(media, write, job, signal);
+          secs = media.totalDuration;
         }
       }
 
@@ -338,9 +344,18 @@ export class Engine {
       this.emit();
       // A recording that ended right after a part was saved leaves an empty last part.
       if (part > 1 && out.bytes === 0) await out.abort();
-      else job.downloadId = await this.save(out, part > 1 ? withPart(job.filename, part) : job.filename, job.id);
-      job.state = 'done';
+      else {
+        const saved = await this.save(out, part > 1 ? withPart(job.filename, part) : job.filename, job.id);
+        job.downloadId = saved.id;
+        if (job.kind === 'file') secs = await mp4Duration(saved.file);
+      }
       job.finishedAt = Date.now();
+      // The job stays 'saving' until the archive answers, so the list never flashes a done row that then vanishes.
+      if (await this.archive(makeEntry(job, candidate, secs))) {
+        this.jobs.delete(job.id);
+      } else {
+        job.state = 'done';
+      }
       this.emit();
     } catch (e) {
       await out.abort();
@@ -355,8 +370,17 @@ export class Engine {
     }
   }
 
+  /** Move a finished download to the archive. False when the archive is off or did not answer. */
+  private async archive(entry: ArchiveEntry): Promise<boolean> {
+    try {
+      return await this.platform.archive(entry);
+    } catch {
+      return false;
+    }
+  }
+
   /** Hand a finished file to the browser's downloads and drop our copy once it has had time to read it. */
-  private async save(out: OutputFile, filename: string, jobId: string): Promise<number | undefined> {
+  private async save(out: OutputFile, filename: string, jobId: string): Promise<{ id: number | undefined; file: File }> {
     const file = await out.finish();
     const blobUrl = URL.createObjectURL(file);
     const id = await this.platform.saveBlob(blobUrl, filename, jobId);
@@ -367,7 +391,7 @@ export class Engine {
     // A file held in memory goes as soon as the browser has written it out; an OPFS file gets five minutes.
     if (out.inMemory && id !== undefined && this.platform.whenSaved) void this.platform.whenSaved(id).then(release);
     else setTimeout(release, 5 * 60 * 1000);
-    return id;
+    return { id, file };
   }
 
   private async downloadHls(media: HlsMedia, write: Write, job: Job, signal: AbortSignal) {

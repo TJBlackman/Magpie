@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtClock, fmtEta, jobProgress, sourceLabel } from './format';
+import { fmtClock, fmtDate, fmtEta, isWebUrl, jobProgress, sourceLabel } from './format';
 import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
@@ -39,6 +39,30 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ maxConcurrent: 0 }).maxConcurrent).toBe(1);
     expect(normalizeSettings({ maxConcurrent: 99 }).maxConcurrent).toBe(10);
     expect(normalizeSettings({ maxConcurrent: 'x' }).maxConcurrent).toBe(2);
+  });
+  it('keeps 25 archive entries by default and allows 0 to turn the archive off', () => {
+    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false });
+    expect(normalizeSettings({ archiveSize: 0 }).archiveSize).toBe(0);
+    expect(normalizeSettings({ archiveSize: '40' }).archiveSize).toBe(40);
+    expect(normalizeSettings({ archiveSize: 9999 }).archiveSize).toBe(500);
+    expect(normalizeSettings({ archiveSize: -3 }).archiveSize).toBe(0);
+    expect(normalizeSettings({ archiveSize: '' }).archiveSize).toBe(25);
+    expect(normalizeSettings({ archiveSize: null }).archiveSize).toBe(25);
+    expect(normalizeSettings({ archivePrivate: 'yes' }).archivePrivate).toBe(false);
+    expect(normalizeSettings({ archivePrivate: true }).archivePrivate).toBe(true);
+  });
+});
+
+describe('archive rows', () => {
+  it('show the date without the time', () => {
+    expect(fmtDate(new Date(2026, 9, 26, 10, 42).getTime(), 'en-US')).toBe('Oct 26, 2026');
+  });
+  it('link only web pages', () => {
+    expect(isWebUrl('https://example.com/watch?v=1')).toBe(true);
+    expect(isWebUrl('http://127.0.0.1:8787/hls-ts.html')).toBe(true);
+    expect(isWebUrl('javascript:alert(1)')).toBe(false);
+    expect(isWebUrl('file:///C:/x.html')).toBe(false);
+    expect(isWebUrl('')).toBe(false);
   });
 });
 

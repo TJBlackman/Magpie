@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, expectFramesMatch, expectFramesPrefix, playAndWait, probeTimes, test } from '../fixtures';
+import { expect, expectFramesMatch, expectFramesPrefix, finished, playAndWait, probeTimes, test } from '../fixtures';
 
 // /live.html replays the hls-ts clip as a live stream: two 4 s segments at the
 // start, one more every 4 s, EXT-X-ENDLIST after the fifth (about 12 s in).
@@ -37,10 +37,12 @@ test('live: records until the stream ends, every frame present', async ({ magpie
   const page = await magpie.context.newPage();
   await playAndWait(page, '/live.html');
   const manager = await magpie.manager();
-  const job = await startRecording(manager);
-  await expect(job).toHaveAttribute('data-state', 'done', { timeout: 60_000 });
-  await expect(job).toHaveAttribute('data-filename', /^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/);
-  const file = await magpie.exportJob(manager, (await job.getAttribute('data-job-id'))!, 'live.mp4');
+  await startRecording(manager);
+  const { jobId, filename } = await finished(manager);
+  expect(filename).toMatch(/^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/);
+  // A recorded live stream stays available: the next recording holds new footage.
+  await expect(manager.locator('[data-testid="candidate"][data-url*="/live/"]').first()).toBeVisible();
+  const file = await magpie.exportJob(manager, jobId, 'live.mp4');
   expectFramesMatch(file, '720');
 });
 
@@ -50,8 +52,8 @@ test('live: Stop saves what was recorded so far', async ({ magpie }) => {
   const manager = await magpie.manager();
   const job = await startRecording(manager);
   await job.getByRole('button', { name: 'Stop' }).click();
-  await expect(job).toHaveAttribute('data-state', 'done', { timeout: 30_000 });
-  const file = await magpie.exportJob(manager, (await job.getAttribute('data-job-id'))!, 'live-stopped.mp4');
+  const { jobId } = await finished(manager);
+  const file = await magpie.exportJob(manager, jobId, 'live-stopped.mp4');
   // At least the two segments out at the start, 120 frames each, and not the whole clip.
   expectFramesPrefix(file, '720', 240);
 });
@@ -60,9 +62,9 @@ test('live fmp4 stamped hours into the stream: the file starts at 0', async ({ m
   const page = await magpie.context.newPage();
   await playAndWait(page, '/live.html?src=fmp4');
   const manager = await magpie.manager();
-  const job = await startRecording(manager, '/live-fmp4/');
-  await expect(job).toHaveAttribute('data-state', 'done', { timeout: 60_000 });
-  const file = await magpie.exportJob(manager, (await job.getAttribute('data-job-id'))!, 'live-fmp4.mp4');
+  await startRecording(manager, '/live-fmp4/');
+  const { jobId } = await finished(manager);
+  const file = await magpie.exportJob(manager, jobId, 'live-fmp4.mp4');
   // The source fragments are stamped 4 hours in; the saved file runs 0 to 20 s.
   const { start, duration } = probeTimes(file);
   expect(start).toBeLessThan(0.1);

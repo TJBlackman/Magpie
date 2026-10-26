@@ -1,3 +1,4 @@
+import type { ArchiveEntry } from '../core/archive';
 import type { Job } from '../core/types';
 
 /**
@@ -17,4 +18,6 @@ export interface Platform {
   whenSaved?(downloadId: number): Promise<void>;
   /** Push job list changes to whoever is listening (popup, manager, background). */
   jobsChanged(jobs: Job[]): void;
+  /** Record a finished download. False when the archive is off; the job then stays in the list as done. */
+  archive(entry: ArchiveEntry): Promise<boolean>;
 }

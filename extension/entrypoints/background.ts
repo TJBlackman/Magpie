@@ -3,12 +3,23 @@ import { browser } from 'wxt/browser';
 import { Sniffer } from '../src/background/sniffer';
 import { setHeaderRule } from '../src/background/headers';
 import { pageTitleFor } from '../src/background/pagetitle';
+import { Archive } from '../src/background/archive';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { err, ok, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
   const sniffer = new Sniffer();
   sniffer.listen();
+
+  // Media already in the archive is left out of the badge and flagged for the UI.
+  const archive = new Archive();
+  sniffer.isHidden = (c) => archive.has(c);
+  archive.onChange = (entries) => {
+    const env: Envelope = { magpie: 'ui', event: { type: 'archive', entries } };
+    browser.runtime.sendMessage(env).catch(() => {});
+    void sniffer.rebadgeAll();
+  };
+  void archive.ready.then(() => sniffer.rebadgeAll());
 
   let latestJobs: Job[] = [];
 
@@ -21,6 +32,7 @@ export default defineBackground(() => {
     if (area !== 'local' || !changes[SETTINGS_KEY]) return;
     settings = normalizeSettings(changes[SETTINGS_KEY].newValue);
     void pushSettings();
+    void archive.configure(settings);
   });
 
   /** Tell a running engine about new settings. A Chrome engine that is not up yet gets them with its next start. */
@@ -43,6 +55,7 @@ export default defineBackground(() => {
           latestJobs = jobs;
           broadcastJobs(jobs);
         },
+        archive: (entry) => archive.add(entry),
       });
       direct = (req) => handle(engine, req);
       await settingsReady;
@@ -102,9 +115,20 @@ export default defineBackground(() => {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
         return ok(tab ? { id: tab.id, title: tab.title, url: tab.url } : null);
       }
-      case 'candidates':
+      case 'candidates': {
         await sniffer.refreshTitles(req.tabId);
-        return ok(await sniffer.forTab(req.tabId));
+        await archive.ready;
+        const list = await sniffer.forTab(req.tabId);
+        return ok(list.map((c) => (archive.has(c) ? { ...c, archived: true } : c)));
+      }
+      case 'archive':
+        return ok(await archive.list());
+      case 'removeArchive':
+        await archive.remove(req.id);
+        return ok(null);
+      case 'clearArchive':
+        await archive.clear();
+        return ok(null);
       case 'openSettings':
         await browser.runtime.openOptionsPage();
         return ok(null);
@@ -164,6 +188,13 @@ export default defineBackground(() => {
       if (r.type === 'jobsChanged') {
         latestJobs = r.jobs;
         sendResponse(ok(null));
+      }
+      if (r.type === 'archive') {
+        archive
+          .add(r.entry)
+          .then((added) => sendResponse(ok(added)))
+          .catch((e) => sendResponse(err(String(e))));
+        return true;
       }
     }
   });

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { download, expect, playAndWait, test } from '../fixtures';
+import { expect, finished, playAndWait, test } from '../fixtures';
 
 /** Record what the manager's job rows go through, so short lived states are not missed. */
 async function watchJobs(manager: Page) {
@@ -49,8 +49,8 @@ test('progress bar fills while a plain file downloads', async ({ magpie }) => {
   await (await openSlowCandidate(manager)).click();
   const job = manager.locator('[data-testid="job"]').first();
   await expect(job.getByTestId('job-status')).toContainText(/ of .*%/, { timeout: 15_000 });
-  await expect(job).toHaveAttribute('data-state', 'done', { timeout: 60_000 });
-  await expect(job).toHaveAttribute('data-filename', 'Slow River.mp4');
+  const { filename } = await finished(manager);
+  expect(filename).toBe('Slow River.mp4');
   const { pcts } = await observed(manager);
   const between = [...new Set(pcts.filter((p) => p > 0 && p < 100))];
   expect(between.length, `intermediate percentages seen: ${between.join(', ')}`).toBeGreaterThanOrEqual(3);
@@ -78,7 +78,9 @@ test('settings limit concurrent downloads and extra clicks queue up', async ({ m
   const jobs = manager.locator('[data-testid="job"]');
   await expect(jobs).toHaveCount(3);
   await expect(manager.locator('[data-testid="job"][data-state="queued"]')).toHaveCount(2, { timeout: 5_000 });
-  for (let i = 0; i < 3; i++) await expect(jobs.nth(i)).toHaveAttribute('data-state', 'done', { timeout: 60_000 });
+  // Each finished download moves from the list to the archive.
+  await expect(manager.getByTestId('archive-entry')).toHaveCount(3, { timeout: 60_000 });
+  await expect(jobs).toHaveCount(0);
 
   const { maxActive, queued } = await observed(manager);
   expect(maxActive).toBe(1);
@@ -99,16 +101,23 @@ test('clear empties the popup list right away', async ({ magpie }) => {
   await expect(popup.getByText('Nothing yet.')).toBeVisible();
 });
 
-test('clear finished drops done downloads and keeps running ones', async ({ magpie }) => {
-  const page = await magpie.context.newPage();
-  await playAndWait(page, '/progressive.html');
+test('clear finished drops cancelled downloads and keeps running ones', async ({ magpie }) => {
   const slow = await magpie.context.newPage();
   await playAndWait(slow, '/slow.html');
+  const live = await magpie.context.newPage();
+  await playAndWait(live, '/live.html');
   const manager = await magpie.manager();
-  await download(manager, '/media/progressive/clip.mp4');
-  await (await openSlowCandidate(manager)).click();
+  // A live recording runs until the stream ends, about 12 s after the page loads, long enough to outlast the clicks below.
+  const liveRow = manager.locator('[data-testid="candidate"][data-url*="/live/"][data-url*="master.m3u8"]').first();
+  await expect(liveRow).toBeVisible({ timeout: 15_000 });
+  await liveRow.getByRole('button').first().click();
+  await liveRow.getByRole('button', { name: /^Download/ }).first().click();
   const jobs = manager.getByTestId('job');
-  await expect(jobs.and(manager.locator('[data-state="downloading"]'))).toHaveCount(1, { timeout: 15_000 });
+  await expect(jobs.first().getByTestId('job-status')).toContainText(/Recording/, { timeout: 15_000 });
+  await (await openSlowCandidate(manager)).click();
+  await expect(jobs).toHaveCount(2);
+  await manager.locator('[data-testid="job"][data-filename="Slow River.mp4"]').getByRole('button', { name: 'Cancel' }).click();
+  await expect(jobs.and(manager.locator('[data-state="cancelled"]'))).toHaveCount(1, { timeout: 5_000 });
 
   const popup = await magpie.context.newPage();
   await popup.goto(`chrome-extension://${magpie.extensionId}/popup.html`);
@@ -117,8 +126,9 @@ test('clear finished drops done downloads and keeps running ones', async ({ magp
 
   await manager.getByRole('button', { name: 'Clear finished' }).click();
   await expect(jobs).toHaveCount(1, { timeout: 2_000 });
-  await expect(jobs.first()).not.toHaveAttribute('data-state', 'done');
+  await expect(jobs.first()).toHaveAttribute('data-state', 'downloading');
   await expect(manager.getByRole('button', { name: 'Clear finished' })).toHaveCount(0);
   await expect(popup.getByTestId('job')).toHaveCount(1, { timeout: 2_000 });
   await expect(popup.getByRole('button', { name: 'clear finished' })).toHaveCount(0);
+  await jobs.first().getByRole('button', { name: 'Cancel' }).click();
 });

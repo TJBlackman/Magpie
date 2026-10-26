@@ -19,4 +19,5 @@ hostEngine({
     broadcastJobs(jobs);
     toBg({ type: 'jobsChanged', jobs }).catch(() => {});
   },
+  archive: (entry) => toBg<boolean>({ type: 'archive', entry }),
 });
