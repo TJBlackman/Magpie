@@ -132,15 +132,29 @@ export async function download(manager: Page, urlPart: string, variantIndex = 0)
   await row.getByRole('button').first().click();
   const buttons = row.getByRole('button', { name: /^Download/ });
   await expect(buttons.first()).toBeVisible({ timeout: 15_000 });
+  const previous = await newestEntry(manager);
   await buttons.nth(variantIndex).click();
-  const job = manager.locator('[data-testid="job"]').first();
-  await expect(job).toHaveAttribute('data-state', /done|error/, { timeout: 90_000 });
-  const state = await job.getAttribute('data-state');
-  const errorEl = job.locator('.text-red-300');
-  const error = (await errorEl.count()) ? await errorEl.first().textContent() : '';
-  expect(state, `job failed: ${error}`).toBe('done');
+  return finished(manager, previous);
+}
+
+/** The newest archive row's job id, '' when the archive is empty. */
+export async function newestEntry(manager: Page): Promise<string> {
+  const first = manager.getByTestId('archive-entry').first();
+  return (await first.count()) ? ((await first.getAttribute('data-job-id')) ?? '') : '';
+}
+
+/**
+ * Wait for the next download to finish. A finished job leaves the Downloads
+ * list for the archive, so this waits for a newest archive row other than
+ * `previous` (rows are newest first), or a failed job.
+ */
+export async function finished(manager: Page, previous = '') {
+  const newest = manager.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-child:not([data-job-id="${previous}"])`);
+  const failed = manager.locator('[data-testid="job"][data-state="error"]');
+  await expect(newest.or(failed.first())).toBeVisible({ timeout: 90_000 });
+  if (await failed.count()) throw new Error(`job failed: ${await failed.first().textContent()}`);
   return {
-    jobId: (await job.getAttribute('data-job-id'))!,
-    filename: (await job.getAttribute('data-filename'))!,
+    jobId: (await newest.getAttribute('data-job-id'))!,
+    filename: (await newest.getAttribute('data-file'))!,
   };
 }

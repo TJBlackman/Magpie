@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { useEffect, useRef, useState } from 'react';
 import type { Candidate, Envelope, Inspection, Job, Result, UiRequest } from '../core/types';
 import { SETTINGS_KEY, normalizeSettings, type Settings } from '../core/settings';
+import type { ArchiveEntry } from '../core/archive';
 
 export async function call<T>(req: UiRequest): Promise<Result<T>> {
   const env: Envelope = { magpie: 'bg', req };
@@ -22,8 +23,12 @@ export const api = {
   cancel: (jobId: string) => call<null>({ type: 'cancel', jobId }),
   stop: (jobId: string) => call<null>({ type: 'stop', jobId }),
   removeJob: (jobId: string) => call<null>({ type: 'removeJob', jobId }),
+  clearFinished: () => call<null>({ type: 'clearFinished' }),
   jobs: () => call<Job[]>({ type: 'jobs' }),
   openSettings: () => call<null>({ type: 'openSettings' }),
+  archive: () => call<ArchiveEntry[]>({ type: 'archive' }),
+  removeArchive: (id: string) => call<null>({ type: 'removeArchive', id }),
+  clearArchive: () => call<null>({ type: 'clearArchive' }),
 };
 
 /** Current settings plus a saver. null until loaded. Follows changes made elsewhere. */
@@ -93,8 +98,27 @@ export function useCandidates(tabId: number | undefined, enabled = true): [Candi
   useEffect(refresh, [tabId, enabled]);
   useEvents((e) => {
     if (e.type === 'candidates' && (tabId === undefined || e.tabId === tabId)) refresh();
+    // The archive decides which candidates count as already downloaded.
+    if (e.type === 'archive') refresh();
   });
   return [list, refresh];
+}
+
+/** Archive entries, newest first, following changes. */
+export function useArchive(): ArchiveEntry[] {
+  const [entries, setEntries] = useState<ArchiveEntry[]>([]);
+  useEffect(() => {
+    void api.archive().then((r) => r.ok && setEntries(r.value));
+  }, []);
+  useEvents((e) => {
+    if (e.type === 'archive') setEntries(e.entries);
+  });
+  return entries;
+}
+
+/** Open a page the archive links to in a new tab. */
+export function openPage(url: string) {
+  void browser.tabs.create({ url });
 }
 
 export function openManager() {

@@ -2,7 +2,7 @@
 
 A browser extension that collects streaming video from the page you are watching and saves it as one file. Chrome and Firefox from one codebase. Personal project, no store listing. Download the latest build and install steps at [magpie.trevorblackman.dev](https://magpie.trevorblackman.dev).
 
-What works in v0.2:
+What works in v0.3:
 
 | Delivery | Detect | Download | Verified by |
 |---|---|---|---|
@@ -26,12 +26,12 @@ What works in v0.2:
 extension/   WXT + React + Tailwind v4. Builds dist/chrome-mv3 and dist/firefox-mv2
   entrypoints/background.ts   sniffer (webRequest observe only) + message router
   entrypoints/offscreen/      Chrome only: hosts the engine (service workers cannot make blob URLs)
-  entrypoints/popup/          media on this tab, quality picker, active jobs
-  entrypoints/manager/        all tabs, all jobs
-  entrypoints/options/        settings page (max concurrent downloads)
-  src/core/                   HLS parser, detection rules, filenames (pure, unit tested)
-  src/engine/                 fetch pool, AES, TS to MP4 remux, OPFS output, job state
-  src/background/             sniffer and per browser Referer rules (DNR on Chrome, webRequest on Firefox)
+  entrypoints/popup/          media on this tab, quality picker, active jobs, archive
+  entrypoints/manager/        all tabs, all jobs, archive
+  entrypoints/options/        settings page (max concurrent downloads, archive size)
+  src/core/                   HLS parser, detection rules, filenames, archive matching (pure, unit tested)
+  src/engine/                 fetch pool, AES, TS to MP4 remux, OPFS output, job state, MP4 duration
+  src/background/             sniffer, archive store, per browser Referer rules (DNR on Chrome, webRequest on Firefox)
 testsite/    Go server + ffmpeg fixture script + player pages (hls.js, dash.js, native)
 e2e/         Playwright (Chrome, loads the unpacked build) and a Selenium smoke test for Firefox
 website/     magpie.trevorblackman.dev: static site/ plus wrangler config and deploy script
@@ -49,7 +49,7 @@ pnpm build                         # both browser builds
 pnpm fixtures                      # runs ffmpeg in WSL, writes testsite/public/media (gitignored)
 pnpm server:build                  # testsite/server/magpie-testsite.exe
 pnpm test:unit
-pnpm test:e2e                      # Chrome, 17 tests, about 1 minute
+pnpm test:e2e                      # Chrome, 20 tests, about 1 minute
 pnpm test:firefox                  # Firefox, 4 cases (one live), about 30 s
 ```
 
@@ -80,6 +80,25 @@ AMO refuses to sign a version number twice, so every signed build needs a new ve
 Open Settings from the popup or the Downloads page. "Maximum concurrent downloads" (default 2, range 1 to 10) caps how many downloads run at once. Every extra Download click joins a first in, first out queue and starts when a running download finishes. Raising the limit starts queued downloads right away. Cancel removes a queued download without starting it.
 
 The media list shows the page title first and the stream's host and file name underneath. Plain files show bytes of total, percent, speed and time left. HLS shows segments done, percent, speed and an estimate of time left.
+
+## Archive
+
+A finished download leaves the Downloads list and goes to the archive, shown in the popup and on the Downloads page. Each entry holds the page title, the saved file name (on hover), the date, the length and the page URL, a few hundred bytes in all. The URL opens the page in a new tab, so you can check it is the video you think it is. The length comes from the HLS playlist, the recorded seconds of a live stream, or the movie header of a plain MP4; WebM and other files show none.
+
+"Archive size" in Settings (default 25, range 0 to 500) caps the list. A new entry pushes out the oldest, and lowering the number deletes the oldest ones at once. The field saves on Enter or when you leave it, so typing 50 over 25 never saves a 5 first. 0 turns the archive off, and finished downloads then stay in the Downloads list as in 0.2.
+
+Media already in the archive is left out of "Media on this page" and the toolbar badge. "N downloaded" next to the count shows those rows again with a DOWNLOADED tag, and they can still be downloaded. The × on an entry removes it, and its media counts as new again. "clear archive" asks for a second click.
+
+A stream counts as downloaded when either holds:
+
+- Its URL equals an entry's once LL-HLS directives, signature and expiry parameters (`Signature`, `Expires`, `token`, `hdnts`, `X-Amz-*` and similar) and values that look like a Unix time from 2020 to 2049 are dropped. This works on any page, so the same video embedded elsewhere is recognized too.
+- It plays on the same page (hash and `utm_*` ignored) and its URL also matches once path segments holding a token (`exp=...~acl=...~hmac=...`) and long opaque query values are ignored. This catches CDNs that sign the path.
+
+Numeric ids, hex ids (ObjectIds, hashes) and UUIDs always count, as does a time shaped value under a name ending in `id`, so `?id=1234567` and `?id=1234568` stay apart. When another stream on the same page has the same shape but a different URL (a course page, a feed), the page rule is off for that page and only the exact URL counts. Live streams are never hidden, since the next recording holds new footage.
+
+The archive lives in the extension's own storage and never leaves the browser. Entries from private windows (Chrome incognito with "Allow in Incognito", Firefox private windows including "Always use private browsing mode") are kept in `storage.session` and forgotten when the last private window closes, like the rest of private browsing. "Remember downloads from private windows" in Settings keeps them with the rest.
+
+Finished downloads no longer have a Show button, because the archive keeps no download id. The file is in your downloads folder under the name shown on hover.
 
 ## Live streams
 
@@ -116,6 +135,7 @@ Measured with a throwaway soak harness that replays streams at 60x through the r
 3. The engine fetches segments 4 at a time, never more than 12 ahead of the writer, decrypts AES-128 if present, and appends them in order to a file in OPFS. TS segments go through mux.js and come out as fragmented MP4. fMP4 segments are written as is after the init segment.
 4. Before fetching, the engine asks the background to set a Referer and Origin rule for the CDN host (declarativeNetRequest session rule on Chrome scoped to the extension's own requests, blocking `onBeforeSendHeaders` on Firefox). Cookies go along because fetches use `credentials: include` and the extension has host permission.
 5. The finished OPFS file becomes a blob URL and goes to `downloads.download`. The OPFS copy is deleted five minutes later.
+6. The engine reports the finished job to the background, which adds it to the archive, and the job leaves the Downloads list. In Chrome that is a message from the offscreen document, which has no storage API.
 
 Chrome's service worker can be killed any time, so the engine lives in an offscreen document, which Chrome keeps alive. Firefox builds as MV2 with a persistent background page for the same reason, and because MV2 grants host permissions at install instead of asking per site.
 
@@ -141,6 +161,7 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 - Firefox refuses OPFS when it runs in "Always use private browsing mode". Magpie then holds the download in memory until it saves, so RAM use equals the file size, twice that while saving. Live recordings there save in 2 GB parts; other downloads do not. `pnpm test:firefox:private` covers this mode.
 - Filenames come from the page at the moment you click Download: JSON-LD video name, then `og:title`, `twitter:title`, `<title>`, `<h1>`, with a trailing or leading site name removed. If the tab has moved to another page, the title seen when the stream was detected is used instead.
 - Firefox is tested through Selenium, not Playwright, because Playwright's Firefox build cannot load extensions.
+- The archive misses a video, and shows it as available, when the site serves it from a different CDN host on the next visit, or signs the path in a segment without `=` or `~`.
 
 ## Website
 

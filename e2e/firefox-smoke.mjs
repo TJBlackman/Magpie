@@ -75,26 +75,59 @@ async function main() {
   const service = new firefox.ServiceBuilder().addArguments('--allow-system-access');
   const driver = await new Builder().forBrowser('firefox').setFirefoxOptions(opts).setFirefoxService(service).build();
   const failures = [];
+
+  /** Same as ticking "Run in Private Windows" on the add-on page. Reloads the add-on. */
+  async function allowPrivateBrowsing() {
+    await driver.setContext(firefox.Context.CHROME);
+    const r = await driver.executeAsyncScript(`
+      const done = arguments[0];
+      (async () => {
+        const { ExtensionPermissions } = ChromeUtils.importESModule('resource://gre/modules/ExtensionPermissions.sys.mjs');
+        const { AddonManager } = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
+        await ExtensionPermissions.add('${ADDON_ID}', { permissions: ['internal:privateBrowsingAllowed'], origins: [] });
+        await (await AddonManager.getAddonByID('${ADDON_ID}')).reload();
+        done('ok');
+      })().catch((e) => done(String(e)));
+    `);
+    if (r !== 'ok') throw new Error('could not allow private browsing: ' + r);
+    await driver.setContext(firefox.Context.CONTENT);
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+
+  /** Marionette refuses to navigate content to moz-extension:// directly; open the tab from the browser chrome instead. */
+  async function openManager() {
+    await driver.setContext(firefox.Context.CHROME);
+    await driver.executeScript(
+      `const tab = gBrowser.addTab(arguments[0], { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });
+       gBrowser.selectedTab = tab;`,
+      `moz-extension://${UUID}/manager.html`,
+    );
+    await driver.setContext(firefox.Context.CONTENT);
+    for (const handle of (await driver.getAllWindowHandles()).reverse()) {
+      await driver.switchTo().window(handle);
+      if ((await driver.getCurrentUrl()).startsWith(`moz-extension://${UUID}/manager.html`)) return;
+    }
+    throw new Error('manager tab not found');
+  }
+
+  /** Archive entries in storage.local and storage.session, as seen from an extension page. */
+  async function archiveStorage() {
+    return JSON.parse(
+      await driver.executeAsyncScript(
+        `const done = arguments[0];
+         Promise.all([browser.storage.local.get('archive'), browser.storage.session.get('archive')])
+           .then(([l, s]) => done(JSON.stringify({ local: (l.archive ?? []).length, session: (s.archive ?? []).length })))
+           .catch((e) => done(JSON.stringify({ error: String(e) })));`,
+      ),
+    );
+  }
+
   try {
     await driver.installAddon(ext, true);
-    if (PRIVATE) {
-      // Same as ticking "Run in Private Windows" on the add-on page.
-      await driver.setContext(firefox.Context.CHROME);
-      const r = await driver.executeAsyncScript(`
-        const done = arguments[0];
-        (async () => {
-          const { ExtensionPermissions } = ChromeUtils.importESModule('resource://gre/modules/ExtensionPermissions.sys.mjs');
-          const { AddonManager } = ChromeUtils.importESModule('resource://gre/modules/AddonManager.sys.mjs');
-          await ExtensionPermissions.add('${ADDON_ID}', { permissions: ['internal:privateBrowsingAllowed'], origins: [] });
-          await (await AddonManager.getAddonByID('${ADDON_ID}')).reload();
-          done('ok');
-        })().catch((e) => done(String(e)));
-      `);
-      if (r !== 'ok') throw new Error('could not allow private browsing: ' + r);
-      await driver.setContext(firefox.Context.CONTENT);
-      await new Promise((r) => setTimeout(r, 1500));
-    }
+    if (PRIVATE) await allowPrivateBrowsing();
 
+    /** Job ids of archive rows already seen, so each case waits for its own. */
+    const seen = new Set();
     for (const [page, urlPart, expectName] of [
       // Live first, while it is the only master playlist in the manager's all tabs list.
       ['/live.html', '/master.m3u8', /^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/],
@@ -107,31 +140,31 @@ async function main() {
       await driver.get(`http://127.0.0.1:8787${page}`);
       await driver.wait(async () => driver.executeScript('return window.__magpieReady === true'), 30_000, 'video never started');
 
-      // Marionette refuses to navigate content to moz-extension:// directly;
-      // open the tab from the browser chrome instead.
-      await driver.setContext(firefox.Context.CHROME);
-      await driver.executeScript(
-        `const tab = gBrowser.addTab(arguments[0], { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });
-         gBrowser.selectedTab = tab;`,
-        `moz-extension://${UUID}/manager.html`,
-      );
-      await driver.setContext(firefox.Context.CONTENT);
-      const handles = await driver.getAllWindowHandles();
-      await driver.switchTo().window(handles[handles.length - 1]);
+      await openManager();
       const row = await driver.wait(until.elementLocated(By.css(`[data-testid="candidate"][data-url*="${urlPart}"]`)), 15_000);
       await (await row.findElement(By.css('button'))).click();
       const dl = await driver.wait(until.elementLocated(By.xpath(`//*[@data-testid="candidate" and contains(@data-url,"${urlPart}")]//button[starts-with(normalize-space(.),"Download")]`)), 15_000);
       await dl.click();
-      const job = await driver.wait(until.elementLocated(By.css('[data-testid="job"]')), 10_000);
-      await driver.wait(async () => /done|error/.test((await job.getAttribute('data-state')) ?? ''), 90_000, 'job never finished');
-      const state = await job.getAttribute('data-state');
-      const text = await job.getText();
-      console.log('  job', state, text.replace(/\n/g, ' | '));
-      if (state !== 'done') {
+      // A finished job leaves the Downloads list and becomes the newest archive row.
+      const result = await driver.wait(
+        async () => {
+          const failed = await driver.findElements(By.css('[data-testid="job"][data-state="error"]'));
+          if (failed.length) return { failed: failed[0] };
+          const [entry] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-child'));
+          return entry && !seen.has(await entry.getAttribute('data-job-id')) ? { entry } : null;
+        },
+        90_000,
+        'job never finished',
+      );
+      if (result.failed) {
+        const text = await result.failed.getText();
+        console.log('  job error', text.replace(/\n/g, ' | '));
         failures.push(`${page}: ${text}`);
         continue;
       }
-      const filename = await job.getAttribute('data-filename');
+      seen.add(await result.entry.getAttribute('data-job-id'));
+      console.log('  archived', (await result.entry.getText()).replace(/\n/g, ' | '));
+      const filename = await result.entry.getAttribute('data-file');
       console.log('  filename', filename);
       if (expectName instanceof RegExp ? !expectName.test(filename) : filename !== expectName) failures.push(`${page}: filename ${filename}, expected ${expectName}`);
       // Read back what Firefox actually saved, once its own download record says complete.
@@ -157,8 +190,68 @@ async function main() {
       const same = got.length === want.length && got.every((h, i) => h === want[i]);
       console.log(`  frames ${got.length}/${want.length} ${same ? 'MATCH' : 'MISMATCH'}`);
       if (!same) failures.push(`${page}: frame hashes differ`);
-      // Remove the job so the next iteration sees a fresh first job row.
-      await (await job.findElement(By.xpath('.//button[normalize-space(.)="×"]'))).click();
+    }
+
+    // Downloads from private windows stay out of storage.local unless the user keeps them.
+    const stored = await archiveStorage();
+    console.log('== archive storage', JSON.stringify(stored));
+    const want = PRIVATE ? { local: 0, session: seen.size } : { local: seen.size, session: 0 };
+    if (stored.local !== want.local || stored.session !== want.session) failures.push(`archive storage ${JSON.stringify(stored)}, expected ${JSON.stringify(want)}`);
+
+    if (!PRIVATE) {
+      // A download from a private window next to normal ones is forgotten when that window closes.
+      console.log('== private window entry goes with the window');
+      await allowPrivateBrowsing();
+      await driver.setContext(firefox.Context.CHROME);
+      await driver.executeScript('OpenBrowserWindow({ private: true });');
+      // Load the page once the new window has its tab strip.
+      await driver.wait(
+        async () =>
+          driver.executeScript(
+            `const { PrivateBrowsingUtils } = ChromeUtils.importESModule('resource://gre/modules/PrivateBrowsingUtils.sys.mjs');
+             const w = [...Services.wm.getEnumerator('navigator:browser')].find((w) => PrivateBrowsingUtils.isWindowPrivate(w) && w.document.readyState === 'complete' && w.gBrowser);
+             if (!w) return false;
+             w.gBrowser.selectedTab = w.gBrowser.addTab(arguments[0], { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });
+             return true;`,
+            'http://127.0.0.1:8787/hls-aes.html',
+          ),
+        10_000,
+        'private window never opened',
+      );
+      await driver.setContext(firefox.Context.CONTENT);
+      await openManager();
+      const row = await driver.wait(until.elementLocated(By.css('[data-testid="candidate"][data-url*="/media/hls-aes/index.m3u8"]')), 20_000);
+      await (await row.findElement(By.css('button'))).click();
+      const dl = await driver.wait(
+        until.elementLocated(By.xpath('//*[@data-testid="candidate" and contains(@data-url,"/media/hls-aes/")]//button[starts-with(normalize-space(.),"Download")]')),
+        15_000,
+      );
+      await dl.click();
+      const entry = await driver.wait(
+        async () => {
+          const [first] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-child'));
+          return first && !seen.has(await first.getAttribute('data-job-id')) ? first : null;
+        },
+        60_000,
+        'private download never finished',
+      );
+      const privId = await entry.getAttribute('data-job-id');
+      const during = await archiveStorage();
+      console.log('  while open', JSON.stringify(during));
+      if (during.local !== seen.size || during.session !== 1) failures.push(`private window open: storage ${JSON.stringify(during)}, expected local ${seen.size}, session 1`);
+
+      await driver.setContext(firefox.Context.CHROME);
+      await driver.executeScript(
+        `const { PrivateBrowsingUtils } = ChromeUtils.importESModule('resource://gre/modules/PrivateBrowsingUtils.sys.mjs');
+         for (const w of Services.wm.getEnumerator('navigator:browser')) if (PrivateBrowsingUtils.isWindowPrivate(w)) w.close();`,
+      );
+      await driver.setContext(firefox.Context.CONTENT);
+      const gone = await driver
+        .wait(async () => (await driver.findElements(By.css(`[data-testid="archive-entry"][data-job-id="${privId}"]`))).length === 0, 10_000)
+        .then(() => true, () => false);
+      const after = await archiveStorage();
+      console.log('  after close', JSON.stringify(after), gone ? 'row gone' : 'ROW STILL LISTED');
+      if (!gone || after.local !== seen.size || after.session !== 0) failures.push(`private window closed: row gone ${gone}, storage ${JSON.stringify(after)}`);
     }
   } finally {
     await driver.quit();

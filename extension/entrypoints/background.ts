@@ -3,12 +3,39 @@ import { browser } from 'wxt/browser';
 import { Sniffer } from '../src/background/sniffer';
 import { setHeaderRule } from '../src/background/headers';
 import { pageTitleFor } from '../src/background/pagetitle';
+import { Archive } from '../src/background/archive';
+import type { ArchiveEntry } from '../src/core/archive';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
-import { err, ok, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
+import { err, ok, type Candidate, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
   const sniffer = new Sniffer();
   sniffer.listen();
+
+  // Media already in the archive is left out of the badge and flagged for the UI.
+  const archive = new Archive();
+  sniffer.isHidden = (c, shown) => archive.has(c, shown);
+  archive.onChange = (entries) => {
+    const env: Envelope = { magpie: 'ui', event: { type: 'archive', entries } };
+    browser.runtime.sendMessage(env).catch(() => {});
+    void sniffer.rebadgeAll();
+  };
+  void archive.ready.then(() => sniffer.rebadgeAll());
+
+  // Private window entries go with the last private window, like the rest of private browsing.
+  async function forgetPrivateIfClosed() {
+    const windows = await browser.windows.getAll().catch(() => null);
+    if (windows && !windows.some((w) => w.incognito)) await archive.forgetPrivate();
+  }
+  browser.windows.onRemoved.addListener(() => void forgetPrivateIfClosed());
+  void archive.ready.then(forgetPrivateIfClosed);
+
+  /** A finished download from the engine. One from a private window that closed meanwhile is forgotten at once. */
+  async function archiveFinished(entry: ArchiveEntry): Promise<boolean> {
+    const added = await archive.add(entry);
+    if (entry.priv) await forgetPrivateIfClosed();
+    return added;
+  }
 
   let latestJobs: Job[] = [];
 
@@ -21,6 +48,7 @@ export default defineBackground(() => {
     if (area !== 'local' || !changes[SETTINGS_KEY]) return;
     settings = normalizeSettings(changes[SETTINGS_KEY].newValue);
     void pushSettings();
+    void archive.configure(settings).then(forgetPrivateIfClosed);
   });
 
   /** Tell a running engine about new settings. A Chrome engine that is not up yet gets them with its next start. */
@@ -43,6 +71,7 @@ export default defineBackground(() => {
           latestJobs = jobs;
           broadcastJobs(jobs);
         },
+        archive: archiveFinished,
       });
       direct = (req) => handle(engine, req);
       await settingsReady;
@@ -102,9 +131,22 @@ export default defineBackground(() => {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
         return ok(tab ? { id: tab.id, title: tab.title, url: tab.url } : null);
       }
-      case 'candidates':
+      case 'candidates': {
         await sniffer.refreshTitles(req.tabId);
-        return ok(await sniffer.forTab(req.tabId));
+        await archive.ready;
+        const list = await sniffer.forTab(req.tabId);
+        const byTab = new Map<number, Candidate[]>();
+        for (const c of list) byTab.set(c.tabId, [...(byTab.get(c.tabId) ?? []), c]);
+        return ok(list.map((c) => (archive.has(c, byTab.get(c.tabId)) ? { ...c, archived: true } : c)));
+      }
+      case 'archive':
+        return ok(await archive.list());
+      case 'removeArchive':
+        await archive.remove(req.id);
+        return ok(null);
+      case 'clearArchive':
+        await archive.clear();
+        return ok(null);
       case 'openSettings':
         await browser.runtime.openOptionsPage();
         return ok(null);
@@ -129,6 +171,8 @@ export default defineBackground(() => {
         return toEngine({ type: 'stop', jobId: req.jobId });
       case 'removeJob':
         return toEngine({ type: 'removeJob', jobId: req.jobId });
+      case 'clearFinished':
+        return toEngine({ type: 'clearFinished' });
       case 'jobs': {
         if (!import.meta.env.FIREFOX && !(await offscreenExists())) return ok(latestJobs);
         return toEngine({ type: 'jobs' });
@@ -162,6 +206,12 @@ export default defineBackground(() => {
       if (r.type === 'jobsChanged') {
         latestJobs = r.jobs;
         sendResponse(ok(null));
+      }
+      if (r.type === 'archive') {
+        archiveFinished(r.entry)
+          .then((added) => sendResponse(ok(added)))
+          .catch((e) => sendResponse(err(String(e))));
+        return true;
       }
     }
   });
