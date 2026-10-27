@@ -1,0 +1,5 @@
+/* The popup's own stylesheet plus the files Tailwind must scan when the preview runs from this folder. */
+@import '../src/ui/style.css';
+@source '../entrypoints';
+@source '../src';
+@source '.';

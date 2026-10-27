@@ -26,6 +26,8 @@ export async function handle(engine: Engine, req: EngineRequest): Promise<Result
   switch (req.type) {
     case 'inspect':
       return engine.inspect(req.candidate);
+    case 'thumbnail':
+      return engine.thumbnail(req.candidate);
     case 'start':
       engine.configure(req.settings);
       return engine.start(req.candidate, req.variantId);
@@ -41,8 +43,8 @@ export async function handle(engine: Engine, req: EngineRequest): Promise<Result
     case 'removeJob':
       engine.remove(req.jobId);
       return ok(null);
-    case 'clearFinished':
-      engine.clearFinished();
+    case 'clearFailed':
+      engine.clearFailed();
       return ok(null);
     case 'jobs':
       return ok(engine.list());

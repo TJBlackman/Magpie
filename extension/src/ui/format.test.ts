@@ -15,9 +15,9 @@ describe('jobProgress', () => {
   it('uses segments for HLS', () => {
     expect(jobProgress({ ...base, kind: 'hls', segmentsDone: 3, segmentsTotal: 12 })).toBeCloseTo(0.25);
   });
-  it('is empty while queued and full when done', () => {
+  it('is empty while queued and full while saving', () => {
     expect(jobProgress({ ...base, state: 'queued' })).toBe(0);
-    expect(jobProgress({ ...base, state: 'done' })).toBe(1);
+    expect(jobProgress({ ...base, kind: 'hls', state: 'saving' })).toBe(1);
   });
 });
 
@@ -38,10 +38,12 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ maxConcurrent: '3' }).maxConcurrent).toBe(3);
     expect(normalizeSettings({ maxConcurrent: 0 }).maxConcurrent).toBe(1);
     expect(normalizeSettings({ maxConcurrent: 99 }).maxConcurrent).toBe(10);
+    expect(normalizeSettings({}).thumbnails).toBe(true);
+    expect(normalizeSettings({ thumbnails: false }).thumbnails).toBe(false);
     expect(normalizeSettings({ maxConcurrent: 'x' }).maxConcurrent).toBe(2);
   });
   it('keeps 25 archive entries by default and allows 0 to turn the archive off', () => {
-    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false });
+    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true });
     expect(normalizeSettings({ archiveSize: 0 }).archiveSize).toBe(0);
     expect(normalizeSettings({ archiveSize: '40' }).archiveSize).toBe(40);
     expect(normalizeSettings({ archiveSize: 9999 }).archiveSize).toBe(500);

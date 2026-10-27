@@ -1,3 +1,5 @@
+import type { MediaKind } from '../core/types';
+
 export function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
@@ -36,7 +38,6 @@ export function jobProgress(job: {
   segmentsDone: number;
   segmentsTotal: number;
 }): number | null {
-  if (job.state === 'done') return 1;
   if (job.state === 'queued') return 0;
   if (job.kind === 'file') {
     if (job.bytesTotal) return Math.min(1, job.bytes / job.bytesTotal);
@@ -71,6 +72,25 @@ export function fmtClock(seconds: number): string {
 
 export function kindLabel(kind: string): string {
   return { hls: 'HLS', dash: 'DASH', file: 'FILE' }[kind] ?? kind.toUpperCase();
+}
+
+/** The kind a stream URL points at, for history entries saved before the kind was kept. */
+export function kindOfUrl(url: string): MediaKind {
+  let path = url;
+  try {
+    path = new URL(url).pathname.toLowerCase();
+  } catch {
+    /* keep the raw string */
+  }
+  if (path.endsWith('.m3u8') || path.endsWith('.m3u')) return 'hls';
+  if (path.endsWith('.mpd')) return 'dash';
+  return 'file';
+}
+
+/** "1080p" from a rendition label like "1920x1080 · 6000 kbps · avc1...", '' when it names no resolution. */
+export function shortVariant(label: string): string {
+  const h = /\b\d{3,4}x(\d{3,4})\b/.exec(label)?.[1];
+  return h ? `${h}p` : '';
 }
 
 /** "Oct 26, 2026". `locale` is for tests; the UI uses the browser's. */

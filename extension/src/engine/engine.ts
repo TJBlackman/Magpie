@@ -1,6 +1,6 @@
 import { liveStartIndex, parseHls, variantLabel, type HlsMedia, type HlsSegment } from '../core/hls';
 import { buildFilename, withPart, withTimestamp } from '../core/filename';
-import { err, isFinished, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
+import { err, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../core/settings';
 import { makeEntry } from '../core/archive';
 import { decryptSegment } from './crypto';
@@ -9,6 +9,7 @@ import { fetchBytes, fetchText, HttpError, orderedPool } from './fetcher';
 import { passthroughSink, patchDurations, sniffContainer, tsSink, type Sink, type Write } from './mux';
 import type { Platform } from './platform';
 import { OutputFile } from './store';
+import { FILE_SAMPLE, SEGMENT_CAP, THUMB_TIMEOUT, fetchPrefix, frameFromMp4 } from './thumbnail';
 
 const PARALLEL = 4;
 const WINDOW = 12;
@@ -106,33 +107,74 @@ export class Engine {
     this.emit();
   }
 
-  /** Drop every finished job from the list. Saved files stay where they are. */
-  clearFinished(): void {
-    for (const job of this.list()) {
-      if (!isFinished(job.state)) continue;
-      // A cancelled job can still be unwinding; make sure it stops.
-      this.running.get(job.id)?.abort.abort();
-      this.jobs.delete(job.id);
-    }
+  /** Drop every failed job from the list. */
+  clearFailed(): void {
+    for (const job of this.list()) if (job.state === 'error') this.jobs.delete(job.id);
     this.emit();
   }
 
+  /** Drop a job at once. A running one is aborted and cleans up on its own; a queued one never starts. */
   cancel(jobId: string): void {
-    const waiting = this.queue.find((q) => q.job.id === jobId);
-    if (waiting) {
-      this.queue = this.queue.filter((q) => q !== waiting);
-      waiting.job.state = 'cancelled';
-      waiting.job.queuePosition = undefined;
-      waiting.job.finishedAt = Date.now();
-      this.emit();
-      return;
+    this.queue = this.queue.filter((q) => q.job.id !== jobId);
+    this.running.get(jobId)?.abort.abort();
+    this.jobs.delete(jobId);
+    this.pump();
+  }
+
+  /**
+   * One frame of the stream as a small JPEG data URL. Costs one segment of the
+   * lowest rendition, or the first megabyte of a plain file, and nothing more.
+   */
+  async thumbnail(candidate: Candidate): Promise<Result<string>> {
+    if (candidate.kind === 'dash') return err('DASH is not downloadable yet.');
+    const signal = AbortSignal.timeout(THUMB_TIMEOUT);
+    try {
+      await this.platform.setHeaderRule(new URL(candidate.url).host, candidate.referer || candidate.pageUrl, originOf(candidate.pageUrl));
+      const parts = candidate.kind === 'file' ? [await fetchPrefix(candidate.url, FILE_SAMPLE, signal)] : await this.hlsSample(candidate, signal);
+      const frame = await frameFromMp4(parts, candidate.kind !== 'file');
+      return frame ? ok(frame) : err('No frame could be decoded.');
+    } catch (e) {
+      return err(describe(e));
     }
-    const r = this.running.get(jobId);
-    if (r) {
-      r.abort.abort();
-      r.job.state = 'cancelled';
-      this.emit();
+  }
+
+  /** Init segment plus one media segment of the lowest rendition, as fragmented MP4 that starts at 0. */
+  private async hlsSample(candidate: Candidate, signal: AbortSignal): Promise<Uint8Array[]> {
+    let entry = this.inspections.get(candidate.id);
+    if (!entry || entry.candidate.url !== candidate.url) {
+      const r = await this.inspect(candidate);
+      if (!r.ok) throw new Error(r.error);
+      entry = this.inspections.get(candidate.id)!;
     }
+    let media = entry.media;
+    if (!media) {
+      // A master: the lowest rendition is the cheapest frame. Variants are sorted by bandwidth, highest first.
+      const variant = entry.inspection.variants[entry.inspection.variants.length - 1];
+      if (!variant) throw new Error('No variant');
+      const parsed = parseHls(await fetchText(variant.uri, signal), variant.uri);
+      if (parsed.kind !== 'media') throw new Error('Variant pointed at another master playlist');
+      media = parsed;
+    } else if (!media.endList) {
+      // A live playlist from the inspection is stale; its segments may be gone.
+      const parsed = parseHls(await fetchText(candidate.url, signal), candidate.url);
+      if (parsed.kind === 'media') media = parsed;
+    }
+    // Live: a segment that is surely complete. On demand: the first.
+    const seg = media.endList ? media.segments[0] : media.segments[Math.max(0, media.segments.length - 2)];
+    if (!seg) throw new Error('Playlist has no segments');
+    await this.platform.setHeaderRule(new URL(seg.uri).host, candidate.referer || candidate.pageUrl, originOf(candidate.pageUrl));
+    const whole = seg.key.method !== 'NONE' || !!seg.byteRange;
+    const [raw, init] = await Promise.all([
+      // An encrypted segment must be whole to decrypt; a plain one is cut at the cap.
+      whole ? fetchBytes(seg.uri, { signal, byteRange: seg.byteRange, retries: 1 }) : fetchPrefix(seg.uri, SEGMENT_CAP, signal),
+      seg.map ? fetchBytes(seg.map.uri, { signal, byteRange: seg.map.byteRange, retries: 1 }) : null,
+    ]);
+    const data = await decryptSegment(raw, seg.key, seg.sequence, signal);
+    const parts: Uint8Array[] = [];
+    const sink = sinkFor(init, media.container, data, async (chunk) => void parts.push(chunk), seg.duration);
+    await sink.push(data, init);
+    await sink.flush();
+    return parts;
   }
 
   private keepInspection(id: string, entry: { candidate: Candidate; inspection: Inspection; media?: HlsMedia }) {
@@ -244,6 +286,7 @@ export class Engine {
       segmentsDone: 0,
       bytes: 0,
       startedAt: Date.now(),
+      thumb: candidate.thumb,
     };
     this.jobs.set(job.id, job);
     this.queue.push({ job, candidate, variant, media: entry.media });
@@ -320,7 +363,7 @@ export class Engine {
           const output: LiveOutput = {
             current: () => out,
             nextPart: async () => {
-              job.downloadId = (await this.save(out, withPart(job.filename, part), job.id)).id;
+              await this.save(out, withPart(job.filename, part), job.id);
               savedBytes += out.bytes;
               part++;
               out = new OutputFile(`${job.id}.${part}.bin`);
@@ -346,27 +389,22 @@ export class Engine {
       if (part > 1 && out.bytes === 0) await out.abort();
       else {
         const saved = await this.save(out, part > 1 ? withPart(job.filename, part) : job.filename, job.id);
-        job.downloadId = saved.id;
         if (job.kind === 'file') secs = await mp4Duration(saved.file);
       }
-      job.finishedAt = Date.now();
-      // The job stays 'saving' until the archive answers, so the list never flashes a done row that then vanishes.
+      // The job stays 'saving' until history has the entry, then leaves the list:
+      // the file is in the browser's downloads, and the record, if any, is in history.
       // A recording saved in parts is listed under its first part.
-      if (await this.archive(job, part > 1 ? withPart(job.filename, 1) : job.filename, candidate, secs)) {
-        this.jobs.delete(job.id);
-      } else {
-        job.state = 'done';
-      }
+      await this.archive(job, part > 1 ? withPart(job.filename, 1) : job.filename, candidate, secs);
+      this.jobs.delete(job.id);
       this.emit();
     } catch (e) {
       await out.abort();
-      if (signal.aborted) {
-        job.state = 'cancelled';
-      } else {
+      // Cancelled: the job already left the list. Failed: it stays, with the reason.
+      if (!signal.aborted) {
         job.state = 'error';
         job.error = describe(e);
+        job.finishedAt = Date.now();
       }
-      job.finishedAt = Date.now();
       this.emit();
     }
   }

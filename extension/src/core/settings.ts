@@ -6,12 +6,14 @@ export interface Settings {
   archiveSize: number;
   /** Keep archive entries from private windows after the browser closes. */
   archivePrivate: boolean;
+  /** Fetch one small piece of each stream and show a frame of it on its row. */
+  thumbnails: boolean;
 }
 
 export const SETTINGS_KEY = 'settings';
 export const MAX_CONCURRENT_LIMIT = 10;
 export const ARCHIVE_LIMIT = 500;
-export const DEFAULT_SETTINGS: Settings = { maxConcurrent: 2, archiveSize: 25, archivePrivate: false };
+export const DEFAULT_SETTINGS: Settings = { maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true };
 
 /** A whole number from storage clamped to [min, max], or `fallback` when there is none. */
 function int(v: unknown, min: number, max: number, fallback: number): number {
@@ -26,5 +28,6 @@ export function normalizeSettings(raw: unknown): Settings {
     maxConcurrent: int(o.maxConcurrent, 1, MAX_CONCURRENT_LIMIT, DEFAULT_SETTINGS.maxConcurrent),
     archiveSize: int(o.archiveSize, 0, ARCHIVE_LIMIT, DEFAULT_SETTINGS.archiveSize),
     archivePrivate: o.archivePrivate === true,
+    thumbnails: o.thumbnails !== false,
   };
 }

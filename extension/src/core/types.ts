@@ -28,6 +28,8 @@ export interface Candidate {
   incognito?: boolean;
   /** Set on copies sent to the UI when the archive already has this stream. Never stored. */
   archived?: boolean;
+  /** One frame of the stream as a small JPEG data URL, once captured. */
+  thumb?: string;
 }
 
 export interface Variant {
@@ -55,18 +57,11 @@ export interface Inspection {
   children?: string[];
 }
 
-export type JobState =
-  | 'queued'
-  | 'inspecting'
-  | 'downloading'
-  | 'muxing'
-  | 'saving'
-  | 'done'
-  | 'error'
-  | 'cancelled';
-
-/** Done, failed or cancelled: nothing more will happen to the job. */
-export const isFinished = (state: JobState) => state === 'done' || state === 'error' || state === 'cancelled';
+/**
+ * A job is listed while it waits, runs or has failed. One that finishes leaves
+ * the list for history the moment it is saved, and a cancelled one leaves at once.
+ */
+export type JobState = 'queued' | 'inspecting' | 'downloading' | 'muxing' | 'saving' | 'error';
 
 export interface Job {
   id: string;
@@ -91,9 +86,11 @@ export interface Job {
   /** Something the user should know that is not an error, e.g. a gap in a recording. */
   note?: string;
   error?: string;
+  /** The candidate's frame, so the row looks the same as it did on the page. */
+  thumb?: string;
   startedAt: number;
+  /** When the job failed. */
   finishedAt?: number;
-  downloadId?: number;
 }
 
 /** Messages the UI sends to the background. The background answers or forwards. */
@@ -106,9 +103,8 @@ export type UiRequest =
   | { type: 'stop'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string }
-  | { type: 'clearFinished' }
+  | { type: 'clearFailed' }
   | { type: 'activeTab' }
-  | { type: 'openSettings' }
   | { type: 'archive' }
   | { type: 'removeArchive'; id: string }
   | { type: 'clearArchive' };
@@ -116,13 +112,14 @@ export type UiRequest =
 /** Messages the background forwards to the engine host. */
 export type EngineRequest =
   | { type: 'inspect'; candidate: Candidate }
+  | { type: 'thumbnail'; candidate: Candidate }
   | { type: 'start'; candidate: Candidate; variantId: string; settings: Settings }
   | { type: 'configure'; settings: Settings }
   | { type: 'cancel'; jobId: string }
   | { type: 'stop'; jobId: string }
   | { type: 'jobs' }
   | { type: 'removeJob'; jobId: string }
-  | { type: 'clearFinished' };
+  | { type: 'clearFailed' };
 
 /** Messages the engine host sends to the background (Chrome offscreen path). */
 export type EngineToBg =

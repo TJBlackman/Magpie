@@ -1,5 +1,5 @@
 import { manifestUrl } from './detect';
-import type { Candidate } from './types';
+import type { Candidate, MediaKind } from './types';
 
 /** One finished download. Kept small on purpose: what it was, when, how long, and where it came from. */
 export interface ArchiveEntry {
@@ -15,16 +15,21 @@ export interface ArchiveEntry {
   src: string;
   /** When the download finished, ms. */
   at: number;
+  /** HLS, DASH or a plain file, so the row looks the same as it did on the page. Missing on entries from before 0.4. */
+  kind?: MediaKind;
   /** Length in seconds, when known. */
   secs?: number;
   /** Downloaded in a private window. Kept out of storage.local unless the user allows it. */
   priv?: true;
+  /** The frame captured for the stream, a JPEG data URL of a few kilobytes. */
+  thumb?: string;
 }
 
 export const ARCHIVE_KEY = 'archive';
 const MAX_TEXT = 300;
 const MAX_URL = 2000;
 const MAX_SRC = 4000;
+const MAX_THUMB = 24_000;
 
 /** Query parameter names that carry signatures, expiry times and cache busters, never the video. */
 const VOLATILE_NAMES = new Set([
@@ -158,7 +163,7 @@ export function isArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []):
 /** The entry for a finished job. */
 export function makeEntry(
   job: { id: string; filename: string; finishedAt?: number },
-  candidate: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito'>,
+  candidate: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito' | 'kind' | 'thumb'>,
   secs?: number,
 ): ArchiveEntry {
   const src = streamKey(candidate.url);
@@ -170,9 +175,11 @@ export function makeEntry(
     page: candidate.pageUrl.length <= MAX_URL ? candidate.pageUrl : '',
     src: src.length <= MAX_SRC ? src : '',
     at: job.finishedAt ?? Date.now(),
+    kind: candidate.kind,
   };
   if (secs !== undefined && Number.isFinite(secs) && secs > 0) entry.secs = Math.round(secs * 10) / 10;
   if (candidate.incognito) entry.priv = true;
+  if (candidate.thumb && candidate.thumb.length <= MAX_THUMB) entry.thumb = candidate.thumb;
   return entry;
 }
 

@@ -1,243 +1,170 @@
-import { useEffect, useRef, useState } from 'react';
-import type { Candidate, Inspection, Job } from '../core/types';
-import type { ArchiveEntry } from '../core/archive';
-import { api, openPage, showDownload } from './api';
-import { fmtBytes, fmtClock, fmtDate, fmtDateTime, fmtEta, fmtRate, isWebUrl, jobProgress, kindLabel, shortUrl, sourceLabel } from './format';
+import { useEffect, useState, type ReactNode } from 'react';
+import type { MediaKind } from '../core/types';
+import { kindLabel } from './format';
+import { IconFilm, IconRadio } from './icons';
 
-export function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'shine' | 'warn' | 'bad' | 'good' }) {
+export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'file';
+
+export function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: Tone }) {
   const cls = {
     default: 'bg-edge text-mute',
-    shine: 'bg-shine/15 text-shine',
+    shine: 'bg-shine/12 text-shine',
     warn: 'bg-amber-500/15 text-amber-300',
-    bad: 'bg-red-500/15 text-red-300',
+    bad: 'bg-live/15 text-rose-300',
     good: 'bg-emerald-500/15 text-emerald-300',
+    file: 'bg-violet-500/15 text-violet-300',
   }[tone];
-  return <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${cls}`}>{children}</span>;
+  return <span className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${cls}`}>{children}</span>;
 }
 
-export function Button({ children, onClick, disabled, tone = 'default', title }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; tone?: 'default' | 'shine' | 'ghost' | 'danger'; title?: string }) {
+export function Button({
+  children,
+  onClick,
+  disabled,
+  tone = 'default',
+  title,
+  className = '',
+  testId,
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  tone?: 'default' | 'shine' | 'ghost' | 'danger' | 'live';
+  title?: string;
+  className?: string;
+  testId?: string;
+}) {
   const cls = {
-    default: 'bg-edge hover:bg-zinc-700 text-zinc-100',
-    shine: 'bg-shine text-ink hover:bg-cyan-300 font-semibold',
-    ghost: 'text-mute hover:text-zinc-100',
-    danger: 'text-red-300 hover:text-red-200',
+    default: 'bg-edge text-text hover:bg-edge2',
+    shine: 'bg-shine text-shine-ink font-bold hover:bg-cyan-300 shadow-[0_2px_8px_rgba(34,211,238,.3)]',
+    ghost: 'text-mute hover:bg-panel2 hover:text-text',
+    danger: 'text-rose-300 hover:bg-live/10',
+    live: 'bg-live text-white font-bold hover:bg-rose-400',
   }[tone];
   return (
-    <button type="button" title={title} disabled={disabled} onClick={onClick} className={`rounded px-2 py-1 text-xs transition disabled:opacity-40 ${cls}`}>
+    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition disabled:opacity-40 ${cls} ${className}`}>
       {children}
     </button>
   );
 }
 
-export function CandidateRow({ candidate }: { candidate: Candidate }) {
-  const [open, setOpen] = useState(false);
-  const [inspection, setInspection] = useState<Inspection | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [added, setAdded] = useState(0);
-
-  const toggle = async () => {
-    const next = !open;
-    setOpen(next);
-    if (next && !inspection && !busy) {
-      setBusy(true);
-      setError(null);
-      const r = await api.inspect(candidate.id);
-      setBusy(false);
-      if (r.ok) setInspection(r.value);
-      else setError(r.error);
-    }
-  };
-
-  const start = async (variantId: string) => {
-    setBusy(true);
-    const r = await api.start(candidate.id, variantId);
-    setBusy(false);
-    if (!r.ok) setError(r.error);
-    else setAdded((n) => n + 1);
-  };
-
-  const source = sourceLabel(candidate.url);
-  const title = candidate.pageTitle || source;
-
+/** A square button holding one icon. `label` is what screen readers and tests see. */
+export function IconButton({ label, onClick, children, active, tone = 'default', className = '' }: { label: string; onClick?: () => void; children: ReactNode; active?: boolean; tone?: 'default' | 'live' | 'danger'; className?: string }) {
+  const color = tone === 'live' ? 'text-live hover:bg-live/10' : tone === 'danger' ? 'text-mute hover:bg-live/10 hover:text-rose-300' : active ? 'bg-shine/10 text-shine' : 'text-mute hover:bg-panel2 hover:text-text';
   return (
-    <div className="rounded border border-edge bg-panel" data-testid="candidate" data-url={candidate.url}>
-      <button type="button" onClick={toggle} className="flex w-full items-start gap-2 px-2 py-1.5 text-left hover:bg-zinc-800/60">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[12.5px] font-medium text-zinc-100" data-testid="candidate-title" title={title}>
-            {title}
-          </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mute">
-            <Badge tone={candidate.kind === 'dash' ? 'warn' : 'shine'}>{kindLabel(candidate.kind)}</Badge>
-            {candidate.live && (
-              <span data-testid="live-badge">
-                <Badge tone="bad">LIVE</Badge>
-              </span>
-            )}
-            {candidate.archived && (
-              <span data-testid="archived-badge" title="Already in your archive">
-                <Badge tone="good">DOWNLOADED</Badge>
-              </span>
-            )}
-            <span className="min-w-0 flex-1 truncate" title={candidate.url}>
-              {source}
-            </span>
-            {candidate.contentLength ? <span>{fmtBytes(candidate.contentLength)}</span> : null}
-          </div>
-        </div>
-        <span className={`mt-0.5 text-mute transition ${open ? 'rotate-90' : ''}`}>{'›'}</span>
-      </button>
-      {open && (
-        <div className="border-t border-edge px-2 py-1.5">
-          {busy && !inspection && <div className="text-mute">Inspecting...</div>}
-          {error && <div className="text-red-300">{error}</div>}
-          {inspection?.notes.map((n) => (
-            <div key={n} className="mb-1 text-amber-300">
-              {n}
-            </div>
-          ))}
-          {inspection && (
-            <ul className="flex flex-col gap-1">
-              {inspection.variants.map((v) => (
-                <li key={v.id} className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate text-zinc-200" title={v.uri}>
-                    {v.label}
-                  </span>
-                  <Button tone="shine" disabled={busy} onClick={() => start(v.id)} title={`Download ${v.label}`}>
-                    Download
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {added > 0 && <div className="mt-1 text-[11px] text-mute">Added to Downloads{added > 1 ? ` (${added} times)` : ''}.</div>}
-        </div>
+    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition ${color} ${className}`}>
+      {children}
+    </button>
+  );
+}
+
+const KIND_TONE: Record<MediaKind, Tone> = { hls: 'shine', dash: 'warn', file: 'file' };
+
+/** HLS, DASH or FILE, in the kind's color. The same badge on every tab, so an item is easy to follow. */
+export function KindBadge({ kind }: { kind: MediaKind }) {
+  return <Badge tone={KIND_TONE[kind]}>{kindLabel(kind)}</Badge>;
+}
+
+/**
+ * The 16:9 slot at the left of every row: a frame of the stream once one is
+ * captured, else an icon in the kind's color. Live streams pulse either way.
+ */
+export function MediaTile({ kind, live, thumb, muted, className = 'h-9 w-16' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; className?: string }) {
+  const tone = live ? 'bg-live/15 text-live' : { hls: 'bg-shine/12 text-shine', dash: 'bg-amber-500/15 text-amber-300', file: 'bg-violet-500/15 text-violet-300' }[kind];
+  return (
+    <div className={`relative ${className} shrink-0 overflow-hidden rounded-lg ${thumb ? 'bg-ink' : tone} ${muted ? 'grayscale' : ''}`}>
+      {thumb ? (
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
+      ) : (
+        <div className="flex size-full items-center justify-center">{live ? <IconRadio size={18} className="pulse" /> : <IconFilm size={18} />}</div>
       )}
+      {thumb && live && <span className="pulse absolute top-1 left-1 size-1.5 rounded-full bg-live shadow-[0_0_4px_var(--color-live)]" />}
     </div>
   );
 }
 
-/** Smoothed bytes per second for an active job, from the byte counts it reports. */
-function useRate(bytes: number, active: boolean): number {
-  const last = useRef<{ t: number; b: number } | null>(null);
-  const [rate, setRate] = useState(0);
-  useEffect(() => {
-    if (!active) {
-      last.current = null;
-      setRate(0);
-      return;
-    }
-    const now = Date.now();
-    const prev = last.current;
-    if (prev && now > prev.t && bytes > prev.b) {
-      const sample = ((bytes - prev.b) * 1000) / (now - prev.t);
-      setRate((r) => (r ? r * 0.7 + sample * 0.3 : sample));
-    }
-    if (!prev || bytes !== prev.b) last.current = { t: now, b: bytes };
-  }, [bytes, active]);
-  return rate;
-}
-
-function statusText(job: Job, pct: number | null, rate: number): string {
-  switch (job.state) {
-    case 'queued':
-      return job.queuePosition ? `Waiting, #${job.queuePosition} in queue` : 'Waiting';
-    case 'inspecting':
-      return 'Starting';
-    case 'muxing':
-      return 'Finishing';
-    case 'saving':
-      return 'Saving to your downloads';
-    case 'downloading': {
-      const parts: string[] = [];
-      if (job.live) {
-        parts.push(`Recording ${fmtClock(job.duration ?? 0)}`, fmtBytes(job.bytes));
-        if (rate > 0) parts.push(fmtRate(rate));
-        return parts.join(' · ');
-      }
-      if (job.kind === 'file') {
-        parts.push(job.bytesTotal ? `${fmtBytes(job.bytes)} of ${fmtBytes(job.bytesTotal)}` : fmtBytes(job.bytes));
-      } else {
-        parts.push(`${job.segmentsDone} of ${job.segmentsTotal} segments`, fmtBytes(job.bytes));
-      }
-      if (pct !== null) parts.push(`${Math.floor(pct * 100)}%`);
-      if (rate > 0) {
-        parts.push(fmtRate(rate));
-        const remaining = job.bytesTotal
-          ? job.bytesTotal - job.bytes
-          : job.segmentsDone && job.segmentsTotal
-            ? (job.segmentsTotal - job.segmentsDone) * (job.bytes / job.segmentsDone)
-            : NaN;
-        const eta = fmtEta(remaining / rate);
-        if (eta) parts.push(eta);
-      }
-      return parts.join(' · ');
-    }
-    default:
-      return fmtBytes(job.bytes);
-  }
-}
-
-export function JobRow({ job }: { job: Job }) {
-  const active = ['queued', 'inspecting', 'downloading', 'muxing', 'saving'].includes(job.state);
-  const pct = jobProgress(job);
-  const rate = useRate(job.bytes, job.state === 'downloading');
-  const tone = job.state === 'done' ? 'good' : job.state === 'error' ? 'bad' : job.state === 'cancelled' || job.state === 'queued' ? 'default' : 'shine';
-  const indeterminate = active && pct === null;
-  const barColor = job.state === 'error' ? 'bg-red-400' : job.state === 'cancelled' ? 'bg-zinc-500' : 'bg-shine';
-  const recording = job.live && job.state === 'downloading';
+/**
+ * One row, the same on This page, Downloads and History: kind tile, title,
+ * meta line, action on the right, and anything extra (a progress bar) below.
+ * With `onOpen` the whole row is one button and `action` is drawn inside it.
+ */
+export function MediaRow({
+  tile,
+  title,
+  titleTip,
+  titleTestId,
+  meta,
+  action,
+  onOpen,
+  openTip,
+  dim,
+  attrs,
+  children,
+}: {
+  tile: ReactNode;
+  title: ReactNode;
+  titleTip?: string;
+  titleTestId?: string;
+  meta: ReactNode;
+  action?: ReactNode;
+  onOpen?: () => void;
+  openTip?: string;
+  /** Already downloaded or in the queue: drawn in grayscale and faded. */
+  dim?: boolean;
+  attrs?: Record<string, string | number | undefined>;
+  children?: ReactNode;
+}) {
+  const body = (
+    <>
+      {tile}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[12.5px] font-semibold" data-testid={titleTestId} title={titleTip}>
+          {title}
+        </div>
+        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-mute">{meta}</div>
+      </div>
+    </>
+  );
   return (
-    <div
-      className="rounded border border-edge bg-panel px-2 py-1.5"
-      data-testid="job"
-      data-job-id={job.id}
-      data-state={job.state}
-      data-filename={job.filename}
-      data-pct={pct === null ? '' : Math.floor(pct * 100)}
-    >
-      <div className="flex items-center gap-2">
-        <Badge tone={recording ? 'bad' : tone}>{recording ? 'recording' : job.state}</Badge>
-        <span className="min-w-0 flex-1 truncate" title={job.title}>
-          {job.filename}
-        </span>
-        {recording && (
-          <Button tone="shine" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
-            Stop
-          </Button>
-        )}
-        {active && (
-          <Button tone="ghost" onClick={() => api.cancel(job.id)} title={recording ? 'Stop recording and throw it away' : undefined}>
-            Cancel
-          </Button>
-        )}
-        {!active && job.downloadId !== undefined && job.state === 'done' && (
-          <Button tone="ghost" onClick={() => showDownload(job.downloadId!)}>
-            Show
-          </Button>
-        )}
-        {!active && (
-          <Button tone="ghost" onClick={() => api.removeJob(job.id)}>
-            {'×'}
-          </Button>
-        )}
-      </div>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded bg-edge">
-        <div
-          className={`h-full rounded ${barColor} ${indeterminate ? 'bar-indeterminate' : 'transition-[width] duration-300'}`}
-          style={indeterminate ? undefined : { width: `${(pct ?? 0) * 100}%` }}
-        />
-      </div>
-      <div className="mt-1 text-[11px] text-mute" data-testid="job-status">
-        {statusText(job, pct, rate)}
-      </div>
-      {job.note && <div className="mt-1 text-amber-300">{job.note}</div>}
-      {job.error && <div className="mt-1 text-red-300">{job.error}</div>}
+    <div {...attrs} className={`rounded-xl border border-edge bg-panel transition ${onOpen ? 'hover:border-edge2 hover:bg-panel2' : ''} ${dim ? 'opacity-50 grayscale hover:opacity-80' : ''}`}>
+      {onOpen ? (
+        <button type="button" onClick={onOpen} title={openTip} className="flex w-full items-center gap-2.5 p-2 text-left">
+          {body}
+          {action}
+        </button>
+      ) : (
+        <div className="flex items-center gap-2.5 p-2">
+          {body}
+          <div className="flex shrink-0 items-center gap-0.5">{action}</div>
+        </div>
+      )}
+      {children && <div className="px-2 pb-2">{children}</div>}
+    </div>
+  );
+}
+
+/** Section heading inside a panel: small caps label on the left, actions on the right. */
+export function Section({ title, children }: { title: ReactNode; children?: ReactNode }) {
+  return (
+    <div className="mt-2.5 mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold tracking-wider text-dim uppercase">
+      <span className="min-w-0 truncate">{title}</span>
+      {children && <div className="flex shrink-0 items-center gap-0.5 tracking-normal normal-case">{children}</div>}
+    </div>
+  );
+}
+
+export function Empty({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-edge2 px-4 py-7 text-center text-mute">
+      <div className="mx-auto mb-2 w-fit text-dim">{icon}</div>
+      <div className="mb-1 text-[13px] font-semibold text-text">{title}</div>
+      {children}
     </div>
   );
 }
 
 /** A ghost button that asks for a second click within 3 seconds, for clears that cannot be undone. */
-export function ConfirmButton({ children, confirm, onConfirm, title }: { children: React.ReactNode; confirm: string; onConfirm: () => void; title?: string }) {
+export function ConfirmButton({ children, confirm, onConfirm, title }: { children: ReactNode; confirm: string; onConfirm: () => void; title?: string }) {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (!armed) return;
@@ -259,69 +186,22 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
   );
 }
 
-/** Shows or hides media the archive already has. Nothing when there is none. */
+/** Shows or hides media the history already has. Nothing when there is none. */
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your archive' : 'Show media already in your archive'}>
-      {shown ? 'hide downloaded' : `${count} downloaded`}
+    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Show media already in your history'}>
+      {shown ? 'Hide downloaded' : `${count} downloaded`}
     </Button>
   );
 }
 
-/** One finished download: title, date, length, and a link to the page it came from. */
-export function ArchiveRow({ entry }: { entry: ArchiveEntry }) {
-  const page = entry.page;
+/** A short message at the bottom of the popup that fades after two seconds. */
+export function Toast({ message }: { message: string | null }) {
+  if (!message) return null;
   return (
-    <div className="flex items-start gap-2 rounded border border-edge bg-panel px-2 py-1.5" data-testid="archive-entry" data-job-id={entry.id} data-file={entry.file}>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[12.5px] text-zinc-100" data-testid="archive-title" title={entry.file}>
-          {entry.title || entry.file}
-        </div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-mute">
-          <span className="shrink-0" title={fmtDateTime(entry.at)}>
-            {fmtDate(entry.at)}
-          </span>
-          {entry.secs ? <span className="shrink-0">{`· ${fmtClock(entry.secs)}`}</span> : null}
-          {page && <span className="shrink-0">·</span>}
-          {page && isWebUrl(page) ? (
-            <a
-              href={page}
-              target="_blank"
-              rel="noreferrer"
-              title={`Open ${page} in a new tab`}
-              className="min-w-0 truncate text-shine hover:underline"
-              onClick={(e) => {
-                e.preventDefault();
-                openPage(page);
-              }}
-            >
-              {shortUrl(page)}
-            </a>
-          ) : page ? (
-            <span className="min-w-0 truncate" title={page}>
-              {shortUrl(page)}
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <Button tone="ghost" onClick={() => void api.removeArchive(entry.id)} title="Remove from archive. The video shows as available again.">
-        {'×'}
-      </Button>
-    </div>
-  );
-}
-
-/** Archive entries, or a line saying there are none. */
-export function ArchiveList({ entries, className = '' }: { entries: ArchiveEntry[]; className?: string }) {
-  if (!entries.length) {
-    return <div className="rounded border border-dashed border-edge p-3 text-center text-mute">Finished downloads show up here.</div>;
-  }
-  return (
-    <div className={`flex flex-col gap-1 ${className}`} data-testid="archive">
-      {entries.map((e) => (
-        <ArchiveRow key={e.id} entry={e} />
-      ))}
+    <div role="status" className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center">
+      <div className="veil-in rounded-lg bg-text px-3.5 py-2 text-xs font-semibold text-ink shadow-[0_6px_20px_rgba(0,0,0,.4)]">{message}</div>
     </div>
   );
 }

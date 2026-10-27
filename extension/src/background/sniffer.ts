@@ -7,6 +7,8 @@ import { pageTitleFor } from './pagetitle';
 const LIVE_RELOADS = 2;
 /** URLs remembered per tab. A live stream whose URL changes on every reload adds one each time. */
 const MAX_URLS = 2000;
+/** Candidates whose frame survives a restart. Older ones keep everything else; storage.session is small. */
+const THUMBS_KEPT = 150;
 
 /**
  * Observe (never block) responses and collect media candidates per tab.
@@ -90,6 +92,15 @@ export class Sniffer {
     if (!changed) return;
     void this.persist();
     void this.badge(c.tabId);
+    this.notify(c.tabId);
+  }
+
+  /** Keep a captured frame with the candidate, so every popup after this one has it. */
+  setThumb(id: string, thumb: string): void {
+    const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
+    if (!c || c.thumb === thumb) return;
+    c.thumb = thumb;
+    void this.persist();
     this.notify(c.tabId);
   }
 
@@ -279,7 +290,10 @@ export class Sniffer {
   private async persist() {
     const s = this.session;
     if (!s) return;
-    const flat: Candidate[] = [...this.byTab.values()].flatMap((m) => [...m.values()]);
+    const flat: Candidate[] = [...this.byTab.values()]
+      .flatMap((m) => [...m.values()])
+      .sort((a, b) => b.seenAt - a.seenAt)
+      .map((c, i) => (i < THUMBS_KEPT || !c.thumb ? c : { ...c, thumb: undefined }));
     await s.set({ candidates: flat }).catch(() => {});
   }
 

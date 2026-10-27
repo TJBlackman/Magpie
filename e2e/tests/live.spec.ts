@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, expectFramesMatch, expectFramesPrefix, finished, playAndWait, probeTimes, test } from '../fixtures';
+import { expect, expectFramesMatch, expectFramesPrefix, finished, openCandidate, playAndWait, probeTimes, test, view } from '../fixtures';
 
 // /live.html replays the hls-ts clip as a live stream: two 4 s segments at the
 // start, one more every 4 s, EXT-X-ENDLIST after the fifth (about 12 s in).
@@ -13,8 +13,8 @@ for (const churn of ['cachebust', 'msn']) {
     const page = await magpie.context.newPage();
     await playAndWait(page, `/live.html?churn=${churn}`);
     await waitForReloads(page, 3);
-    const manager = await magpie.manager();
-    const rows = manager.locator('[data-testid="candidate"][data-url*="/live/"]');
+    const popup = await magpie.popup();
+    const rows = popup.locator('[data-testid="candidate"][data-url*="/live/"]');
     // The master is the row; its variant playlist, reloaded with a new URL each time, folds under it.
     await expect(rows.first().getByTestId('live-badge')).toBeVisible({ timeout: 15_000 });
     await expect(rows).toHaveCount(1);
@@ -22,13 +22,14 @@ for (const churn of ['cachebust', 'msn']) {
   });
 }
 
-async function startRecording(manager: Page, prefix = '/live/') {
-  const row = manager.locator(`[data-testid="candidate"][data-url*="${prefix}"][data-url*="master.m3u8"]`).first();
-  await expect(row).toBeVisible({ timeout: 15_000 });
-  await row.getByRole('button').first().click();
-  await expect(row).toContainText('Live stream', { timeout: 15_000 });
-  await row.getByRole('button', { name: /^Download/ }).first().click();
-  const job = manager.locator('[data-testid="job"]').first();
+async function startRecording(popup: Page, prefix = '/live/') {
+  const sheet = await openCandidate(popup, [prefix, 'master.m3u8']);
+  await expect(sheet).toContainText('Live stream', { timeout: 15_000 });
+  const start = sheet.getByTestId('start');
+  await expect(start).toHaveText('Start recording');
+  await start.click();
+  await view(popup, 'Downloads');
+  const job = popup.locator('[data-testid="job"]').first();
   await expect(job.getByTestId('job-status')).toContainText(/Recording \d+:\d\d/, { timeout: 15_000 });
   return job;
 }
@@ -36,24 +37,25 @@ async function startRecording(manager: Page, prefix = '/live/') {
 test('live: records until the stream ends, every frame present', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/live.html');
-  const manager = await magpie.manager();
-  await startRecording(manager);
-  const { jobId, filename } = await finished(manager);
+  const popup = await magpie.popup();
+  await startRecording(popup);
+  const { jobId, filename } = await finished(popup);
   expect(filename).toMatch(/^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/);
   // A recorded live stream stays available: the next recording holds new footage.
-  await expect(manager.locator('[data-testid="candidate"][data-url*="/live/"]').first()).toBeVisible();
-  const file = await magpie.exportJob(manager, jobId, 'live.mp4');
+  await view(popup, 'This page');
+  await expect(popup.locator('[data-testid="candidate"][data-url*="/live/"]').first()).toBeVisible();
+  const file = await magpie.exportJob(popup, jobId, 'live.mp4');
   expectFramesMatch(file, '720');
 });
 
 test('live: Stop saves what was recorded so far', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/live.html');
-  const manager = await magpie.manager();
-  const job = await startRecording(manager);
+  const popup = await magpie.popup();
+  const job = await startRecording(popup);
   await job.getByRole('button', { name: 'Stop' }).click();
-  const { jobId } = await finished(manager);
-  const file = await magpie.exportJob(manager, jobId, 'live-stopped.mp4');
+  const { jobId } = await finished(popup);
+  const file = await magpie.exportJob(popup, jobId, 'live-stopped.mp4');
   // At least the two segments out at the start, 120 frames each, and not the whole clip.
   expectFramesPrefix(file, '720', 240);
 });
@@ -61,10 +63,10 @@ test('live: Stop saves what was recorded so far', async ({ magpie }) => {
 test('live fmp4 stamped hours into the stream: the file starts at 0', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/live.html?src=fmp4');
-  const manager = await magpie.manager();
-  await startRecording(manager, '/live-fmp4/');
-  const { jobId } = await finished(manager);
-  const file = await magpie.exportJob(manager, jobId, 'live-fmp4.mp4');
+  const popup = await magpie.popup();
+  await startRecording(popup, '/live-fmp4/');
+  const { jobId } = await finished(popup);
+  const file = await magpie.exportJob(popup, jobId, 'live-fmp4.mp4');
   // The source fragments are stamped 4 hours in; the saved file runs 0 to 20 s.
   const { start, duration } = probeTimes(file);
   expect(start).toBeLessThan(0.1);

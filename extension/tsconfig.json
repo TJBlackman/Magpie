@@ -6,5 +6,5 @@
     "noUncheckedIndexedAccess": true,
     "types": ["chrome"]
   },
-  "include": [".wxt/wxt.d.ts", "entrypoints", "src", "scripts", "types"]
+  "include": [".wxt/wxt.d.ts", "entrypoints", "src", "scripts", "types", "preview"]
 }

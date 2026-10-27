@@ -1,9 +1,9 @@
 import type { Page } from '@playwright/test';
-import { expect, finished, playAndWait, test } from '../fixtures';
+import { expect, finished, openSettings, playAndWait, start, test, view } from '../fixtures';
 
-/** Record what the manager's job rows go through, so short lived states are not missed. */
-async function watchJobs(manager: Page) {
-  await manager.evaluate(() => {
+/** Record what the popup's job rows go through, so short lived states are not missed. */
+async function watchJobs(popup: Page) {
+  await popup.evaluate(() => {
     const w = window as unknown as { __obs: { maxActive: number; queued: string[]; pcts: number[] } };
     w.__obs = { maxActive: 0, queued: [], pcts: [] };
     const check = () => {
@@ -19,24 +19,17 @@ async function watchJobs(manager: Page) {
   });
 }
 
-async function observed(manager: Page) {
-  return manager.evaluate(() => (window as unknown as { __obs: { maxActive: number; queued: string[]; pcts: number[] } }).__obs);
+async function observed(popup: Page) {
+  return popup.evaluate(() => (window as unknown as { __obs: { maxActive: number; queued: string[]; pcts: number[] } }).__obs);
 }
 
-async function openSlowCandidate(manager: Page) {
-  const row = manager.locator('[data-testid="candidate"][data-url*="/slow/progressive/clip.mp4"]').first();
-  await expect(row).toBeVisible({ timeout: 15_000 });
-  await row.getByRole('button').first().click();
-  const dl = row.getByRole('button', { name: /^Download/ }).first();
-  await expect(dl).toBeVisible({ timeout: 15_000 });
-  return dl;
-}
+const SLOW = '/slow/progressive/clip.mp4';
 
 test('media list leads with the page title, not the URL', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-ts.html');
-  const manager = await magpie.manager();
-  const row = manager.locator('[data-testid="candidate"][data-url*="/media/hls-ts/index.m3u8"]').first();
+  const popup = await magpie.popup();
+  const row = popup.locator('[data-testid="candidate"][data-url*="/media/hls-ts/index.m3u8"]').first();
   await expect(row.getByTestId('candidate-title')).toHaveText('Harbor at Dusk', { timeout: 15_000 });
   await expect(row).toContainText('index.m3u8');
 });
@@ -44,45 +37,48 @@ test('media list leads with the page title, not the URL', async ({ magpie }) => 
 test('progress bar fills while a plain file downloads', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/slow.html');
-  const manager = await magpie.manager();
-  await watchJobs(manager);
-  await (await openSlowCandidate(manager)).click();
-  const job = manager.locator('[data-testid="job"]').first();
+  const popup = await magpie.popup();
+  await watchJobs(popup);
+  await start(popup, SLOW);
+  await view(popup, 'Downloads');
+  const job = popup.locator('[data-testid="job"]').first();
   await expect(job.getByTestId('job-status')).toContainText(/ of .*%/, { timeout: 15_000 });
-  const { filename } = await finished(manager);
+  const { filename } = await finished(popup);
   expect(filename).toBe('Slow River.mp4');
-  const { pcts } = await observed(manager);
+  const { pcts } = await observed(popup);
   const between = [...new Set(pcts.filter((p) => p > 0 && p < 100))];
   expect(between.length, `intermediate percentages seen: ${between.join(', ')}`).toBeGreaterThanOrEqual(3);
   expect([...pcts].sort((a, b) => a - b)).toEqual(pcts);
 });
 
 test('settings limit concurrent downloads and extra clicks queue up', async ({ magpie }) => {
-  const options = await magpie.context.newPage();
-  await options.goto(`chrome-extension://${magpie.extensionId}/options.html`);
-  const input = options.getByTestId('max-concurrent');
+  const settings = await magpie.popup();
+  await openSettings(settings);
+  const input = settings.getByTestId('max-concurrent');
   await expect(input).toHaveValue('2');
-  await options.getByTitle('One fewer').click();
+  await settings.getByTitle('One fewer').click();
   await expect(input).toHaveValue('1');
-  await expect(options.getByTestId('saved')).toHaveClass(/opacity-100/);
+  await expect(settings.getByTestId('saved')).toHaveClass(/opacity-100/);
+  await settings.close();
 
-  const page = await magpie.context.newPage();
-  await playAndWait(page, '/slow.html');
-  const manager = await magpie.manager();
-  await watchJobs(manager);
-  const dl = await openSlowCandidate(manager);
-  await dl.click();
-  await dl.click();
-  await dl.click();
+  // One card per tab: a card with a job already on Downloads will not start a second one.
+  for (let i = 0; i < 3; i++) await playAndWait(await magpie.context.newPage(), '/slow.html');
+  const popup = await magpie.popup();
+  await watchJobs(popup);
+  await start(popup, SLOW);
+  await start(popup, SLOW);
+  await start(popup, SLOW);
 
-  const jobs = manager.locator('[data-testid="job"]');
+  await view(popup, 'Downloads');
+  const jobs = popup.locator('[data-testid="job"]');
   await expect(jobs).toHaveCount(3);
-  await expect(manager.locator('[data-testid="job"][data-state="queued"]')).toHaveCount(2, { timeout: 5_000 });
-  // Each finished download moves from the list to the archive.
-  await expect(manager.getByTestId('archive-entry')).toHaveCount(3, { timeout: 60_000 });
+  await expect(popup.locator('[data-testid="job"][data-state="queued"]')).toHaveCount(2, { timeout: 5_000 });
+  // Each finished download moves from the list to History.
+  await expect(popup.getByTestId('archive-entry')).toHaveCount(3, { timeout: 60_000 });
   await expect(jobs).toHaveCount(0);
+  await expect(popup.getByText('Nothing downloading')).toBeVisible();
 
-  const { maxActive, queued } = await observed(manager);
+  const { maxActive, queued } = await observed(popup);
   expect(maxActive).toBe(1);
   expect(queued).toContain('Waiting, #2 in queue');
   expect(queued).toContain('Waiting, #1 in queue');
@@ -91,45 +87,60 @@ test('settings limit concurrent downloads and extra clicks queue up', async ({ m
 test('clear empties the popup list right away', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-ts.html');
-  const popup = await magpie.context.newPage();
-  await popup.goto(`chrome-extension://${magpie.extensionId}/popup.html`);
-  await page.bringToFront();
-  await popup.reload();
+  const popup = await magpie.popupFor(page);
   await expect(popup.getByTestId('candidate').first()).toBeVisible({ timeout: 15_000 });
-  await popup.getByRole('button', { name: 'clear' }).click();
+  await popup.getByRole('button', { name: 'Clear', exact: true }).click();
   await expect(popup.getByTestId('candidate')).toHaveCount(0, { timeout: 2_000 });
-  await expect(popup.getByText('Nothing yet.')).toBeVisible();
+  await expect(popup.getByText('Nothing detected yet')).toBeVisible();
 });
 
-test('clear finished drops cancelled downloads and keeps running ones', async ({ magpie }) => {
+test('quality sheet closes on Escape and on the veil', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/hls-fmp4.html');
+  const popup = await magpie.popup();
+  const row = popup.locator('[data-testid="candidate"][data-url*="master.m3u8"]').first();
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.getByRole('button').first().click();
+  const sheet = popup.getByTestId('sheet');
+  await expect(sheet.getByTestId('variant')).toHaveCount(3, { timeout: 15_000 });
+  // The top rendition is picked by default and the main button names it.
+  await expect(sheet.getByTestId('variant').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheet.getByTestId('start')).toHaveText('Download 720p');
+  await sheet.getByTestId('variant').nth(2).click();
+  await expect(sheet.getByTestId('start')).toHaveText('Download 360p');
+  await popup.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await row.getByRole('button').first().click();
+  await expect(sheet).toBeVisible();
+  await popup.getByTestId('veil').click({ position: { x: 200, y: 20 } });
+  await expect(sheet).toHaveCount(0);
+});
+
+test('cancel drops a download at once and keeps the others running', async ({ magpie }) => {
   // The crawl page serves its file at about 200 KB/s, so that download runs for about half a minute.
   const crawl = await magpie.context.newPage();
   await playAndWait(crawl, '/crawl.html');
   const slow = await magpie.context.newPage();
   await playAndWait(slow, '/slow.html');
-  const manager = await magpie.manager();
-  const crawlRow = manager.locator('[data-testid="candidate"][data-url*="/crawl/progressive/clip.mp4"]').first();
-  await expect(crawlRow).toBeVisible({ timeout: 15_000 });
-  await crawlRow.getByRole('button').first().click();
-  await crawlRow.getByRole('button', { name: /^Download/ }).first().click();
-  const jobs = manager.getByTestId('job');
-  const running = manager.locator('[data-testid="job"][data-filename="Crawling River.mp4"]');
+  const popup = await magpie.popup();
+  await start(popup, '/crawl/progressive/clip.mp4');
+  const jobs = popup.getByTestId('job');
+  const running = popup.locator('[data-testid="job"][data-filename="Crawling River.mp4"]');
   await expect(running).toHaveAttribute('data-state', 'downloading', { timeout: 15_000 });
-  await (await openSlowCandidate(manager)).click();
+  await start(popup, SLOW);
+  await view(popup, 'Downloads');
   await expect(jobs).toHaveCount(2);
-  await manager.locator('[data-testid="job"][data-filename="Slow River.mp4"]').getByRole('button', { name: 'Cancel' }).click();
-  await expect(jobs.and(manager.locator('[data-state="cancelled"]'))).toHaveCount(1, { timeout: 5_000 });
-
-  const popup = await magpie.context.newPage();
-  await popup.goto(`chrome-extension://${magpie.extensionId}/popup.html`);
-  await expect(popup.getByTestId('job')).toHaveCount(2);
-  await expect(popup.getByRole('button', { name: 'clear finished' })).toBeVisible();
-
-  await manager.getByRole('button', { name: 'Clear finished' }).click();
+  await popup.locator('[data-testid="job"][data-filename="Slow River.mp4"]').getByRole('button', { name: 'Cancel' }).click();
   await expect(jobs).toHaveCount(1, { timeout: 2_000 });
   await expect(running).toHaveAttribute('data-state', 'downloading');
-  await expect(manager.getByRole('button', { name: 'Clear finished' })).toHaveCount(0);
-  await expect(popup.getByTestId('job')).toHaveCount(1, { timeout: 2_000 });
-  await expect(popup.getByRole('button', { name: 'clear finished' })).toHaveCount(0);
+  // Nothing finished or cancelled is listed, in this popup or another.
+  await expect(popup.getByText('Failed')).toHaveCount(0);
+  const other = await magpie.popup();
+  await view(other, 'Downloads');
+  await expect(other.getByTestId('job')).toHaveCount(1);
+
   await running.getByRole('button', { name: 'Cancel' }).click();
+  await expect(jobs).toHaveCount(0, { timeout: 2_000 });
+  await expect(popup.getByText('Nothing downloading')).toBeVisible();
+  await expect(other.getByTestId('job')).toHaveCount(0, { timeout: 2_000 });
 });

@@ -1,19 +1,26 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-ink: #09090b;
-  --color-panel: #18181b;
-  --color-edge: #27272a;
-  --color-mute: #a1a1aa;
+  --color-ink: #0b0f14;
+  --color-panel: #121820;
+  --color-panel2: #171f29;
+  --color-edge: #1f2a36;
+  --color-edge2: #2a3745;
+  --color-text: #e8edf3;
+  --color-mute: #8b98a8;
+  --color-dim: #5d6b7c;
   --color-shine: #22d3ee;
+  --color-shine-ink: #062a31;
+  --color-live: #f43f5e;
 }
 
 html,
 body {
   background: var(--color-ink);
-  color: #e4e4e7;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: var(--color-text);
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, Roboto, sans-serif;
   font-size: 13px;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Progress bar when the total size is unknown: a sliding segment. */
@@ -28,4 +35,79 @@ body {
 .bar-indeterminate {
   width: 40%;
   animation: magpie-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes magpie-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+.sheet-in {
+  animation: magpie-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes magpie-slide {
+  from {
+    transform: translateX(100%);
+  }
+}
+.panel-in {
+  animation: magpie-slide 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes magpie-fade {
+  from {
+    opacity: 0;
+  }
+}
+.veil-in {
+  animation: magpie-fade 0.18s;
+}
+
+@keyframes magpie-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+.pulse {
+  animation: magpie-pulse 1.2s infinite;
+}
+
+/* A row the user was just sent to (a gray card opened on This page). */
+@keyframes magpie-flash {
+  0%,
+  60% {
+    border-color: var(--color-shine);
+    box-shadow: 0 0 0 1px var(--color-shine);
+  }
+}
+.flash {
+  animation: magpie-flash 1.4s ease-out;
+}
+
+@keyframes magpie-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--color-edge) 25%, var(--color-edge2) 50%, var(--color-edge) 75%);
+  background-size: 200% 100%;
+  animation: magpie-shimmer 1.2s infinite;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge2) transparent;
+}
+
+/* Number inputs inside steppers: no spinner, the buttons do that. */
+input[type='number'].plain::-webkit-outer-spin-button,
+input[type='number'].plain::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'].plain {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }

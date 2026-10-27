@@ -1,5 +1,5 @@
 // Firefox smoke test: installs the MV2 build via geckodriver, plays the HLS TS
-// and gated pages, drives the manager page to download, and checks the
+// and gated pages, drives the popup (opened as a page) to download, and checks the
 // resulting file decodes to the reference frames. Playwright's Firefox build
 // cannot load extensions, hence Selenium here.
 //
@@ -59,7 +59,7 @@ async function main() {
 
   const opts = new firefox.Options();
   if (!process.env.HEADED) opts.addArguments('-headless');
-  // Pin the internal UUID so we can navigate to moz-extension://<uuid>/manager.html.
+  // Pin the internal UUID so we can navigate to moz-extension://<uuid>/popup.html.
   opts.setPreference('extensions.webextensions.uuids', JSON.stringify({ [ADDON_ID]: UUID }));
   opts.setPreference('media.autoplay.default', 0);
   opts.setPreference('media.autoplay.blocking_policy', 0);
@@ -95,22 +95,30 @@ async function main() {
   }
 
   /** Marionette refuses to navigate content to moz-extension:// directly; open the tab from the browser chrome instead. */
-  async function openManager() {
+  async function openPopup() {
     await driver.setContext(firefox.Context.CHROME);
     await driver.executeScript(
       `const tab = gBrowser.addTab(arguments[0], { triggeringPrincipal: Services.scriptSecurityManager.getSystemPrincipal() });
        gBrowser.selectedTab = tab;`,
-      `moz-extension://${UUID}/manager.html`,
+      `moz-extension://${UUID}/popup.html`,
     );
     await driver.setContext(firefox.Context.CONTENT);
     for (const handle of (await driver.getAllWindowHandles()).reverse()) {
       await driver.switchTo().window(handle);
-      if ((await driver.getCurrentUrl()).startsWith(`moz-extension://${UUID}/manager.html`)) return;
+      if ((await driver.getCurrentUrl()).startsWith(`moz-extension://${UUID}/popup.html`)) return;
     }
-    throw new Error('manager tab not found');
+    throw new Error('popup tab not found');
   }
 
-  /** Archive entries in storage.local and storage.session, as seen from an extension page. */
+  /** The quality sheet is open: pick the top rendition and start it. */
+  async function startFromSheet() {
+    const variant = await driver.wait(until.elementLocated(By.css('[data-testid="sheet"] [data-testid="variant"]')), 15_000);
+    await variant.click();
+    await (await driver.findElement(By.css('[data-testid="sheet"] [data-testid="start"]'))).click();
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid="sheet"]'))).length === 0, 10_000, 'sheet never closed');
+  }
+
+  /** History entries in storage.local and storage.session, as seen from an extension page. */
   async function archiveStorage() {
     return JSON.parse(
       await driver.executeAsyncScript(
@@ -129,7 +137,7 @@ async function main() {
     /** Job ids of archive rows already seen, so each case waits for its own. */
     const seen = new Set();
     for (const [page, urlPart, expectName] of [
-      // Live first, while it is the only master playlist in the manager's all tabs list.
+      // Live first, while it is the only master playlist in the popup's all tabs list.
       ['/live.html', '/master.m3u8', /^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/],
       ['/hls-ts.html', '/media/hls-ts/index.m3u8', 'Harbor at Dusk.mp4'],
       ['/gated.html', '/gated/media/index.m3u8', 'Gated HLS.mp4'],
@@ -140,12 +148,16 @@ async function main() {
       await driver.get(`http://127.0.0.1:8787${page}`);
       await driver.wait(async () => driver.executeScript('return window.__magpieReady === true'), 30_000, 'video never started');
 
-      await openManager();
+      await openPopup();
       const row = await driver.wait(until.elementLocated(By.css(`[data-testid="candidate"][data-url*="${urlPart}"]`)), 15_000);
+      // A frame of the stream, decoded in the background page, shows on the card.
+      const thumb = await driver.wait(until.elementLocated(By.css(`[data-testid="candidate"][data-url*="${urlPart}"] [data-testid="thumb"]`)), 8_000).catch(() => null);
+      const thumbSrc = thumb ? await thumb.getAttribute('src') : '';
+      console.log('  thumbnail', thumbSrc ? `${thumbSrc.length} chars` : 'MISSING');
+      if (!thumbSrc.startsWith('data:image/jpeg')) failures.push(`${page}: no thumbnail`);
       await (await row.findElement(By.css('button'))).click();
-      const dl = await driver.wait(until.elementLocated(By.xpath(`//*[@data-testid="candidate" and contains(@data-url,"${urlPart}")]//button[starts-with(normalize-space(.),"Download")]`)), 15_000);
-      await dl.click();
-      // A finished job leaves the Downloads list and becomes the newest archive row.
+      await startFromSheet();
+      // A finished job leaves the Downloads list and becomes the newest history row. Hidden tabs stay in the DOM.
       const result = await driver.wait(
         async () => {
           const failed = await driver.findElements(By.css('[data-testid="job"][data-state="error"]'));
@@ -157,13 +169,13 @@ async function main() {
         'job never finished',
       );
       if (result.failed) {
-        const text = await result.failed.getText();
+        const text = await result.failed.getAttribute('textContent');
         console.log('  job error', text.replace(/\n/g, ' | '));
         failures.push(`${page}: ${text}`);
         continue;
       }
       seen.add(await result.entry.getAttribute('data-job-id'));
-      console.log('  archived', (await result.entry.getText()).replace(/\n/g, ' | '));
+      console.log('  archived', (await result.entry.getAttribute('textContent')).replace(/\n/g, ' | '));
       const filename = await result.entry.getAttribute('data-file');
       console.log('  filename', filename);
       if (expectName instanceof RegExp ? !expectName.test(filename) : filename !== expectName) failures.push(`${page}: filename ${filename}, expected ${expectName}`);
@@ -219,14 +231,10 @@ async function main() {
         'private window never opened',
       );
       await driver.setContext(firefox.Context.CONTENT);
-      await openManager();
+      await openPopup();
       const row = await driver.wait(until.elementLocated(By.css('[data-testid="candidate"][data-url*="/media/hls-aes/index.m3u8"]')), 20_000);
       await (await row.findElement(By.css('button'))).click();
-      const dl = await driver.wait(
-        until.elementLocated(By.xpath('//*[@data-testid="candidate" and contains(@data-url,"/media/hls-aes/")]//button[starts-with(normalize-space(.),"Download")]')),
-        15_000,
-      );
-      await dl.click();
+      await startFromSheet();
       const entry = await driver.wait(
         async () => {
           const [first] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-child'));

@@ -23,9 +23,8 @@ export const api = {
   cancel: (jobId: string) => call<null>({ type: 'cancel', jobId }),
   stop: (jobId: string) => call<null>({ type: 'stop', jobId }),
   removeJob: (jobId: string) => call<null>({ type: 'removeJob', jobId }),
-  clearFinished: () => call<null>({ type: 'clearFinished' }),
+  clearFailed: () => call<null>({ type: 'clearFailed' }),
   jobs: () => call<Job[]>({ type: 'jobs' }),
-  openSettings: () => call<null>({ type: 'openSettings' }),
   archive: () => call<ArchiveEntry[]>({ type: 'archive' }),
   removeArchive: (id: string) => call<null>({ type: 'removeArchive', id }),
   clearArchive: () => call<null>({ type: 'clearArchive' }),
@@ -62,9 +61,9 @@ export function useEvents(handler: (event: Extract<Envelope, { magpie: 'ui' }>['
   }, [handler]);
 }
 
-/** Running jobs first (oldest first), then the queue in order, then finished jobs newest first. */
+/** Running jobs first (oldest first), then the queue in order, then failed jobs newest first. */
 export function orderJobs(jobs: Job[]): Job[] {
-  const rank = (j: Job) => (j.state === 'queued' ? 1 : ['done', 'error', 'cancelled'].includes(j.state) ? 2 : 0);
+  const rank = (j: Job) => (j.state === 'queued' ? 1 : j.state === 'error' ? 2 : 0);
   return [...jobs].sort((a, b) => {
     const r = rank(a) - rank(b);
     if (r) return r;
@@ -119,12 +118,4 @@ export function useArchive(): ArchiveEntry[] {
 /** Open a page the archive links to in a new tab. */
 export function openPage(url: string) {
   void browser.tabs.create({ url });
-}
-
-export function openManager() {
-  void browser.tabs.create({ url: browser.runtime.getURL('/manager.html') });
-}
-
-export function showDownload(downloadId: number) {
-  void browser.downloads.show(downloadId);
 }

@@ -2,7 +2,7 @@
 
 A browser extension that collects streaming video from the page you are watching and saves it as one file. Chrome and Firefox from one codebase. Personal project, no store listing. Download the latest build and install steps at [magpie.trevorblackman.dev](https://magpie.trevorblackman.dev).
 
-What works in v0.3:
+What works in v0.4:
 
 | Delivery | Detect | Download | Verified by |
 |---|---|---|---|
@@ -26,12 +26,10 @@ What works in v0.3:
 extension/   WXT + React + Tailwind v4. Builds dist/chrome-mv3 and dist/firefox-mv2
   entrypoints/background.ts   sniffer (webRequest observe only) + message router
   entrypoints/offscreen/      Chrome only: hosts the engine (service workers cannot make blob URLs)
-  entrypoints/popup/          media on this tab, quality picker, active jobs, archive
-  entrypoints/manager/        all tabs, all jobs, archive
-  entrypoints/options/        settings page (max concurrent downloads, archive size)
-  src/core/                   HLS parser, detection rules, filenames, archive matching (pure, unit tested)
+  entrypoints/popup/          the whole UI: This page, Downloads and History tabs, quality sheet, settings panel
+  src/core/                   HLS parser, detection rules, filenames, history matching (pure, unit tested)
   src/engine/                 fetch pool, AES, TS to MP4 remux, OPFS output, job state, MP4 duration
-  src/background/             sniffer, archive store, per browser Referer rules (DNR on Chrome, webRequest on Firefox)
+  src/background/             sniffer, history store, per browser Referer rules (DNR on Chrome, webRequest on Firefox)
 testsite/    Go server + ffmpeg fixture script + player pages (hls.js, dash.js, native)
 e2e/         Playwright (Chrome, loads the unpacked build) and a Selenium smoke test for Firefox
 website/     magpie.trevorblackman.dev: static site/ plus wrangler config and deploy script
@@ -49,11 +47,19 @@ pnpm build                         # both browser builds
 pnpm fixtures                      # runs ffmpeg in WSL, writes testsite/public/media (gitignored)
 pnpm server:build                  # testsite/server/magpie-testsite.exe
 pnpm test:unit
-pnpm test:e2e                      # Chrome, 20 tests, about 1 minute
+pnpm test:e2e                      # Chrome, 27 tests, about 2 minutes
 pnpm test:firefox                  # Firefox, 4 cases (one live), about 30 s
 ```
 
 To poke at the test site by hand: `pnpm server`, then open http://127.0.0.1:8787.
+
+## Previewing the popup
+
+```powershell
+pnpm preview
+```
+
+Opens http://localhost:5179 with the real popup rendered against a fake background (`extension/preview/fake-browser.ts` stands in for `wxt/browser`): nature videos on a page, downloads that progress and queue, a live cam, history and settings. Edits under `extension/src/ui` and `extension/entrypoints/popup` hot reload. The bar above the popup switches between the toolbar popup view and the opened as a page view, and between scenarios (default, empty, busy). Nothing in `extension/preview` ships in the extension.
 
 ## Installing for daily use
 
@@ -75,19 +81,27 @@ It stores the key and checks it against AMO. `extension/scripts/sign-firefox.ps1
 
 AMO refuses to sign a version number twice, so every signed build needs a new version.
 
+## The popup
+
+Everything lives in the popup: three tabs (This page, Downloads, History) and a settings panel behind the gear. A card on This page opens a sheet that lists the stream's renditions; pick one and press Download, or Start recording for a live stream. The Downloads tab shows running and queued jobs, and any that failed. A download that finishes leaves the tab the moment it is saved; a cancelled one leaves at once. Opened as a page of its own (`popup.html` in a tab), This page lists media from every open tab grouped by page, and `popup.html?tab=<id>` shows one tab the way the toolbar popup would. The e2e tests drive both.
+
+## Thumbnails
+
+Every row shows a frame of its stream. The frame comes from the stream itself, not the page: the engine fetches one segment of the lowest quality rendition (or the first megabyte of a plain file), decrypts and remuxes it the way a download would, decodes it in a hidden video element in the engine's own document, and keeps one frame as a 128 by 72 JPEG of a few kilobytes. Capture runs for the streams a popup is showing, one at a time, at most once per stream, and only while "Show thumbnails" in Settings is on. Nothing is fetched when the popup is closed or the setting is off. The frame travels with the item: the download row and the history entry show the same picture, and history stores it. DASH streams, DRM, MP4 files with their index at the end, and streams whose sample does not decode keep the kind icon.
+
 ## Settings and the queue
 
-Open Settings from the popup or the Downloads page. "Maximum concurrent downloads" (default 2, range 1 to 10) caps how many downloads run at once. Every extra Download click joins a first in, first out queue and starts when a running download finishes. Raising the limit starts queued downloads right away. Cancel removes a queued download without starting it.
+Open Settings from the gear in the popup. "Parallel downloads" (default 2, range 1 to 10) caps how many downloads run at once. Every extra Download click joins a first in, first out queue and starts when a running download finishes. Raising the limit starts queued downloads right away. Cancel removes a queued download without starting it.
 
 The media list shows the page title first and the stream's host and file name underneath. Plain files show bytes of total, percent, speed and time left. HLS shows segments done, percent, speed and an estimate of time left.
 
-## Archive
+## History
 
-A finished download leaves the Downloads list and goes to the archive, shown in the popup and on the Downloads page. Each entry holds the page title, the saved file name (on hover), the date, the length and the page URL, a few hundred bytes in all. The URL opens the page in a new tab, so you can check it is the video you think it is. The length comes from the HLS playlist, the recorded seconds of a live stream, or the movie header of a plain MP4; WebM and other files show none.
+A finished download leaves the Downloads list and goes to History, the popup's third tab. In the code and in storage it is still called the archive. Each entry holds the page title, the saved file name (on hover), the date, the length and the page URL, a few hundred bytes in all. The URL opens the page in a new tab, so you can check it is the video you think it is. The length comes from the HLS playlist, the recorded seconds of a live stream, or the movie header of a plain MP4; WebM and other files show none.
 
-"Archive size" in Settings (default 25, range 0 to 500) caps the list. A new entry pushes out the oldest, and lowering the number deletes the oldest ones at once. The field saves on Enter or when you leave it, so typing 50 over 25 never saves a 5 first. 0 turns the archive off, and finished downloads then stay in the Downloads list as in 0.2.
+"History size" in Settings (default 25, range 0 to 500) caps the list. A new entry pushes out the oldest, and lowering the number deletes the oldest ones at once. The field saves on Enter or when you leave it, so typing 50 over 25 never saves a 5 first. 0 turns history off; finished downloads then leave the Downloads tab without a record, and the file is in your downloads folder.
 
-Media already in the archive is left out of "Media on this page" and the toolbar badge. "N downloaded" next to the count shows those rows again with a DOWNLOADED tag, and they can still be downloaded. The × on an entry removes it, and its media counts as new again. "clear archive" asks for a second click.
+Media already in history is left out of This page and the toolbar badge. "N downloaded" in the heading shows those rows again, gray with a DOWNLOADED tag, and they can still be downloaded. A card whose download is queued or running also goes gray, with an IN DOWNLOADS tag; opening it switches to the Downloads tab and points at the job instead of starting a second one. The × on an entry removes it, and its media counts as new again. "Clear history" asks for a second click. The search box filters by title, file name and page.
 
 A stream counts as downloaded when either holds:
 
@@ -96,9 +110,9 @@ A stream counts as downloaded when either holds:
 
 Numeric ids, hex ids (ObjectIds, hashes) and UUIDs always count, as does a time shaped value under a name ending in `id`, so `?id=1234567` and `?id=1234568` stay apart. When another stream on the same page has the same shape but a different URL (a course page, a feed), the page rule is off for that page and only the exact URL counts. Live streams are never hidden, since the next recording holds new footage.
 
-The archive lives in the extension's own storage and never leaves the browser. Entries from private windows (Chrome incognito with "Allow in Incognito", Firefox private windows including "Always use private browsing mode") are kept in `storage.session` and forgotten when the last private window closes, like the rest of private browsing. "Remember downloads from private windows" in Settings keeps them with the rest.
+History lives in the extension's own storage and never leaves the browser. Entries from private windows (Chrome incognito with "Allow in Incognito", Firefox private windows including "Always use private browsing mode") are kept in `storage.session` and forgotten when the last private window closes, like the rest of private browsing. "Remember downloads from private windows" in Settings keeps them with the rest.
 
-Finished downloads no longer have a Show button, because the archive keeps no download id. The file is in your downloads folder under the name shown on hover.
+Nothing in the popup opens the saved file, because history keeps no download id. The file is in your downloads folder under the name shown on hover.
 
 ## Live streams
 
@@ -135,7 +149,7 @@ Measured with a throwaway soak harness that replays streams at 60x through the r
 3. The engine fetches segments 4 at a time, never more than 12 ahead of the writer, decrypts AES-128 if present, and appends them in order to a file in OPFS. TS segments go through mux.js and come out as fragmented MP4. fMP4 segments are written as is after the init segment.
 4. Before fetching, the engine asks the background to set a Referer and Origin rule for the CDN host (declarativeNetRequest session rule on Chrome scoped to the extension's own requests, blocking `onBeforeSendHeaders` on Firefox). Cookies go along because fetches use `credentials: include` and the extension has host permission.
 5. The finished OPFS file becomes a blob URL and goes to `downloads.download`. The OPFS copy is deleted five minutes later.
-6. The engine reports the finished job to the background, which adds it to the archive, and the job leaves the Downloads list. In Chrome that is a message from the offscreen document, which has no storage API.
+6. The engine reports the finished job to the background, which adds it to history, and the job leaves the Downloads list. In Chrome that is a message from the offscreen document, which has no storage API.
 
 Chrome's service worker can be killed any time, so the engine lives in an offscreen document, which Chrome keeps alive. Firefox builds as MV2 with a persistent background page for the same reason, and because MV2 grants host permissions at install instead of asking per site.
 
@@ -161,7 +175,7 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 - Firefox refuses OPFS when it runs in "Always use private browsing mode". Magpie then holds the download in memory until it saves, so RAM use equals the file size, twice that while saving. Live recordings there save in 2 GB parts; other downloads do not. `pnpm test:firefox:private` covers this mode.
 - Filenames come from the page at the moment you click Download: JSON-LD video name, then `og:title`, `twitter:title`, `<title>`, `<h1>`, with a trailing or leading site name removed. If the tab has moved to another page, the title seen when the stream was detected is used instead.
 - Firefox is tested through Selenium, not Playwright, because Playwright's Firefox build cannot load extensions.
-- The archive misses a video, and shows it as available, when the site serves it from a different CDN host on the next visit, or signs the path in a segment without `=` or `~`.
+- History misses a video, and shows it as available, when the site serves it from a different CDN host on the next visit, or signs the path in a segment without `=` or `~`.
 
 ## Website
 
@@ -176,3 +190,5 @@ pnpm release -Version 0.2.2   # exact version
 ```
 
 `scripts/release.ps1` runs typecheck and unit tests, bumps `extension/package.json`, builds both zips, has Mozilla sign the Firefox build (`pnpm sign:firefox`), and runs `website/deploy.ps1`. The deploy script copies the Chrome zip and signed xpi into `website/site`, rewrites the download links and version label in `index.html`, deletes files from older versions, runs `wrangler deploy`, and warns if the xpi is not served as `application/x-xpinstall`. Commit `extension/package.json` and `index.html` afterwards. The zips and xpi themselves are gitignored.
+
+The page uses the popup's own palette (the `@theme` block in `extension/src/ui/style.css`) and shows screenshots of the real popup from `website/site/shots`. After a UI change, `pnpm site:shots` recaptures them: it starts the preview harness on port 5180 and photographs This page, the quality sheet, Downloads, History and the all tabs view with Playwright from `e2e/`. The pictures are committed, so a release without UI changes needs no recapture.

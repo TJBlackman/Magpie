@@ -4,12 +4,16 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { downloadsDir, extensionDir, refDir } from './paths';
 
+export type View = 'This page' | 'Downloads' | 'History';
+
 export interface Magpie {
   context: BrowserContext;
   extensionId: string;
   worker: Worker;
-  /** Open the extension's manager page. */
-  manager(): Promise<Page>;
+  /** Open the popup as a page of its own, where "This page" lists media from every open tab, grouped by page. */
+  popup(): Promise<Page>;
+  /** Open the popup for one tab (`popup.html?tab=<id>`), the view the toolbar popup gives for that tab. */
+  popupFor(page: Page): Promise<Page>;
   /** Pull a finished job's file out of OPFS and write it to e2e/downloads. */
   exportJob(page: Page, jobId: string, name: string): Promise<string>;
 }
@@ -33,9 +37,17 @@ export const test = base.extend<{ magpie: Magpie }>({
       context,
       extensionId,
       worker,
-      async manager() {
+      async popup() {
         const page = await context.newPage();
-        await page.goto(`chrome-extension://${extensionId}/manager.html`);
+        await page.goto(`chrome-extension://${extensionId}/popup.html`);
+        return page;
+      },
+      async popupFor(target) {
+        const page = await context.newPage();
+        await page.goto(`chrome-extension://${extensionId}/popup.html`);
+        const id = await page.evaluate((url) => chrome.tabs.query({}).then((tabs) => tabs.find((t) => t.url === url)?.id), target.url());
+        if (id === undefined) throw new Error(`no tab at ${target.url()}`);
+        await page.goto(`chrome-extension://${extensionId}/popup.html?tab=${id}`);
         return page;
       },
       async exportJob(page, jobId, name) {
@@ -125,33 +137,63 @@ export async function playAndWait(page: Page, path: string) {
   await page.waitForFunction(() => (window as unknown as { __magpieReady?: boolean }).__magpieReady === true, null, { timeout: 30_000 });
 }
 
-/** Click a candidate row by URL substring, then the Nth variant's Download button. */
-export async function download(manager: Page, urlPart: string, variantIndex = 0) {
-  const row = manager.locator(`[data-testid="candidate"][data-url*="${urlPart}"]`).first();
-  await expect(row).toBeVisible({ timeout: 15_000 });
-  await row.getByRole('button').first().click();
-  const buttons = row.getByRole('button', { name: /^Download/ });
-  await expect(buttons.first()).toBeVisible({ timeout: 15_000 });
-  const previous = await newestEntry(manager);
-  await buttons.nth(variantIndex).click();
-  return finished(manager, previous);
+/** Switch the popup to one of its three tabs. The other two stay mounted but hidden. */
+export async function view(popup: Page, name: View) {
+  await popup.getByRole('tab', { name }).click();
 }
 
-/** The newest archive row's job id, '' when the archive is empty. */
-export async function newestEntry(manager: Page): Promise<string> {
-  const first = manager.getByTestId('archive-entry').first();
+/** Open the popup's settings panel. */
+export async function openSettings(popup: Page) {
+  await popup.getByRole('button', { name: 'Settings' }).click();
+  await expect(popup.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+}
+
+/** Click a candidate card whose URL contains every part given. The quality sheet slides up and inspects it. */
+export async function openCandidate(popup: Page, urlPart: string | string[]) {
+  await view(popup, 'This page');
+  const parts = Array.isArray(urlPart) ? urlPart : [urlPart];
+  // A card with a job already on Downloads opens that tab, never the sheet, so pick one without.
+  const row = popup.locator('[data-testid="candidate"]:not([data-state="queued"])' + parts.map((p) => `[data-url*="${p}"]`).join('')).first();
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await row.getByRole('button').first().click();
+  const sheet = popup.getByTestId('sheet');
+  await expect(sheet).toBeVisible();
+  return sheet;
+}
+
+/** Open a candidate, pick the Nth rendition and start it. Resolves once the sheet has closed. */
+export async function start(popup: Page, urlPart: string, variantIndex = 0) {
+  const sheet = await openCandidate(popup, urlPart);
+  const variants = sheet.getByTestId('variant');
+  await expect(variants.first()).toBeVisible({ timeout: 15_000 });
+  await variants.nth(variantIndex).click();
+  await sheet.getByTestId('start').click();
+  await expect(sheet).toHaveCount(0);
+}
+
+/** Start a download of the candidate's Nth rendition and wait for it to finish. */
+export async function download(popup: Page, urlPart: string, variantIndex = 0) {
+  const previous = await newestEntry(popup);
+  await start(popup, urlPart, variantIndex);
+  return finished(popup, previous);
+}
+
+/** The newest history row's job id, '' when history is empty. */
+export async function newestEntry(popup: Page): Promise<string> {
+  const first = popup.getByTestId('archive-entry').first();
   return (await first.count()) ? ((await first.getAttribute('data-job-id')) ?? '') : '';
 }
 
 /**
  * Wait for the next download to finish. A finished job leaves the Downloads
- * list for the archive, so this waits for a newest archive row other than
- * `previous` (rows are newest first), or a failed job.
+ * list for History, so this waits for a newest history row other than
+ * `previous` (rows are newest first), or a failed job. Both tabs stay in the
+ * DOM while hidden, so this works whichever tab is showing.
  */
-export async function finished(manager: Page, previous = '') {
-  const newest = manager.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-child:not([data-job-id="${previous}"])`);
-  const failed = manager.locator('[data-testid="job"][data-state="error"]');
-  await expect(newest.or(failed.first())).toBeVisible({ timeout: 90_000 });
+export async function finished(popup: Page, previous = '') {
+  const newest = popup.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-child:not([data-job-id="${previous}"])`);
+  const failed = popup.locator('[data-testid="job"][data-state="error"]');
+  await expect(newest.or(failed.first())).toBeAttached({ timeout: 90_000 });
   if (await failed.count()) throw new Error(`job failed: ${await failed.first().textContent()}`);
   return {
     jobId: (await newest.getAttribute('data-job-id'))!,

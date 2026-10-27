@@ -125,6 +125,41 @@ export default defineBackground(() => {
     });
   }
 
+  /*
+   * Thumbnails are captured for the candidates a popup shows, one at a time,
+   * at most once per stream, and only while the setting is on. A list request
+   * replaces the pending set, so closing the popup stops the work soon after.
+   */
+  /** Streams whose capture failed, with when: tried again after a minute, since the cause is often a link that expired or an engine still starting. */
+  const thumbFailed = new Map<string, number>();
+  const THUMB_RETRY = 60_000;
+  let thumbPending: Candidate[] = [];
+  let thumbInFlight: string | null = null;
+  let thumbBusy = false;
+
+  function wantThumbs(list: Candidate[]) {
+    if (!settings.thumbnails) return;
+    thumbPending = list.filter((c) => !c.thumb && !c.archived && c.kind !== 'dash' && Date.now() - (thumbFailed.get(c.id) ?? 0) > THUMB_RETRY && c.id !== thumbInFlight);
+    void drainThumbs();
+  }
+
+  async function drainThumbs() {
+    if (thumbBusy) return;
+    thumbBusy = true;
+    try {
+      while (thumbPending.length && settings.thumbnails) {
+        const c = thumbPending.shift()!;
+        thumbInFlight = c.id;
+        const r = await toEngine({ type: 'thumbnail', candidate: c }).catch((e) => err(String(e)));
+        thumbInFlight = null;
+        if (r.ok && typeof r.value === 'string') sniffer.setThumb(c.id, r.value);
+        else thumbFailed.set(c.id, Date.now());
+      }
+    } finally {
+      thumbBusy = false;
+    }
+  }
+
   async function handleUi(req: UiRequest): Promise<Result<unknown>> {
     switch (req.type) {
       case 'activeTab': {
@@ -137,7 +172,9 @@ export default defineBackground(() => {
         const list = await sniffer.forTab(req.tabId);
         const byTab = new Map<number, Candidate[]>();
         for (const c of list) byTab.set(c.tabId, [...(byTab.get(c.tabId) ?? []), c]);
-        return ok(list.map((c) => (archive.has(c, byTab.get(c.tabId)) ? { ...c, archived: true } : c)));
+        const shown = list.map((c) => (archive.has(c, byTab.get(c.tabId)) ? { ...c, archived: true } : c));
+        wantThumbs(shown);
+        return ok(shown);
       }
       case 'archive':
         return ok(await archive.list());
@@ -146,9 +183,6 @@ export default defineBackground(() => {
         return ok(null);
       case 'clearArchive':
         await archive.clear();
-        return ok(null);
-      case 'openSettings':
-        await browser.runtime.openOptionsPage();
         return ok(null);
       case 'clearCandidates':
         sniffer.clear(req.tabId);
@@ -171,8 +205,8 @@ export default defineBackground(() => {
         return toEngine({ type: 'stop', jobId: req.jobId });
       case 'removeJob':
         return toEngine({ type: 'removeJob', jobId: req.jobId });
-      case 'clearFinished':
-        return toEngine({ type: 'clearFinished' });
+      case 'clearFailed':
+        return toEngine({ type: 'clearFailed' });
       case 'jobs': {
         if (!import.meta.env.FIREFOX && !(await offscreenExists())) return ok(latestJobs);
         return toEngine({ type: 'jobs' });

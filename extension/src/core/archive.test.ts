@@ -25,7 +25,7 @@ const entry = (over: Partial<ArchiveEntry> = {}): ArchiveEntry => ({
 
 /** Is a candidate at `url` on `pageUrl` hidden once `downloaded` (on `downloadedPage`) is archived? `siblings` are other streams in the tab. */
 function hides(downloaded: string, downloadedPage: string, url: string, pageUrl: string, live = false, siblings: string[] = []): boolean {
-  const e = makeEntry({ id: 'x', filename: 'f.mp4', finishedAt: 1 }, { url: downloaded, pageUrl: downloadedPage, pageTitle: 'T' });
+  const e = makeEntry({ id: 'x', filename: 'f.mp4', finishedAt: 1 }, { url: downloaded, pageUrl: downloadedPage, pageTitle: 'T', kind: 'hls' });
   return isArchived({ url, pageUrl, live }, indexArchive([e]), siblings.map((u) => ({ url: u, pageUrl })));
 }
 
@@ -146,7 +146,7 @@ describe('makeEntry', () => {
   it('keeps what the archive shows and the stream key', () => {
     const e = makeEntry(
       { id: 'j9', filename: 'Night Train [480p].mp4', finishedAt: 5 },
-      { url: 'https://cdn.example/v/1/master.m3u8?Signature=abc123def456ghi789', pageUrl: 'https://site.example/watch/1', pageTitle: 'Night Train' },
+      { url: 'https://cdn.example/v/1/master.m3u8?Signature=abc123def456ghi789', pageUrl: 'https://site.example/watch/1', pageTitle: 'Night Train', kind: 'hls' },
       20.04,
     );
     expect(e).toEqual({
@@ -156,11 +156,12 @@ describe('makeEntry', () => {
       page: 'https://site.example/watch/1',
       src: 'https://cdn.example/v/1/master.m3u8',
       at: 5,
+      kind: 'hls',
       secs: 20,
     });
   });
   it('leaves out an unknown length, marks private windows, and drops a huge page URL', () => {
-    const e = makeEntry({ id: 'j', filename: 'f.mp4' }, { url: 'https://a.example/f.mp4', pageUrl: `https://a.example/?q=${'x'.repeat(3000)}`, pageTitle: '', incognito: true });
+    const e = makeEntry({ id: 'j', filename: 'f.mp4' }, { url: 'https://a.example/f.mp4', pageUrl: `https://a.example/?q=${'x'.repeat(3000)}`, pageTitle: '', incognito: true, kind: 'file' });
     expect(e.secs).toBeUndefined();
     expect(e.priv).toBe(true);
     expect(e.page).toBe('');
