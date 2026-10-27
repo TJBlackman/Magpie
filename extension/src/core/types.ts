@@ -107,7 +107,9 @@ export type UiRequest =
   | { type: 'activeTab' }
   | { type: 'archive' }
   | { type: 'removeArchive'; id: string }
-  | { type: 'clearArchive' };
+  | { type: 'clearArchive' }
+  /** Thumbnails for rows that arrived in a change event, which carries none. Answered with a ThumbMap. */
+  | { type: 'thumbs'; jobs?: string[]; archive?: string[] };
 
 /** Messages the background forwards to the engine host. */
 export type EngineRequest =
@@ -132,6 +134,7 @@ export type Envelope =
   | { magpie: 'bg'; req: UiRequest }
   | { magpie: 'engine'; req: EngineRequest }
   | { magpie: 'engine-to-bg'; req: EngineToBg }
+  /** Change events. `jobs` and `archive` rows come without thumbnails; the UI keeps those from list answers and asks `thumbs` for new rows. */
   | { magpie: 'ui'; event: { type: 'jobs'; jobs: Job[] } | { type: 'candidates'; tabId: number } | { type: 'archive'; entries: ArchiveEntry[] } };
 
 export interface Ok<T> {

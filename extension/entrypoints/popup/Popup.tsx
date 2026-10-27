@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { api, useArchive, useCandidates, useJobs, useSettings } from '../../src/ui/api';
 import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Toast } from '../../src/ui/components';
@@ -54,7 +54,8 @@ export function Popup() {
   }, []);
   const [candidates, refreshCandidates] = useCandidates(scope?.tabId, scope !== null);
   const [showDownloaded, setShowDownloaded] = useState(false);
-  const fresh = candidates.filter((c) => !c.archived);
+  // Derived lists are memoized: the popup re-renders with every progress event while something downloads.
+  const fresh = useMemo(() => candidates.filter((c) => !c.archived), [candidates]);
   const downloaded = candidates.length - fresh.length;
   const shown = showDownloaded ? candidates : fresh;
 
@@ -71,20 +72,24 @@ export function Popup() {
   const archive = useArchive();
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
-  const matches = q ? archive.filter((e) => e.title.toLowerCase().includes(q) || e.file.toLowerCase().includes(q) || e.page.toLowerCase().includes(q)) : archive;
+  const matches = useMemo(() => (q ? archive.filter((e) => e.title.toLowerCase().includes(q) || e.file.toLowerCase().includes(q) || e.page.toLowerCase().includes(q)) : archive), [archive, q]);
 
   const [view, setView] = useState<View>('page');
-  /** A gray card does not start a second download: it shows the job it already has. */
-  const showJob = (jobId: string) => {
+  const [sheetId, setSheetId] = useState<string | null>(null);
+  /** Opens a card's sheet, or for a gray card shows the job it already has instead of starting a second download. Stable, so memoized cards skip re-rendering. */
+  const openCard = useCallback((c: Candidate, queuedJobId?: string) => {
+    if (!queuedJobId) {
+      setSheetId(c.id);
+      return;
+    }
     setView('jobs');
     requestAnimationFrame(() => {
-      const row = document.querySelector<HTMLElement>(`[data-testid="job"][data-job-id="${jobId}"]`);
+      const row = document.querySelector<HTMLElement>(`[data-testid="job"][data-job-id="${queuedJobId}"]`);
       row?.scrollIntoView({ block: 'nearest' });
       row?.classList.add('flash');
       row?.addEventListener('animationend', () => row.classList.remove('flash'), { once: true });
     });
-  };
-  const [sheetId, setSheetId] = useState<string | null>(null);
+  }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -104,13 +109,17 @@ export function Popup() {
   }, []);
 
   // In the all tabs view, cards group under the page they play on.
-  const groups: { key: string; page: string; list: Candidate[] }[] = [];
-  for (const c of shown) {
-    const key = scope?.all ? `${c.tabId}|${c.pageUrl}` : '';
-    const g = groups.find((x) => x.key === key);
-    if (g) g.list.push(c);
-    else groups.push({ key, page: c.pageUrl, list: [c] });
-  }
+  const all = scope?.all ?? false;
+  const groups = useMemo(() => {
+    const out: { key: string; page: string; list: Candidate[] }[] = [];
+    for (const c of shown) {
+      const key = all ? `${c.tabId}|${c.pageUrl}` : '';
+      const g = out.find((x) => x.key === key);
+      if (g) g.list.push(c);
+      else out.push({ key, page: c.pageUrl, list: [c] });
+    }
+    return out;
+  }, [shown, all]);
 
   const tab = (v: View, label: string, pill: ReactNode) => (
     <button type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`flex h-[30px] flex-1 items-center justify-center gap-1.5 rounded-lg text-[12.5px] font-medium transition ${view === v ? 'bg-panel2 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.04),0_2px_6px_rgba(0,0,0,.35)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:text-text'}`}>
@@ -164,17 +173,7 @@ export function Popup() {
                 </div>
               )}
               {g.list.map((c) => (
-                <CandidateCard
-                  key={c.id}
-                  candidate={c}
-                  thumbs={thumbs}
-                  queued={queued.has(c.id)}
-                  onOpen={() => {
-                    const jobId = queued.get(c.id);
-                    if (jobId) showJob(jobId);
-                    else setSheetId(c.id);
-                  }}
-                />
+                <CandidateCard key={c.id} candidate={c} thumbs={thumbs} queuedJobId={queued.get(c.id)} onOpen={openCard} />
               ))}
             </div>
           ))

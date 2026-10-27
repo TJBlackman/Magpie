@@ -10,6 +10,7 @@ import { passthroughSink, patchDurations, sniffContainer, tsSink, type Sink, typ
 import type { Platform } from './platform';
 import { OutputFile } from './store';
 import { FILE_SAMPLE, SEGMENT_CAP, THUMB_TIMEOUT, fetchPrefix, frameFromMp4 } from './thumbnail';
+import { withoutThumb } from '../core/thumbs';
 
 const PARALLEL = 4;
 const WINDOW = 12;
@@ -599,9 +600,10 @@ export class Engine {
       }, 250);
     }
   }
+  /** Change notice without thumbnails: those travel once, with a list answer, not several times a second. */
   private emit() {
     this.lastEmit = Date.now();
-    this.platform.jobsChanged(this.list());
+    this.platform.jobsChanged(this.list().map(withoutThumb));
   }
 }
 

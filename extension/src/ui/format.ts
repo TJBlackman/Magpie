@@ -48,6 +48,16 @@ export function jobProgress(job: {
   return job.segmentsTotal ? job.segmentsDone / job.segmentsTotal : null;
 }
 
+/** A smoothed bytes per second from one more byte count. The rate holds when no bytes arrived. */
+export type RateSample = { t: number; b: number; rate: number };
+export function nextRate(prev: RateSample | null, bytes: number, now: number): RateSample {
+  if (!prev) return { t: now, b: bytes, rate: 0 };
+  if (bytes === prev.b) return prev;
+  if (bytes < prev.b || now <= prev.t) return { t: now, b: bytes, rate: prev.rate };
+  const sample = ((bytes - prev.b) * 1000) / (now - prev.t);
+  return { t: now, b: bytes, rate: prev.rate ? prev.rate * 0.7 + sample * 0.3 : sample };
+}
+
 export function fmtRate(bytesPerSec: number): string {
   return `${fmtBytes(Math.round(bytesPerSec))}/s`;
 }

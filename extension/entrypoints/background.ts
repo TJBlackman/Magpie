@@ -6,6 +6,7 @@ import { pageTitleFor } from '../src/background/pagetitle';
 import { Archive } from '../src/background/archive';
 import type { ArchiveEntry } from '../src/core/archive';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
+import { pickThumbs, withoutThumb, type ThumbMap } from '../src/core/thumbs';
 import { err, ok, type Candidate, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
@@ -16,7 +17,8 @@ export default defineBackground(() => {
   const archive = new Archive();
   sniffer.isHidden = (c, shown) => archive.has(c, shown);
   archive.onChange = (entries) => {
-    const env: Envelope = { magpie: 'ui', event: { type: 'archive', entries } };
+    // Without thumbnails: 500 entries with frames would be over a megabyte per change.
+    const env: Envelope = { magpie: 'ui', event: { type: 'archive', entries: entries.map(withoutThumb) } };
     browser.runtime.sendMessage(env).catch(() => {});
     void sniffer.rebadgeAll();
   };
@@ -210,6 +212,15 @@ export default defineBackground(() => {
       case 'jobs': {
         if (!import.meta.env.FIREFOX && !(await offscreenExists())) return ok(latestJobs);
         return toEngine({ type: 'jobs' });
+      }
+      case 'thumbs': {
+        const out: ThumbMap = { jobs: {}, archive: {} };
+        if (req.jobs?.length) {
+          const r = await handleUi({ type: 'jobs' });
+          if (r.ok) out.jobs = pickThumbs(r.value as Job[], req.jobs);
+        }
+        if (req.archive?.length) out.archive = pickThumbs(await archive.list(), req.archive);
+        return ok(out);
       }
     }
   }

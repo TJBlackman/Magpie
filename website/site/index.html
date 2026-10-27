@@ -32,12 +32,11 @@
   nav .pill { font-size:13px; color:var(--mute); border:1px solid var(--edge); background:var(--panel); padding:6px 12px; border-radius:999px; }
   nav .pill b { color:var(--fg); font-weight:600; }
 
-  .hero { text-align:center; padding:88px 0 64px; }
-  .badge { display:inline-flex; gap:8px; align-items:center; font-size:13px; color:var(--mute); border:1px solid var(--edge); background:var(--panel); padding:6px 14px 6px 10px; border-radius:999px; margin-bottom:28px; }
-  .badge i { width:8px; height:8px; border-radius:50%; background:var(--shine); box-shadow:0 0 8px rgba(34,211,238,.7); }
+  .hero { text-align:center; padding:64px 0 64px; }
   h1 { font-size:clamp(44px, 7vw, 80px); font-weight:800; letter-spacing:-.04em; line-height:1.02; margin:0; }
   h1 span { background:linear-gradient(90deg, var(--shine), var(--indigo)); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .hero p { color:var(--mute); font-size:19px; max-width:56ch; margin:24px auto 0; }
+  .hero .tag { font-size:21px; font-weight:600; letter-spacing:-.01em; margin:22px auto 0; }
+  .hero p { color:var(--mute); font-size:19px; max-width:56ch; margin:14px auto 0; }
   .nos { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:26px; }
   .nos span { display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:var(--fg); border:1px solid var(--edge); background:var(--panel); padding:7px 14px; border-radius:999px; }
   .nos svg { width:15px; height:15px; color:var(--live); }
@@ -75,13 +74,13 @@
   .note { margin-top:18px; font-size:13.5px; color:#fde68a; background:rgba(245,158,11,.1); border-radius:10px; padding:10px 12px; }
 
   .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
-  .steps div { border:1px solid var(--edge); border-radius:16px; padding:22px; background:var(--panel); }
+  .steps > div { border:1px solid var(--edge); border-radius:16px; padding:22px; background:var(--panel); }
   .steps .n { font-size:12px; font-weight:700; color:var(--shine); letter-spacing:.1em; text-transform:uppercase; margin-bottom:10px; }
   .steps h4 { margin:0 0 6px; font-size:16px; }
   .steps p { margin:0; color:var(--mute); font-size:14px; }
 
   .feats { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-top:48px; }
-  .feats div { border:1px solid var(--edge); border-radius:18px; padding:22px; background:var(--panel); }
+  .feats > div { border:1px solid var(--edge); border-radius:18px; padding:22px; background:var(--panel); }
   .feats .ico { width:36px; height:36px; border-radius:10px; display:grid; place-items:center; background:rgba(34,211,238,.12); color:var(--shine); margin-bottom:14px; }
   .feats .ico.live { background:rgba(244,63,94,.15); color:var(--live); }
   .feats .ico svg { width:19px; height:19px; }
@@ -117,12 +116,12 @@
 <div class="wrap">
   <nav>
     <div class="brand"><img src="/icon.png" alt="">Magpie</div>
-    <div class="right"><a class="gh" href="https://github.com/TJBlackman/Magpie"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0012 .5z"/></svg><span>Source</span></a><div class="pill">v<b>0.4.0</b> &middot; Chrome + Firefox</div></div>
+    <div class="right"><a class="gh" href="https://github.com/TJBlackman/Magpie"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 016 0C17.3 4.7 18.3 5 18.3 5c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0012 .5z"/></svg><span>Source</span></a><div class="pill">v<b>0.4.1</b> &middot; Chrome + Firefox</div></div>
   </nav>
 
   <div class="hero">
-    <div class="badge"><i></i>A private video downloader you run yourself</div>
     <h1>Save the video.<br><span>Keep your privacy.</span></h1>
+    <div class="tag">A private video downloader you run yourself.</div>
     <p>Magpie saves the stream behind any player as one clean MP4. There is no company in the middle. You install it, it runs in your browser, and what you watch stays on your machine.</p>
     <div class="nos">
       <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>No ads</span>
@@ -131,8 +130,8 @@
       <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>No account</span>
     </div>
     <div class="ctas">
-      <a class="btn primary" href="/magpie-0.4.0-chrome.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Download for Chrome</a>
-      <a class="btn" href="/magpie-0.4.0-firefox.xpi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Download for Firefox</a>
+      <a class="btn primary" href="/magpie-0.4.1-chrome.zip" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Download for Chrome</a>
+      <a class="btn" href="/magpie-0.4.1-firefox.xpi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>Download for Firefox</a>
     </div>
 
     <div class="shots two">
@@ -148,7 +147,7 @@
       <div class="card chrome">
         <h3><span class="logos"><img class="logo" src="/icons/chrome.svg" alt="Chrome" width="26" height="26"><img class="logo" src="/icons/edge.svg" alt="Edge" width="26" height="26"><img class="logo" src="/icons/brave.svg" alt="Brave" width="26" height="26"></span>Chromium based browsers</h3>
         <div class="meta">Chrome, Edge, Brave, or any browser built on Chromium 116 or newer.</div>
-        <a class="btn primary" href="/magpie-0.4.0-chrome.zip" download>Download zip</a>
+        <a class="btn primary" href="/magpie-0.4.1-chrome.zip" download>Download zip</a>
         <ol>
           <li><span>Unzip the download to a folder you will keep.</span></li>
           <li><span>Open <code>chrome://extensions</code>. In Edge it is <code>edge://extensions</code>, in Brave <code>brave://extensions</code>.</span></li>
@@ -160,7 +159,7 @@
       <div class="card firefox">
         <h3><img class="logo" src="/icons/firefox.svg" alt="" width="28" height="28">Firefox</h3>
         <div class="meta">Firefox 140 or newer. Stays installed across restarts.</div>
-        <a class="btn" href="/magpie-0.4.0-firefox.xpi">Install for Firefox</a>
+        <a class="btn" href="/magpie-0.4.1-firefox.xpi">Install for Firefox</a>
         <ol>
           <li><span>Click the button above in Firefox.</span></li>
           <li><span>Click <b>Continue to Installation</b>, then <b>Add</b>.</span></li>
@@ -186,9 +185,9 @@
     <h2>Inside the popup</h2>
     <p class="sub">Three tabs and a settings panel. Nothing else to open.</p>
     <div class="shots three">
+      <div class="shot"><img src="/shots/page.png" width="400" height="580" alt="The This page tab listing the streams on a page, each with a frame of the video" loading="lazy"><p><b>This page.</b> Every stream the tab is playing, with a frame of each. Media you already have is hidden, and media that is downloading goes gray.</p></div>
       <div class="shot"><img src="/shots/downloads.png" width="400" height="580" alt="The Downloads tab with two running downloads, one queued, and one that failed" loading="lazy"><p><b>Downloads.</b> Running, queued and failed, with speed and time left. Finished ones leave the list the moment they are saved.</p></div>
       <div class="shot"><img src="/shots/history.png" width="400" height="580" alt="The History tab listing downloaded videos with dates, lengths and page links" loading="lazy"><p><b>History.</b> Title, date, length and the page it came from. Search it, or clear it.</p></div>
-      <div class="shot"><img src="/shots/all-tabs.png" width="400" height="580" alt="The popup opened as a page, listing media from every open tab grouped by page" loading="lazy"><p><b>Every tab at once.</b> Opened as a page of its own, the list covers every open tab, grouped by page.</p></div>
     </div>
     <div class="feats">
       <div><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 15l5-5 4 4 3-3 6 6"/></svg></div><h3>A frame of every stream</h3><p>The picture comes from the stream itself, not the page: one segment, decoded in your browser, kept as a few kilobytes. Off in Settings if you prefer.</p></div>

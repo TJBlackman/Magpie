@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Candidate, Envelope, Inspection, Job, Result, UiRequest } from '../core/types';
 import { SETTINGS_KEY, normalizeSettings, type Settings } from '../core/settings';
 import type { ArchiveEntry } from '../core/archive';
+import type { ThumbMap } from '../core/thumbs';
+import { ThumbCache } from './thumbs';
 
 export async function call<T>(req: UiRequest): Promise<Result<T>> {
   const env: Envelope = { magpie: 'bg', req };
@@ -28,6 +30,7 @@ export const api = {
   archive: () => call<ArchiveEntry[]>({ type: 'archive' }),
   removeArchive: (id: string) => call<null>({ type: 'removeArchive', id }),
   clearArchive: () => call<null>({ type: 'clearArchive' }),
+  thumbs: (ids: { jobs?: string[]; archive?: string[] }) => call<ThumbMap>({ type: 'thumbs', ...ids }),
 };
 
 /** Current settings plus a saver. null until loaded. Follows changes made elsewhere. */
@@ -49,17 +52,36 @@ export function useSettings(): [Settings | null, (next: Settings) => Promise<voi
   return [settings, save];
 }
 
-/** Subscribe to broadcast events from the background / engine. */
-export function useEvents(handler: (event: Extract<Envelope, { magpie: 'ui' }>['event']) => void) {
+type UiEvent = Extract<Envelope, { magpie: 'ui' }>['event'];
+
+/**
+ * Subscribe to broadcast events from the background / engine. The listener is
+ * added once; the handler is read through a ref, so a new closure each render
+ * does not remove and re-add the listener several times a second.
+ */
+export function useEvents(handler: (event: UiEvent) => void) {
+  const latest = useRef(handler);
+  useEffect(() => {
+    latest.current = handler;
+  });
   useEffect(() => {
     const listener = (raw: unknown) => {
       const msg = raw as Envelope;
-      if (msg && msg.magpie === 'ui') handler(msg.event);
+      if (msg && msg.magpie === 'ui') latest.current(msg.event);
     };
     browser.runtime.onMessage.addListener(listener);
     return () => browser.runtime.onMessage.removeListener(listener);
-  }, [handler]);
+  }, []);
 }
+
+/*
+ * Thumbnails come with list answers and never with change events, which fire
+ * several times a second while something downloads. These caches live as long
+ * as the popup and fill rows from events; a row they have never seen is asked
+ * about once.
+ */
+const jobThumbs = new ThumbCache();
+const archiveThumbs = new ThumbCache();
 
 /** Running jobs first (oldest first), then the queue in order, then failed jobs newest first. */
 export function orderJobs(jobs: Job[]): Job[] {
@@ -75,11 +97,22 @@ export function orderJobs(jobs: Job[]): Job[] {
 
 export function useJobs(): Job[] {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const apply = (rows: Job[]) => {
+    const filled = jobThumbs.fill(rows);
+    setJobs(orderJobs(filled));
+    const ids = jobThumbs.missing(filled);
+    if (!ids.length) return;
+    void api.thumbs({ jobs: ids }).then((r) => {
+      if (!r.ok) return;
+      jobThumbs.learn(r.value.jobs);
+      setJobs((cur) => jobThumbs.fill(cur));
+    });
+  };
   useEffect(() => {
-    void api.jobs().then((r) => r.ok && setJobs(orderJobs(r.value)));
+    void api.jobs().then((r) => r.ok && apply(r.value));
   }, []);
   useEvents((e) => {
-    if (e.type === 'jobs') setJobs(orderJobs(e.jobs));
+    if (e.type === 'jobs') apply(e.jobs);
   });
   return jobs;
 }
@@ -106,11 +139,22 @@ export function useCandidates(tabId: number | undefined, enabled = true): [Candi
 /** Archive entries, newest first, following changes. */
 export function useArchive(): ArchiveEntry[] {
   const [entries, setEntries] = useState<ArchiveEntry[]>([]);
+  const apply = (rows: ArchiveEntry[]) => {
+    const filled = archiveThumbs.fill(rows);
+    setEntries(filled);
+    const ids = archiveThumbs.missing(filled);
+    if (!ids.length) return;
+    void api.thumbs({ archive: ids }).then((r) => {
+      if (!r.ok) return;
+      archiveThumbs.learn(r.value.archive);
+      setEntries((cur) => archiveThumbs.fill(cur));
+    });
+  };
   useEffect(() => {
-    void api.archive().then((r) => r.ok && setEntries(r.value));
+    void api.archive().then((r) => r.ok && apply(r.value));
   }, []);
   useEvents((e) => {
-    if (e.type === 'archive') setEntries(e.entries);
+    if (e.type === 'archive') apply(e.entries);
   });
   return entries;
 }

@@ -1,11 +1,16 @@
+import { memo } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtClock, fmtDate, fmtDateTime, isWebUrl, kindOfUrl, shortUrl } from './format';
 import { Empty, IconButton, KindBadge, MediaRow, MediaTile } from './components';
 import { IconHistory, IconX } from './icons';
 
-/** One finished download: the same row it had on the page, with the date, length and a link to the page it came from. */
-export function HistoryRow({ entry, thumbs }: { entry: ArchiveEntry; thumbs: boolean }) {
+/**
+ * One finished download: the same row it had on the page, with the date, length
+ * and a link to the page it came from. Memoized: entries only change on an
+ * archive event, while the popup re-renders with every progress event.
+ */
+export const HistoryRow = memo(function HistoryRow({ entry, thumbs }: { entry: ArchiveEntry; thumbs: boolean }) {
   const page = entry.page;
   const kind = entry.kind ?? kindOfUrl(entry.src);
   return (
@@ -51,10 +56,10 @@ export function HistoryRow({ entry, thumbs }: { entry: ArchiveEntry; thumbs: boo
       }
     />
   );
-}
+});
 
 /** History entries, or a line saying there are none. */
-export function HistoryList({ entries, total, query, thumbs }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean }) {
+export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean }) {
   if (!total) {
     return (
       <Empty icon={<IconHistory size={26} />} title="Nothing downloaded yet">
@@ -70,4 +75,4 @@ export function HistoryList({ entries, total, query, thumbs }: { entries: Archiv
       ))}
     </div>
   );
-}
+});

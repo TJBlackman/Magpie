@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtClock, fmtDate, fmtEta, isWebUrl, jobProgress, sourceLabel } from './format';
+import { fmtClock, fmtDate, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
 import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
@@ -82,5 +82,28 @@ describe('live recordings', () => {
   });
   it('number the parts of a recording saved in parts', () => {
     expect(withPart('Harbor Cam 2026-10-21 15.04.mp4', 2)).toBe('Harbor Cam 2026-10-21 15.04 part 2.mp4');
+  });
+});
+
+describe('nextRate', () => {
+  it('starts at zero and takes the first sample as is', () => {
+    const a = nextRate(null, 1000, 0);
+    expect(a.rate).toBe(0);
+    const b = nextRate(a, 2000, 500);
+    expect(b.rate).toBe(2000);
+  });
+  it('smooths later samples', () => {
+    const a = nextRate(nextRate(null, 0, 0), 1000, 1000);
+    const b = nextRate(a, 3000, 2000);
+    expect(b.rate).toBeCloseTo(1000 * 0.7 + 2000 * 0.3);
+  });
+  it('returns the same sample when no bytes arrived, so a render without progress changes nothing', () => {
+    const a = nextRate(nextRate(null, 0, 0), 1000, 1000);
+    expect(nextRate(a, 1000, 1500)).toBe(a);
+  });
+  it('holds the rate across a reset or a clock that did not move', () => {
+    const a = nextRate(nextRate(null, 0, 0), 1000, 1000);
+    expect(nextRate(a, 10, 2000).rate).toBe(1000);
+    expect(nextRate(a, 2000, 1000).rate).toBe(1000);
   });
 });

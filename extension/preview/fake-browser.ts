@@ -11,6 +11,7 @@
  *   ?scenario=busy     many pages, many downloads, long history
  */
 import type { ArchiveEntry } from '../src/core/archive';
+import { pickThumbs, withoutThumb } from '../src/core/thumbs';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type Result, type UiRequest, type Variant } from '../src/core/types';
 
@@ -229,8 +230,9 @@ function emit(event: Extract<Envelope, { magpie: 'ui' }>['event']) {
   const env: Envelope = { magpie: 'ui', event };
   uiListeners.forEach((fn) => fn(env));
 }
-const emitJobs = () => emit({ type: 'jobs', jobs: state.jobs });
-const emitArchive = () => emit({ type: 'archive', entries: state.archive });
+// Change events carry no thumbnails, like the real background; the popup asks `thumbs` for rows it has not seen.
+const emitJobs = () => emit({ type: 'jobs', jobs: state.jobs.map(withoutThumb) });
+const emitArchive = () => emit({ type: 'archive', entries: state.archive.map(withoutThumb) });
 
 const inHistory = (c: Candidate) => !c.live && state.archive.some((e) => e.src === c.url);
 
@@ -445,6 +447,8 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
       state.archive = [];
       emitArchive();
       return ok(null);
+    case 'thumbs':
+      return ok({ jobs: pickThumbs(state.jobs, req.jobs), archive: pickThumbs(state.archive, req.archive) });
   }
 }
 

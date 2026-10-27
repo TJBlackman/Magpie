@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import type { Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { fmtBytes, sourceLabel } from './format';
@@ -34,10 +34,13 @@ function Meta({ candidate, queued }: { candidate: Candidate; queued?: boolean })
 
 /**
  * One piece of media on a page. The whole card opens the quality sheet.
- * `queued` means a job for it is on the Downloads tab: the card goes gray
- * and opening it shows that job instead of starting another.
+ * `queuedJobId` names a job for it on the Downloads tab: the card goes gray
+ * and opening it shows that job instead of starting another. Memoized, since
+ * the list re-renders with every progress event while something downloads;
+ * `onOpen` must be a stable function for that to pay off.
  */
-export function CandidateCard({ candidate, thumbs, queued, onOpen }: { candidate: Candidate; thumbs: boolean; queued?: boolean; onOpen: () => void }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, queuedJobId, onOpen }: { candidate: Candidate; thumbs: boolean; queuedJobId?: string; onOpen: (candidate: Candidate, queuedJobId?: string) => void }) {
+  const queued = !!queuedJobId;
   const title = candidate.pageTitle || sourceLabel(candidate.url);
   const done = candidate.archived || queued;
   const action = done ? 'bg-edge text-mute' : candidate.live ? 'bg-live text-white shadow-[0_2px_8px_rgba(244,63,94,.35)]' : 'bg-shine text-shine-ink shadow-[0_2px_8px_rgba(34,211,238,.3)]';
@@ -49,7 +52,7 @@ export function CandidateCard({ candidate, thumbs, queued, onOpen }: { candidate
       titleTip={title}
       titleTestId="candidate-title"
       meta={<Meta candidate={candidate} queued={queued} />}
-      onOpen={onOpen}
+      onOpen={() => onOpen(candidate, queuedJobId)}
       openTip={candidate.archived ? 'Download this again' : queued ? 'Already downloading. Show it in Downloads' : candidate.live ? 'Record this stream' : 'Download this video'}
       dim={done}
       action={
@@ -59,7 +62,7 @@ export function CandidateCard({ candidate, thumbs, queued, onOpen }: { candidate
       }
     />
   );
-}
+});
 
 /** "1080p" from a variant's resolution, for the sheet's main button. */
 function shortName(v: Variant): string {

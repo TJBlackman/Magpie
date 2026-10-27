@@ -47,7 +47,7 @@ pnpm build                         # both browser builds
 pnpm fixtures                      # runs ffmpeg in WSL, writes testsite/public/media (gitignored)
 pnpm server:build                  # testsite/server/magpie-testsite.exe
 pnpm test:unit
-pnpm test:e2e                      # Chrome, 27 tests, about 2 minutes
+pnpm test:e2e                      # Chrome, 28 tests, about 2 minutes
 pnpm test:firefox                  # Firefox, 4 cases (one live), about 30 s
 ```
 
@@ -87,7 +87,7 @@ Everything lives in the popup: three tabs (This page, Downloads, History) and a 
 
 ## Thumbnails
 
-Every row shows a frame of its stream. The frame comes from the stream itself, not the page: the engine fetches one segment of the lowest quality rendition (or the first megabyte of a plain file), decrypts and remuxes it the way a download would, decodes it in a hidden video element in the engine's own document, and keeps one frame as a 128 by 72 JPEG of a few kilobytes. Capture runs for the streams a popup is showing, one at a time, at most once per stream, and only while "Show thumbnails" in Settings is on. Nothing is fetched when the popup is closed or the setting is off. The frame travels with the item: the download row and the history entry show the same picture, and history stores it. DASH streams, DRM, MP4 files with their index at the end, and streams whose sample does not decode keep the kind icon.
+Every row shows a frame of its stream. The frame comes from the stream itself, not the page: the engine fetches one segment of the lowest quality rendition (or the first megabyte of a plain file), decrypts and remuxes it the way a download would, decodes it in a hidden video element in the engine's own document, and keeps one frame as a 128 by 72 JPEG of a few kilobytes. Capture runs for the streams a popup is showing, one at a time, at most once per stream, and only while "Show thumbnails" in Settings is on. Nothing is fetched when the popup is closed or the setting is off. The frame travels with the item: the download row and the history entry show the same picture, and history stores it. It travels once, though: list answers carry thumbnails, change events (job progress several times a second, history changes) do not, and the popup asks `thumbs` by id for a row it has not seen. The popup also subscribes to events once instead of per render, memoizes the card and history rows, and derives the download speed during render, so a progress event costs one render of the rows that changed. DASH streams, DRM, MP4 files with their index at the end, and streams whose sample does not decode keep the kind icon.
 
 ## Settings and the queue
 

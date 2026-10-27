@@ -1,29 +1,25 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import type { Job } from '../core/types';
 import { api } from './api';
-import { fmtBytes, fmtClock, fmtEta, fmtRate, jobProgress, shortVariant, sourceLabel } from './format';
+import { fmtBytes, fmtClock, fmtEta, fmtRate, jobProgress, nextRate, shortVariant, sourceLabel, type RateSample } from './format';
 import { Badge, Button, IconButton, KindBadge, MediaRow, MediaTile } from './components';
 import { IconStop, IconX } from './icons';
 
-/** Smoothed bytes per second for an active job, from the byte counts it reports. */
+/**
+ * Smoothed bytes per second for an active job, from the byte counts it reports.
+ * Derived during render from the last sample, so a progress event costs one
+ * render, not a render plus an effect that sets state and renders again. The
+ * ref only changes when the byte count did, so rendering twice with the same
+ * props (StrictMode) reads the same answer.
+ */
 function useRate(bytes: number, active: boolean): number {
-  const last = useRef<{ t: number; b: number } | null>(null);
-  const [rate, setRate] = useState(0);
-  useEffect(() => {
-    if (!active) {
-      last.current = null;
-      setRate(0);
-      return;
-    }
-    const now = Date.now();
-    const prev = last.current;
-    if (prev && now > prev.t && bytes > prev.b) {
-      const sample = ((bytes - prev.b) * 1000) / (now - prev.t);
-      setRate((r) => (r ? r * 0.7 + sample * 0.3 : sample));
-    }
-    if (!prev || bytes !== prev.b) last.current = { t: now, b: bytes };
-  }, [bytes, active]);
-  return rate;
+  const last = useRef<RateSample | null>(null);
+  if (!active) {
+    last.current = null;
+    return 0;
+  }
+  last.current = nextRate(last.current, bytes, Date.now());
+  return last.current.rate;
 }
 
 function statusText(job: Job, pct: number | null, rate: number): string {
