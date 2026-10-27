@@ -1,7 +1,9 @@
-// Firefox smoke test: installs the MV2 build via geckodriver, plays the HLS TS
-// and gated pages, drives the popup (opened as a page) to download, and checks the
-// resulting file decodes to the reference frames. Playwright's Firefox build
-// cannot load extensions, hence Selenium here.
+// Firefox smoke test: installs the MV2 build via geckodriver, plays the live,
+// HLS TS, gated, fMP4 master and separate audio (fMP4 and MPEG-TS) pages,
+// drives the popup (opened as a page) to download, and checks the resulting
+// file decodes to the reference frames; the separate audio cases also check the
+// audio packets and that Firefox itself plays the merged file. Playwright's
+// Firefox build cannot load extensions, hence Selenium here.
 //
 //   node e2e/firefox-smoke.mjs            (expects the test server on :8787)
 import { Builder, By, until } from 'selenium-webdriver';
@@ -9,7 +11,7 @@ import firefox from 'selenium-webdriver/firefox.js';
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ext = join(root, 'extension', 'dist', 'firefox-mv2');
@@ -51,6 +53,19 @@ function frameHashes(file) {
 }
 function refHashes(name) {
   return readFileSync(join(refDir, `${name}.framemd5`), 'utf8').split('\n').filter((l) => l && !l.startsWith('#')).map((l) => l.split(/,\s*/).slice(-2).join(','));
+}
+/**
+ * Encoded audio packet hashes, the sixth framemd5 field, like expectAudioMatch
+ * in fixtures.ts. Not the last field: the first AAC packet of an MP4 with an
+ * edit list carries skip samples side data, which framemd5 appends.
+ */
+function audioPackets(file) {
+  const args = ['-hide_banner', '-loglevel', 'error', '-i', wslPath(file), '-map', '0:a', '-c', 'copy', '-f', 'framemd5', '-'];
+  const out = process.platform === 'win32' ? execFileSync('wsl', ['-u', 'trevor', '--', 'ffmpeg', ...args], { encoding: 'utf8', maxBuffer: 1 << 26 }) : execFileSync('ffmpeg', args, { encoding: 'utf8', maxBuffer: 1 << 26 });
+  return out.split('\n').filter((l) => l.trim() && !l.startsWith('#')).map((l) => l.split(',')[5].trim());
+}
+function refPackets() {
+  return readFileSync(join(refDir, 'audio.packets'), 'utf8').split('\n').map((l) => l.trim()).filter(Boolean);
 }
 
 async function main() {
@@ -130,18 +145,56 @@ async function main() {
     );
   }
 
+  /**
+   * Play a saved file in a tab of its own at 4x and report how it went: the
+   * first Firefox check that a merged two track file decodes in Firefox itself,
+   * not only in ffmpeg. Returns to the popup tab afterwards.
+   */
+  async function playSaved(file) {
+    const popup = await driver.getWindowHandle();
+    await driver.switchTo().newWindow('tab');
+    try {
+      await driver.get(pathToFileURL(file).href);
+      await driver.manage().setTimeouts({ script: 40_000 });
+      return JSON.parse(
+        await driver.executeAsyncScript(`
+          const done = arguments[0];
+          const v = document.querySelector('video');
+          if (!v) return done(JSON.stringify({ error: 'no video element' }));
+          const report = (extra) =>
+            done(JSON.stringify({ ended: v.ended, error: v.error && (v.error.message || v.error.code), hasAudio: v.mozHasAudio, duration: v.duration, frames: v.getVideoPlaybackQuality().totalVideoFrames, at: v.currentTime, ...extra }));
+          v.muted = true;
+          v.addEventListener('ended', () => report({}));
+          v.addEventListener('error', () => report({}));
+          setTimeout(() => report({ timeout: true }), 30000);
+          v.playbackRate = 4;
+          v.play().catch((e) => report({ playError: String(e) }));
+        `),
+      );
+    } catch (e) {
+      return { error: String(e) };
+    } finally {
+      await driver.close();
+      await driver.switchTo().window(popup);
+    }
+  }
+
   try {
     await driver.installAddon(ext, true);
     if (PRIVATE) await allowPrivateBrowsing();
 
     /** Job ids of archive rows already seen, so each case waits for its own. */
     const seen = new Set();
-    for (const [page, urlPart, expectName] of [
+    for (const [page, urlPart, expectName, merged] of [
       // Live first, while it is the only master playlist in the popup's all tabs list.
       ['/live.html', '/master.m3u8', /^Harbor Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/],
       ['/hls-ts.html', '/media/hls-ts/index.m3u8', 'Harbor at Dusk.mp4'],
       ['/gated.html', '/gated/media/index.m3u8', 'Gated HLS.mp4'],
       ['/hls-fmp4.html', '/media/hls-fmp4/master.m3u8', 'Night Train, multi rendition [720p].mp4'],
+      // Video and a separate audio rendition merged into one file: packets checked too, and Firefox plays it.
+      ['/hls-altaudio.html', '/media/hls-altaudio/master.m3u8', 'HLS separate audio [720p].mp4', true],
+      // The same with both renditions in MPEG-TS, each through mux.js on its own before the merge.
+      ['/hls-altaudio-ts.html', '/media/hls-altaudio-ts/master.m3u8', 'HLS separate audio TS [720p].mp4', true],
     ]) {
       console.log(`== ${page}`);
       await driver.switchTo().newWindow('tab');
@@ -202,6 +255,16 @@ async function main() {
       const same = got.length === want.length && got.every((h, i) => h === want[i]);
       console.log(`  frames ${got.length}/${want.length} ${same ? 'MATCH' : 'MISMATCH'}`);
       if (!same) failures.push(`${page}: frame hashes differ`);
+      if (merged) {
+        const packets = audioPackets(file);
+        const wantPackets = refPackets();
+        const sameAudio = packets.length === wantPackets.length && packets.every((h, i) => h === wantPackets[i]);
+        console.log(`  audio packets ${packets.length}/${wantPackets.length} ${sameAudio ? 'MATCH' : 'MISMATCH'}`);
+        if (!sameAudio) failures.push(`${page}: audio packet hashes differ`);
+        const play = await playSaved(file);
+        console.log('  firefox playback', JSON.stringify(play));
+        if (!play.ended || play.error || !play.hasAudio) failures.push(`${page}: Firefox did not play the merged file through: ${JSON.stringify(play)}`);
+      }
     }
 
     // Downloads from private windows stay out of storage.local unless the user keeps them.

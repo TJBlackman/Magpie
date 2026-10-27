@@ -14,11 +14,15 @@
   <li><a href="/crawl.html">Crawling progressive MP4</a> (throttled to about 200 KB/s, a download that keeps running)</li>
   <li><a href="/hls-ts.html">HLS, MPEG-TS segments</a></li>
   <li><a href="/hls-fmp4.html">HLS, fMP4, 3 renditions</a> (master playlist, quality picker)</li>
-  <li><a href="/hls-altaudio.html">HLS, separate audio rendition</a> (phase 2: merge)</li>
+  <li><a href="/hls-altaudio.html">HLS, separate audio rendition</a> (merged into one MP4)</li>
+  <li><a href="/hls-altaudio-ts.html">HLS, MPEG-TS with a separate TS audio rendition</a> (merged into one MP4)</li>
   <li><a href="/hls-aes.html">HLS, AES-128 encrypted</a></li>
   <li><a href="/hls-byterange.html">HLS, byte range single file</a></li>
   <li><a href="/live.html">Live HLS</a> (records until Stop or the stream ends; <a href="/live.html?churn=cachebust">cache buster</a> and <a href="/live.html?churn=msn">LL-HLS</a> URL churn)</li>
-  <li><a href="/dash.html">DASH</a> (detected, phase 2: download)</li>
+  <li><a href="/live-dash.html">Live DASH</a> (dynamic MPD, a segment every 4 s, turns static after about 24 s)</li>
+  <li><a href="/dash.html">DASH</a> (<code>$Number$</code> template, two qualities, audio merged)</li>
+  <li><a href="/dash-timeline.html">DASH, SegmentTimeline</a> (<code>$Time$</code> segment names)</li>
+  <li><a href="/dash-single.html">DASH, SegmentBase</a> (one file per representation, Range requests)</li>
   <li><a href="/gated.html">Gated</a> (segments need the session cookie and a site Referer)</li>
   <li><a href="/hidden.html">Hidden</a> (manifest URL without extension, wrong MIME; phase 3: MSE capture)</li>
 </ol>

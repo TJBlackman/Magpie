@@ -90,11 +90,11 @@ export default defineBackground(() => {
     return res ?? err('Engine did not answer.');
   }
 
-  // Inspect each new HLS manifest right away: a master's variant playlists then
-  // fold under it, and a playlist without an end shows as live. The engine keeps
-  // the result, so expanding the row later costs nothing.
+  // Inspect each new HLS or DASH manifest right away: a master's variant
+  // playlists and the files an MPD lists then fold under it, and a playlist
+  // without an end shows as live. The engine keeps the result, so expanding
+  // the row later costs nothing.
   sniffer.onManifest = (c) => {
-    if (c.kind !== 'hls') return;
     toEngine({ type: 'inspect', candidate: c })
       .then((r) => r.ok && sniffer.learn(c.id, r.value as Inspection))
       .catch(() => {});
@@ -141,7 +141,7 @@ export default defineBackground(() => {
 
   function wantThumbs(list: Candidate[]) {
     if (!settings.thumbnails) return;
-    thumbPending = list.filter((c) => !c.thumb && !c.archived && c.kind !== 'dash' && Date.now() - (thumbFailed.get(c.id) ?? 0) > THUMB_RETRY && c.id !== thumbInFlight);
+    thumbPending = list.filter((c) => !c.thumb && !c.archived && Date.now() - (thumbFailed.get(c.id) ?? 0) > THUMB_RETRY && c.id !== thumbInFlight);
     void drainThumbs();
   }
 

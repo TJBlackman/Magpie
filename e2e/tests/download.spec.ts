@@ -1,4 +1,15 @@
-import { download, expect, expectFramesMatch, openCandidate, playAndWait, start, test, view } from '../fixtures';
+import type { Page } from '@playwright/test';
+import { download, expect, expectAudioMatch, expectAvPair, expectFramesMatch, finished, newestEntry, openCandidate, playAndWait, start, test, view } from '../fixtures';
+
+/** Open a candidate's sheet, check its top rendition's label, and download that rendition. */
+async function downloadChecked(popup: Page, urlPart: string, label: string | RegExp) {
+  const previous = await newestEntry(popup);
+  const sheet = await openCandidate(popup, urlPart);
+  await expect(sheet.getByTestId('variant').first()).toContainText(label, { timeout: 15_000 });
+  await sheet.getByTestId('start').click();
+  await expect(sheet).toHaveCount(0);
+  return finished(popup, previous);
+}
 
 test('progressive mp4: detected as FILE and saved byte for byte', async ({ magpie }) => {
   const page = await magpie.context.newPage();
@@ -86,13 +97,93 @@ test('gated: segment fetches carry the session cookie and site Referer', async (
   expectFramesMatch(file, '720');
 });
 
-test('dash: detected but reported as not yet supported', async ({ magpie }) => {
+test('hls altaudio fmp4: video and audio merged', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/hls-altaudio.html');
+  const popup = await magpie.popup();
+  const { jobId, filename } = await downloadChecked(popup, 'hls-altaudio/master.m3u8', '+ audio_0');
+  expect(filename).toBe('HLS separate audio [720p].mp4');
+  const file = await magpie.exportJob(popup, jobId, 'hls-altaudio.mp4');
+  expectFramesMatch(file, '720');
+  expectAudioMatch(file);
+  expectAvPair(file);
+});
+
+test('hls altaudio ts: video and audio merged', async ({ magpie }) => {
+  // Both renditions are MPEG-TS: each goes through mux.js on its own, and the two tracks join like fMP4 ones.
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/hls-altaudio-ts.html');
+  const popup = await magpie.popup();
+  const { jobId, filename } = await downloadChecked(popup, 'hls-altaudio-ts/master.m3u8', '+ audio_0');
+  expect(filename).toBe('HLS separate audio TS [720p].mp4');
+  const file = await magpie.exportJob(popup, jobId, 'hls-altaudio-ts.mp4');
+  expectFramesMatch(file, '720');
+  expectAudioMatch(file);
+  expectAvPair(file);
+});
+
+test('dash: picks 360p, merges audio', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/dash.html');
   const popup = await magpie.popup();
-  const sheet = await openCandidate(popup, 'manifest.mpd');
-  await expect(sheet.getByTestId('inspect-error')).toContainText('DASH', { timeout: 15_000 });
-  await expect(sheet.getByTestId('start')).toHaveCount(0);
+  // Representations are sorted by bandwidth descending: 720p, 360p.
+  const { jobId, filename } = await download(popup, 'dash/manifest.mpd', 1);
+  expect(filename).toContain('[360p]');
+  const file = await magpie.exportJob(popup, jobId, 'dash-360.mp4');
+  expectFramesMatch(file, '360');
+  // The MPD lists 5 of the 6 audio chunks ffmpeg wrote, so the last packet is missing.
+  expectAudioMatch(file, { allowMissing: 1 });
+  expectAvPair(file);
+});
+
+test('dash: 720p, with its length in history', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/dash.html');
+  const popup = await magpie.popup();
+  const { jobId, filename } = await downloadChecked(popup, 'dash/manifest.mpd', /1280x720 .* \+ audio$/);
+  expect(filename).toBe('DASH [720p].mp4');
+  const file = await magpie.exportJob(popup, jobId, 'dash-720.mp4');
+  expectFramesMatch(file, '720');
+  // The MPD lists 5 of the 6 audio chunks ffmpeg wrote, so the last packet is missing.
+  expectAudioMatch(file, { allowMissing: 1 });
+  expectAvPair(file);
+  await view(popup, 'History');
+  await expect(popup.getByTestId('archive-entry').first()).toContainText('0:20');
+  await view(popup, 'This page');
+  await expect(popup.locator('[data-testid="candidate"][data-url*="dash/manifest.mpd"]')).toHaveCount(0);
+});
+
+test('dash timeline: SegmentTimeline with $Time$ names', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/dash-timeline.html');
+  const popup = await magpie.popup();
+  const { jobId, filename } = await download(popup, 'dash-timeline/manifest.mpd');
+  expect(filename).toBe('DASH SegmentTimeline [720p].mp4');
+  const file = await magpie.exportJob(popup, jobId, 'dash-timeline.mp4');
+  expectFramesMatch(file, '720');
+  expectAudioMatch(file);
+  expectAvPair(file);
+});
+
+test('dash segmentbase: single files with Range requests, rows folded', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/dash-single.html');
+  // The player's requests for rep-0.mp4 and friends never get rows of their own. This cannot fail on
+  // this fixture, though: dash.js fetches the files in Range requests under 2 MB, which detect() never
+  // lists, so the rows would be missing with or without folding. The fold rules themselves are covered
+  // by src/background/sniffer.test.ts.
+  const forTab = await magpie.popupFor(page);
+  const rows = forTab.getByTestId('candidate');
+  await expect(rows.first()).toBeVisible({ timeout: 15_000 });
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toHaveAttribute('data-url', /dash-single\/manifest\.mpd$/);
+  const popup = await magpie.popup();
+  const { jobId, filename } = await download(popup, 'dash-single/manifest.mpd');
+  expect(filename).toBe('DASH SegmentBase [720p].mp4');
+  const file = await magpie.exportJob(popup, jobId, 'dash-single.mp4');
+  expectFramesMatch(file, '720');
+  expectAudioMatch(file);
+  expectAvPair(file);
 });
 
 test('popup for one tab lists that tab only', async ({ magpie }) => {

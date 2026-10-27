@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
-import { candidateId, detect, manifestUrl, sameStream } from '../core/detect';
-import type { Candidate, Envelope, Inspection } from '../core/types';
+import { candidateId, detect, manifestUrl, matchesFoldRule, sameStream } from '../core/detect';
+import type { Candidate, Envelope, Inspection, MediaKind } from '../core/types';
 import { pageTitleFor } from './pagetitle';
 
 /** Reloads after the first sighting that mark a manifest as live. Players fetch a VOD manifest once. */
@@ -18,7 +18,9 @@ const THUMBS_KEPT = 150;
  * One stream is one candidate. A live player reloads its manifest every few
  * seconds, often with a new URL each time (LL-HLS directives, cache busters,
  * fresh tokens); those reloads update the existing candidate instead of
- * adding rows. Variant playlists of a listed master are kept but hidden.
+ * adding rows. Variant playlists of a listed master are kept but hidden, and
+ * so are the files an MPD lists (players fetch SegmentBase files with Range
+ * requests, which can look like plain files).
  */
 export class Sniffer {
   private byTab = new Map<number, Map<string, Candidate>>();
@@ -70,7 +72,8 @@ export class Sniffer {
 
   /**
    * Apply what inspecting a manifest found: a playlist without an end is live,
-   * and a master's variant and rendition playlists get hidden under it.
+   * a master's variant and rendition playlists get hidden under it, and so do
+   * the files an MPD lists.
    */
   learn(id: string, inspection: Inspection): void {
     const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
@@ -81,9 +84,11 @@ export class Sniffer {
       changed = true;
     }
     if (inspection.children?.length) {
-      c.children = inspection.children.map(manifestUrl);
+      // HLS children are playlist URLs, compared without LL-HLS directives. DASH children are fold rules
+      // (see Candidate.children), and a rule with a * in it is no URL to normalize, so they are kept as they are.
+      c.children = c.kind === 'dash' ? [...inspection.children] : inspection.children.map(manifestUrl);
       for (const other of this.byTab.get(c.tabId)?.values() ?? []) {
-        if (other === c || other.parentId || !listsChild(c, other.url)) continue;
+        if (other === c || other.parentId || !folds(c, other)) continue;
         other.parentId = c.id;
         if (other.live) c.live = true;
         changed = true;
@@ -216,7 +221,7 @@ export class Sniffer {
       seenAt: Date.now(),
     };
     if (incognito) candidate.incognito = true;
-    const parent = kind === 'file' ? undefined : [...tabMap.values()].find((m) => listsChild(m, url));
+    const parent = [...tabMap.values()].find((m) => folds(m, { url, kind }));
     if (parent) candidate.parentId = parent.id;
     tabMap.set(id, candidate);
     this.remember(tabId, url, id);
@@ -311,6 +316,17 @@ export class Sniffer {
     }
   }
 }
+
+/**
+ * True when `child` belongs under `parent`. A manifest goes under a master
+ * that lists it, reloads with a fresh token included. A plain file goes only
+ * under an MPD, when one of its fold rules matches (see matchesFoldRule).
+ */
+function folds(parent: Candidate, child: { url: string; kind: MediaKind }): boolean {
+  if (child.kind === 'file') return parent.kind === 'dash' && !!parent.children?.some((rule) => matchesFoldRule(rule, child.url));
+  return listsChild(parent, child.url);
+}
+
 
 /** True when `master` lists `url` as one of its variant or rendition playlists. */
 function listsChild(master: Candidate, url: string): boolean {

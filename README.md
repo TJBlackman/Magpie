@@ -2,7 +2,7 @@
 
 A browser extension that collects streaming video from the page you are watching and saves it as one file. Chrome and Firefox from one codebase. Personal project, no store listing. Download the latest build and install steps at [magpie.trevorblackman.dev](https://magpie.trevorblackman.dev).
 
-What works in v0.4:
+What works in v0.5:
 
 | Delivery | Detect | Download | Verified by |
 |---|---|---|---|
@@ -12,13 +12,15 @@ What works in v0.4:
 | HLS, AES-128 | yes | yes, decrypted with WebCrypto | e2e |
 | HLS, byte range single file | yes | yes, Range requests | e2e |
 | Cookie and Referer gated CDNs | yes | yes | e2e (Chrome + Firefox) |
-| DASH | yes | not yet (phase 2) | e2e checks the message |
-| HLS with separate audio rendition | yes | video only (phase 2 merges) | fixture exists, no test |
+| HLS with a separate audio rendition, fMP4 or MPEG-TS | yes | yes, video and audio merged into one MP4 | e2e (Chrome + Firefox) |
+| DASH, static (SegmentTemplate, SegmentTimeline, SegmentBase) | yes | yes, quality picker, audio merged | e2e |
+| DASH, SegmentList | yes | yes | unit tests, no fixture |
 | Live HLS (webcams, live events) | yes, one row per stream | yes, records until Stop or the stream ends | e2e (Chrome + Firefox) |
+| Live DASH (dynamic MPD, `$Number$` or `SegmentTimeline`) | yes | yes, records until Stop or the stream ends | e2e |
 | Hidden manifests, blob only players | no (phase 3 MSE capture) | no | fixture exists |
 | DRM | no | never | none |
 
-"Verified" means the e2e test pulls the finished file out of the extension and compares every decoded video frame hash against the ffmpeg reference rendition. 600 of 600 frames match on every passing case.
+"Verified" means the e2e test pulls the finished file out of the extension and compares every decoded video frame hash against the ffmpeg reference rendition. 600 of 600 frames match on every passing case. Where audio is merged from a separate track, the test also compares every encoded AAC packet against the source (939 of 939) and checks that the two tracks start within 50 ms of each other.
 
 ## Layout
 
@@ -27,8 +29,8 @@ extension/   WXT + React + Tailwind v4. Builds dist/chrome-mv3 and dist/firefox-
   entrypoints/background.ts   sniffer (webRequest observe only) + message router
   entrypoints/offscreen/      Chrome only: hosts the engine (service workers cannot make blob URLs)
   entrypoints/popup/          the whole UI: This page, Downloads and History tabs, quality sheet, settings panel
-  src/core/                   HLS parser, detection rules, filenames, history matching (pure, unit tested)
-  src/engine/                 fetch pool, AES, TS to MP4 remux, OPFS output, job state, MP4 duration
+  src/core/                   HLS and DASH parsers, sidx index, detection rules, filenames, history matching (pure, unit tested)
+  src/engine/                 fetch pool, AES, TS to MP4 remux, two track merge, OPFS output, job state, MP4 duration
   src/background/             sniffer, history store, per browser Referer rules (DNR on Chrome, webRequest on Firefox)
 testsite/    Go server + ffmpeg fixture script + player pages (hls.js, dash.js, native)
 e2e/         Playwright (Chrome, loads the unpacked build) and a Selenium smoke test for Firefox
@@ -47,8 +49,9 @@ pnpm build                         # both browser builds
 pnpm fixtures                      # runs ffmpeg in WSL, writes testsite/public/media (gitignored)
 pnpm server:build                  # testsite/server/magpie-testsite.exe
 pnpm test:unit
-pnpm test:e2e                      # Chrome, 28 tests, about 2 minutes
-pnpm test:firefox                  # Firefox, 4 cases (one live), about 30 s
+pnpm test:e2e                      # Chrome, 37 tests, about 3 minutes
+pnpm test:firefox                  # Firefox, 6 cases (one live, two merged audio), about 45 s
+pnpm --dir extension merge:check   # merges the fixture pairs with the real muxer and checks them with ffmpeg, no browser
 ```
 
 To poke at the test site by hand: `pnpm server`, then open http://127.0.0.1:8787.
@@ -87,13 +90,31 @@ Everything lives in the popup: three tabs (This page, Downloads, History) and a 
 
 ## Thumbnails
 
-Every row shows a frame of its stream. The frame comes from the stream itself, not the page: the engine fetches one segment of the lowest quality rendition (or the first megabyte of a plain file), decrypts and remuxes it the way a download would, decodes it in a hidden video element in the engine's own document, and keeps one frame as a 128 by 72 JPEG of a few kilobytes. Capture runs for the streams a popup is showing, one at a time, at most once per stream, and only while "Show thumbnails" in Settings is on. Nothing is fetched when the popup is closed or the setting is off. The frame travels with the item: the download row and the history entry show the same picture, and history stores it. It travels once, though: list answers carry thumbnails, change events (job progress several times a second, history changes) do not, and the popup asks `thumbs` by id for a row it has not seen. The popup also subscribes to events once instead of per render, memoizes the card and history rows, and derives the download speed during render, so a progress event costs one render of the rows that changed. DASH streams, DRM, MP4 files with their index at the end, and streams whose sample does not decode keep the kind icon.
+Every row shows a frame of its stream. The frame comes from the stream itself, not the page: the engine fetches one segment of the lowest quality rendition (or the first megabyte of a plain file), decrypts and remuxes it the way a download would, decodes it in a hidden video element in the engine's own document, and keeps one frame as a 128 by 72 JPEG of a few kilobytes. Capture runs for the streams a popup is showing, one at a time, at most once per stream, and only while "Show thumbnails" in Settings is on. Nothing is fetched when the popup is closed or the setting is off. The frame travels with the item: the download row and the history entry show the same picture, and history stores it. It travels once, though: list answers carry thumbnails, change events (job progress several times a second, history changes) do not, and the popup asks `thumbs` by id for a row it has not seen. The popup also subscribes to events once instead of per render, memoizes the card and history rows, and derives the download speed during render, so a progress event costs one render of the rows that changed. For DASH the sample is the init and first segment of the lowest video representation; for a live stream it is the second newest segment, one that is surely complete. DRM, MP4 files with their index at the end, and streams whose sample does not decode keep the kind icon.
 
 ## Settings and the queue
 
 Open Settings from the gear in the popup. "Parallel downloads" (default 2, range 1 to 10) caps how many downloads run at once. Every extra Download click joins a first in, first out queue and starts when a running download finishes. Raising the limit starts queued downloads right away. Cancel removes a queued download without starting it.
 
-The media list shows the page title first and the stream's host and file name underneath. Plain files show bytes of total, percent, speed and time left. HLS shows segments done, percent, speed and an estimate of time left.
+The media list shows the page title first and the stream's host and file name underneath. Plain files show bytes of total, percent, speed and time left. HLS and DASH show segments done, percent, speed and an estimate of time left; when audio comes from a separate track, the count is the video segments and the audio rides along.
+
+## Separate audio tracks
+
+Many HLS masters put audio in its own rendition (`EXT-X-MEDIA:TYPE=AUDIO` with a URI), and DASH always keeps video and audio in separate adaptation sets. Magpie merges the two into one MP4 as it downloads, without a muxer library and without holding the file in memory:
+
+- Both init segments are joined into one `moov`: the audio track is renumbered past the video tracks, its durations are rescaled to the movie timescale, and `mvex` gets both `trex` entries. Edit lists are kept, so the 21 ms AAC lead that encoders write stays where it was.
+- Fragments are then written in playlist order, video and audio interleaved by their start time, each `moof` and `mdat` pair copied as is with its track id, `mfhd` sequence number and (if the packager used one) `base_data_offset` rewritten. MPEG-TS renditions go through mux.js first, one track per side, keeping the original timestamps so the two sides stay aligned.
+- Both tracks shift by the same number of seconds so the file starts at 0, the same way live fMP4 recordings already did.
+
+Which audio: the rendition marked `DEFAULT=YES`, else the first `AUTOSELECT=YES`, else the first in the variant's group. If that one has no URI, the audio is already in the video segments and nothing is merged. For DASH the audio adaptation set with `Role` main comes first, then AAC over Dolby codecs that Chrome cannot decode, then the highest bandwidth. Other languages are not selectable yet; the sheet says which one you get. The download is video only, and the sheet says why, when the pair cannot be merged: a stream with `EXT-X-DISCONTINUITY` (server side ad insertion resets the clock), a second init segment partway through, or an audio playlist the CDN refuses.
+
+`pnpm --dir extension merge:check` runs the merge on the fixture pairs outside the browser and checks the result with ffmpeg: one video and one audio stream, 600 of 600 frames, 939 of 939 audio packets, and start times within 50 ms.
+
+## DASH
+
+An `.mpd` row inspects like a master playlist: one variant per video representation, sorted by bandwidth, with the chosen audio shown on the label. Supported: static MPDs with `SegmentTemplate` (`$Number$` and `$Time$`, `SegmentTimeline`, per attribute inheritance from the Period, AdaptationSet and Representation), `SegmentList`, `SegmentBase` (one file per representation; the `sidx` index is read with a Range request at inspect time and segments become byte ranges), `BaseURL` at every level, multiple Periods (the longest one is downloaded, since the first is usually a preroll), and dynamic MPDs for live recording. A representation with `ContentProtection`, an `EssentialProperty` nobody understands, no init segment, or WebM is left out with a note; the MPD is refused when no video is left, or when every audio track is protected. The files a SegmentBase player fetches with Range requests fold under the MPD row.
+
+Live DASH: the recorder syncs its clock to the MPD's `UTCTiming` when there is one (`direct`, `http-xsdate`, `http-iso` or `http-head`), reloads the MPD every `minimumUpdatePeriod` (held between 1 and 10 seconds), starts up to 30 seconds back from the live edge, and appends segments by their time in the Period as they become available, so a `SegmentTimeline` whose numbering never advances works the same as `$Number$`. Live `SegmentBase` and live MPEG-TS are refused. A segment the clock says is due but the server does not have yet is retried on the next reload; a segment that is gone leaves a gap and a note. The recording ends on Stop, when the MPD turns static, when the Period changes, or after six failed reloads, and saves what it has.
 
 ## History
 
@@ -120,7 +141,7 @@ A live player reloads its playlist every few seconds, and many change the URL ea
 
 - `_HLS_` parameters are dropped from manifest URLs (the HLS spec reserves the prefix for these directives).
 - Another URL with the same origin and path whose differing query values look volatile (6+ digit numbers, or 16+ character tokens with letters and digits) counts as a reload of the same stream. `?cam=1` and `?cam=2` stay separate. If an older URL comes back while a newer one is in use, two streams share that path and Magpie stops merging there.
-- Each new HLS manifest is inspected right away. Variant and audio playlists listed by a master fold under the master row. A playlist without `EXT-X-ENDLIST`, or one the page keeps reloading, gets a LIVE badge.
+- Each new HLS or DASH manifest is inspected right away. Variant and audio playlists listed by a master fold under the master row. A playlist without `EXT-X-ENDLIST`, a dynamic MPD, or a manifest the page keeps reloading, gets a LIVE badge.
 
 Download on a live stream records. It starts with up to 30 seconds already published (what the player was showing), reloads the playlist every target duration, and appends new segments by media sequence number. Stop fetches the playlist once more and saves. Cancel throws the recording away. The recording also ends and saves on `EXT-X-ENDLIST` or after six failed reloads in a row. Missing segments leave a gap and a note on the job. The saved MP4 gets the recorded length written into its header at the end, and the filename gets the start time. Live recordings do not count toward the concurrent download limit.
 
@@ -145,8 +166,8 @@ Measured with a throwaway soak harness that replays streams at 60x through the r
 ## How a download works
 
 1. The background script watches `webRequest.onHeadersReceived` (observe only) and keeps a per tab list of candidates: `.m3u8` or `application/vnd.apple.mpegurl` is HLS, `.mpd` is DASH, a `media` typed request or a large `video/*` XHR is a plain file. Segments (`video/mp2t`, `seg001.m4s`) are ignored on purpose.
-2. The popup asks the engine to inspect a candidate. For a master playlist it returns the variants sorted by bandwidth.
-3. The engine fetches segments 4 at a time, never more than 12 ahead of the writer, decrypts AES-128 if present, and appends them in order to a file in OPFS. TS segments go through mux.js and come out as fragmented MP4. fMP4 segments are written as is after the init segment.
+2. The popup asks the engine to inspect a candidate. For a master playlist or an MPD it returns the variants sorted by bandwidth.
+3. The engine fetches segments 4 at a time, never more than 12 ahead of the writer, decrypts AES-128 if present, and appends them in order to a file in OPFS. TS segments go through mux.js and come out as fragmented MP4. fMP4 segments are written as is after the init segment. A separate audio track is fetched alongside, 2 at a time, and interleaved into the same file.
 4. Before fetching, the engine asks the background to set a Referer and Origin rule for the CDN host (declarativeNetRequest session rule on Chrome scoped to the extension's own requests, blocking `onBeforeSendHeaders` on Firefox). Cookies go along because fetches use `credentials: include` and the extension has host permission.
 5. The finished OPFS file becomes a blob URL and goes to `downloads.download`. The OPFS copy is deleted five minutes later.
 6. The engine reports the finished job to the background, which adds it to history, and the job leaves the Downloads list. In Chrome that is a message from the offscreen document, which has no storage API.
@@ -157,17 +178,21 @@ Chrome's service worker can be killed any time, so the engine lives in an offscr
 
 `/live/<session>/master.m3u8` on the test server replays the hls-ts clip as a live stream, and `/live-fmp4/<session>/` replays `hls-live-fmp4`, the 720p fMP4 rendition with fragment times moved 2 hours in by `fixtures/shift_tfdt.py` (`live.html?src=fmp4`): two segments at the start, one more every 4 seconds, `EXT-X-ENDLIST` after the fifth. `live.html?churn=cachebust` and `?churn=msn` make hls.js change the playlist URL on every reload.
 
-`testsite/fixtures/gen.sh` renders a 20 second `testsrc2` clip with the frame number burned in and a beep every second, at 720p, 480p and 360p, then packages it nine ways. `ref/*.framemd5` holds the decoded frame hashes the e2e tests compare against.
+`/live-dash/<session>/manifest.mpd` replays the dash fixture as a dynamic MPD: `availabilityStartTime` is the session start, segment n is served from n times 4 seconds in and 404 before that, `UTCTiming` points at `/time`, and the MPD turns static after about 24 seconds (`live-dash.html`). `/live-dash-timeline/<session>/manifest.mpd` does the same with a `SegmentTimeline` whose `$Time$` window slides and whose `startNumber` never moves, the shape many live packagers emit (`live-dash.html?mode=timeline`).
+
+`testsite/fixtures/gen.sh` renders a 20 second `testsrc2` clip with the frame number burned in and a beep every second, at 720p, 480p and 360p, then packages it eleven ways: progressive, HLS as TS, fMP4 ladder, AES-128, byte range, separate audio as fMP4 and as TS, and DASH with `$Number$`, `SegmentTimeline` and `SegmentBase`. `ref/*.framemd5` holds the decoded frame hashes the e2e tests compare against, and `ref/audio.packets` the encoded AAC packet hashes (decoded audio cannot be compared across packagings, because the priming frame and edit lists differ).
 
 ## Roadmap
 
-Phase 2: DASH download (live DASH included), merge separate audio renditions (needs an MP4 track muxer, mp4box.js), pause and resume, filename templates.
+Phase 2, remaining: audio language picker, pause and resume, filename templates.
 
 Phase 3: MSE capture content script for players that hide the manifest, DRM detection that explains itself, optional Go native host that hands the job to system ffmpeg for huge files.
 
 ## Known limits
 
-- Only the first audio track is kept when video and audio are in the same segments; separate audio renditions are not merged yet.
+- Only the first audio track is kept when video and audio are in the same segments. With a separate audio rendition the default language is merged; other languages are not selectable yet.
+- Live HLS streams with a separate audio rendition record video only. Live DASH records both.
+- DASH representations with `ContentProtection` or WebM are left out, and `xlink` Periods are skipped. Multi Period MPDs download the longest Period only. Live DASH with `SegmentBase` or MPEG-TS is refused.
 - A live recording polls the playlist URL it started with. A site whose playlist URL needs a new token every few minutes ends the recording when the old one expires; it saves what it has.
 - A recording lives in an OPFS file that the browser commits only when it closes. Quitting the browser or a crash during a recording loses it.
 - Saving copies the file into Downloads, and the OPFS copy goes five minutes later, so a save briefly needs free disk for two copies.

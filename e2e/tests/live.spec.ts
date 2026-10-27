@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
-import { expect, expectFramesMatch, expectFramesPrefix, finished, openCandidate, playAndWait, probeTimes, test, view } from '../fixtures';
+import type { Locator, Page } from '@playwright/test';
+import { expect, expectAudioMatch, expectAvPair, expectFramesMatch, expectFramesPrefix, finished, openCandidate, playAndWait, probeTimes, test, view } from '../fixtures';
 
 // /live.html replays the hls-ts clip as a live stream: two 4 s segments at the
 // start, one more every 4 s, EXT-X-ENDLIST after the fifth (about 12 s in).
@@ -22,8 +22,8 @@ for (const churn of ['cachebust', 'msn']) {
   });
 }
 
-async function startRecording(popup: Page, prefix = '/live/') {
-  const sheet = await openCandidate(popup, [prefix, 'master.m3u8']);
+async function startRecording(popup: Page, prefix = '/live/', manifest = 'master.m3u8') {
+  const sheet = await openCandidate(popup, [prefix, manifest]);
   await expect(sheet).toContainText('Live stream', { timeout: 15_000 });
   const start = sheet.getByTestId('start');
   await expect(start).toHaveText('Start recording');
@@ -73,4 +73,85 @@ test('live fmp4 stamped hours into the stream: the file starts at 0', async ({ m
   expect(duration).toBeGreaterThan(19.9);
   expect(duration).toBeLessThan(20.2);
   expectFramesMatch(file, '720');
+});
+
+// /live-dash.html replays the dash clip as a dynamic MPD on a session clock
+// that starts with the player's first request: 4 s segment n is published 4n s
+// in, the MPD keeps 20 s of time shift and has the player reload it every 2 s,
+// and 24 s in it turns static with all five segments. The audio's sixth chunk
+// is never listed. Playback starts about 4 s in, with segment 1.
+
+/** Wait for the live DASH row's LIVE badge, then start recording its top variant, video with the audio merged. */
+async function startDashRecording(popup: Page, prefix = '/live-dash/') {
+  await view(popup, 'This page');
+  const row = popup.locator(`[data-testid="candidate"][data-url*="${prefix}"]`).first();
+  await expect(row.getByTestId('live-badge')).toBeVisible({ timeout: 15_000 });
+  return startRecording(popup, prefix, 'manifest.mpd');
+}
+
+/** Seconds a recording job's row says it holds, from its "Recording m:ss" status: the video segments written so far. */
+async function recordedSeconds(job: Locator): Promise<number> {
+  const m = /Recording (\d+):(\d\d)/.exec((await job.getByTestId('job-status').textContent()) ?? '');
+  return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+}
+
+test('live dash: records until the stream ends', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/live-dash.html');
+  const popup = await magpie.popup();
+  await startDashRecording(popup);
+  // No Stop: the recording ends on its own once the MPD turns static, 24 s into the session.
+  const { jobId, filename } = await finished(popup);
+  expect(filename).toMatch(/^Lighthouse Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/);
+  const file = await magpie.exportJob(popup, jobId, 'live-dash.mp4');
+  // Every frame: the recording starts up to 30 s back and the MPD keeps 20 s, so segment 1 is
+  // always in the first window, and the static MPD at the end lists the rest.
+  expectFramesMatch(file, '720');
+  // The MPD lists 5 of the 6 audio chunks, so the last packet is missing, as in the static DASH test.
+  expectAudioMatch(file, { allowMissing: 1 });
+  expectAvPair(file);
+});
+
+test('live dash: stop saves what it has', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/live-dash.html');
+  const popup = await magpie.popup();
+  const job = await startDashRecording(popup);
+  // Stop once the row shows two 4 s video segments written, however late the recording started.
+  await expect.poll(() => recordedSeconds(job), { timeout: 30_000 }).toBeGreaterThanOrEqual(8);
+  // Measured from before the player's first request, so this runs long, never short (see live-dash.html).
+  const sessionMs = await page.evaluate(() => Date.now() - (window as unknown as { __sessionStart: number }).__sessionStart);
+  await job.getByRole('button', { name: 'Stop' }).click();
+  const { jobId } = await finished(popup);
+  const file = await magpie.exportJob(popup, jobId, 'live-dash-stopped.mp4');
+  // Segment 5 is out 20 s into the session, and Stop reloads the MPD once more within a second or two of the
+  // click. A click by 17 s therefore leaves the file short of the whole clip. A recording that started so late
+  // that its second segment came after that can only be checked as a prefix: best effort, noted on the result.
+  const early = sessionMs < 17_000;
+  if (!early) test.info().annotations.push({ type: 'best effort', description: `Stop came ${sessionMs} ms into the session; the whole clip may be in the file` });
+  // At least the two segments the row showed, 120 frames each.
+  expectFramesPrefix(file, '720', 240, { allowAll: !early });
+  // The audio of the same segments: two 4 s chunks are 375 of the 939 packets (48 kHz, 1024 samples each).
+  expectAudioMatch(file, { allowMissing: 939 - 375 });
+  expectAvPair(file);
+});
+
+// /live-dash.html?mode=timeline replays the dash-timeline clip as a dynamic MPD whose $Time$ SegmentTimeline lists
+// the newest four segments and keeps startNumber at 1, so every MPD numbers its segments from 1 again. The first
+// segment is out at once, the fifth 16 s in, when the first leaves the window, and 20 s in the MPD turns static
+// with the same four. A recorder that followed segment numbers would never fetch the fifth.
+test('live dash timeline: follows a sliding $Time$ timeline to the end', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/live-dash.html?mode=timeline');
+  const popup = await magpie.popup();
+  await startDashRecording(popup, '/live-dash-timeline/');
+  // No Stop: the recording ends on its own once the MPD turns static.
+  const { jobId, filename } = await finished(popup);
+  expect(filename).toMatch(/^Lighthouse Webcam \[720p\] \d{4}-\d\d-\d\d \d\d\.\d\d\.mp4$/);
+  const file = await magpie.exportJob(popup, jobId, 'live-dash-timeline.mp4');
+  // Every frame: the recording starts well before segment 1 leaves the window at 16 s.
+  expectFramesMatch(file, '720');
+  // This fixture's five audio chunks hold every packet, as the static dash-timeline download shows.
+  expectAudioMatch(file);
+  expectAvPair(file);
 });

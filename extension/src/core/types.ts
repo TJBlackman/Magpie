@@ -20,9 +20,13 @@ export interface Candidate {
   live?: boolean;
   /** How often the page reloaded this manifest after the first sighting. */
   reloads?: number;
-  /** Set on a variant or rendition playlist whose master is listed; such rows are hidden. */
+  /** Set on a variant or rendition playlist whose master is listed, or a file an MPD lists; such rows are hidden. */
   parentId?: string;
-  /** For a master playlist: the variant and rendition playlist URLs it lists. */
+  /**
+   * For a master playlist: the variant and rendition playlist URLs it lists.
+   * For an MPD: fold rules for the files its representations fetch, each an
+   * exact URL or `prefix*suffix` (see Inspection.children).
+   */
   children?: string[];
   /** Seen in a private window. */
   incognito?: boolean;
@@ -40,9 +44,18 @@ export interface Variant {
   bandwidth?: number;
   resolution?: string;
   codecs?: string;
-  /** Set when the variant relies on a separate audio rendition (not merged in v1). */
+  /** AUDIO group of a variant whose main audio is a separate rendition, merged or not. */
   audioGroup?: string;
+  /**
+   * The separate audio merged into this variant's file: the rendition playlist
+   * (HLS) or the audio init segment (DASH). Unset when the download is video
+   * only, see the inspection notes for why.
+   */
   audioUri?: string;
+  /** Name or language of the audio that will be merged, for labels. */
+  audioLabel?: string;
+  /** No video: an audio only DASH representation, saved as .m4a. */
+  audioOnly?: boolean;
 }
 
 export interface Inspection {
@@ -51,9 +64,22 @@ export interface Inspection {
   variants: Variant[];
   /** Human readable notes, e.g. "live stream, records until you press Stop". */
   notes: string[];
-  /** Media playlist without EXT-X-ENDLIST. Unknown for a master. */
+  /** Media playlist without EXT-X-ENDLIST, or a dynamic MPD. Unknown for an HLS master. */
   live?: boolean;
-  /** For a master playlist: every variant and rendition playlist URL it lists. */
+  /**
+   * For a master playlist: every variant and rendition playlist URL it lists.
+   * For an MPD: rules that fold the player's own requests under it, so they
+   * get no rows of their own. Per representation, the exact URL of its init
+   * segment, and for its media either the exact URL (a SegmentBase file, or a
+   * SegmentList whose segments are ranges of one file) or one rule
+   * `prefix*suffix`, which matches any URL that starts with the prefix and
+   * ends with the suffix: for a SegmentTemplate the media URL up to its first
+   * $Number$ or $Time$ placeholder and after its last, for a SegmentList what
+   * every segment URL shares at each end. A rule that would cover the MPD's
+   * own directory with no suffix is left out. So at most two strings per
+   * representation, however many segments it has, since candidates live in
+   * storage.session.
+   */
   children?: string[];
 }
 

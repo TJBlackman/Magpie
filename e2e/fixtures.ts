@@ -116,11 +116,15 @@ export function expectFramesMatch(file: string, rendition: '720' | '480' | '360'
   expect(got, 'decoded frame hashes').toEqual(want);
 }
 
-/** `file` must hold the first frames of the reference, at least `min` and fewer than all. Returns the count. */
-export function expectFramesPrefix(file: string, rendition: '720' | '480' | '360', min: number): number {
+/**
+ * `file` must hold the first frames of the reference, at least `min` and fewer
+ * than all (all of them too with `allowAll`). Returns the count.
+ */
+export function expectFramesPrefix(file: string, rendition: '720' | '480' | '360', min: number, opts: { allowAll?: boolean } = {}): number {
   const { got, want } = frameHashes(file, rendition);
   expect(got.length, 'frame count').toBeGreaterThanOrEqual(min);
-  expect(got.length, 'frame count').toBeLessThan(want.length);
+  if (opts.allowAll) expect(got.length, 'frame count').toBeLessThanOrEqual(want.length);
+  else expect(got.length, 'frame count').toBeLessThan(want.length);
   expect(got, 'decoded frame hashes').toEqual(want.slice(0, got.length));
   return got.length;
 }
@@ -199,4 +203,73 @@ export async function finished(popup: Page, previous = '') {
     jobId: (await newest.getAttribute('data-job-id'))!,
     filename: (await newest.getAttribute('data-file'))!,
   };
+}
+
+/** Run ffprobe inside WSL, like `ffmpeg` above. */
+function ffprobe(args: string[]): string {
+  if (process.platform === 'win32') {
+    return execFileSync('wsl', ['-u', 'trevor', '--', 'ffprobe', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  }
+  return execFileSync('ffprobe', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+}
+
+/**
+ * Encoded audio packet hashes of `file`, one per packet, in order: the sixth
+ * framemd5 field. Packets with side data (skip samples on the first AAC packet
+ * of an MP4 with an edit list) get ", S=1, size, hash" appended, so the last
+ * field is not always the packet hash.
+ */
+function audioPackets(file: string): string[] {
+  return ffmpeg(['-hide_banner', '-loglevel', 'error', '-i', wslPath(file), '-map', '0:a', '-c', 'copy', '-f', 'framemd5', '-'])
+    .split('\n')
+    .filter((l) => l.trim() && !l.startsWith('#'))
+    .map((l) => l.split(',')[5].trim());
+}
+
+/**
+ * Encoded audio packet hashes of `file` must equal ref/audio.packets (the AAC
+ * packets of src/720.mp4). Decoded audio cannot be compared: the AAC priming
+ * frame and the edit lists differ between packagings. With `allowMissing` n
+ * the file may stop up to n packets short of the end (the plain DASH fixture's
+ * MPD never lists its last one packet audio chunk). Returns the packet count.
+ */
+export function expectAudioMatch(file: string, opts: { allowMissing?: number } = {}): number {
+  const got = audioPackets(file);
+  const want = readFileSync(join(refDir, 'audio.packets'), 'utf8')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const missing = opts.allowMissing ?? 0;
+  expect(got.length, 'audio packet count').toBeGreaterThanOrEqual(want.length - missing);
+  expect(got.length, 'audio packet count').toBeLessThanOrEqual(want.length);
+  expect(got, 'encoded audio packet hashes').toEqual(want.slice(0, got.length));
+  return got.length;
+}
+
+export interface ProbedStream {
+  codec: string;
+  type: 'video' | 'audio';
+  /** Stream start time in seconds, NaN when ffprobe reports none. */
+  start: number;
+}
+
+/** Video and audio streams of `file` in container order, via ffprobe. Other stream types are left out. */
+export function probeStreams(file: string): ProbedStream[] {
+  const out = ffprobe(['-v', 'error', '-show_entries', 'stream=codec_type,codec_name,start_time', '-of', 'json', wslPath(file)]);
+  const streams = (JSON.parse(out) as { streams?: { codec_type?: string; codec_name?: string; start_time?: string }[] }).streams ?? [];
+  return streams
+    .filter((s) => s.codec_type === 'video' || s.codec_type === 'audio')
+    .map((s) => ({ codec: s.codec_name ?? '', type: s.codec_type as 'video' | 'audio', start: Number(s.start_time ?? NaN) }));
+}
+
+/** `file` must hold exactly one video and one audio stream whose start times differ by under `maxSkewSec`. Returns the skew in seconds. */
+export function expectAvPair(file: string, maxSkewSec = 0.05): number {
+  const streams = probeStreams(file);
+  const video = streams.filter((s) => s.type === 'video');
+  const audio = streams.filter((s) => s.type === 'audio');
+  expect(video.length, 'video streams').toBe(1);
+  expect(audio.length, 'audio streams').toBe(1);
+  const skew = Math.abs(video[0].start - audio[0].start);
+  expect(skew, `start skew (video ${video[0].start}, audio ${audio[0].start})`).toBeLessThan(maxSkewSec);
+  return skew;
 }
