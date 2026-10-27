@@ -98,6 +98,22 @@ export function sameStream(a: string, b: string): boolean {
   return true;
 }
 
+/**
+ * True when `url` falls under a DASH fold rule (see DashRepresentation.fold):
+ * a rule without `*` is the URL itself, and `prefix*suffix` takes any URL that
+ * starts with the prefix and ends with the suffix, the two not overlapping.
+ * The rule splits at its last `*`, since foldRule keeps any `*` of a URL in
+ * the prefix. An MPD gives one such rule per representation instead of every
+ * segment URL.
+ */
+export function matchesFoldRule(rule: string, url: string): boolean {
+  const star = rule.lastIndexOf('*');
+  if (star < 0) return rule === url;
+  const prefix = rule.slice(0, star);
+  const suffix = rule.slice(star + 1);
+  return url.length >= prefix.length + suffix.length && url.startsWith(prefix) && url.endsWith(suffix);
+}
+
 /** Produce a stable id for a URL so repeated sightings dedupe. */
 export function candidateId(tabId: number, url: string): string {
   let h = 2166136261;

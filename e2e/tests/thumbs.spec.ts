@@ -1,10 +1,11 @@
 import { download, expect, openSettings, playAndWait, test, view } from '../fixtures';
 
-// A frame of the stream itself: one segment of the lowest rendition (fMP4
-// passed through, TS remuxed) or the first megabyte of a plain file, decoded
-// in the offscreen document and kept as a small JPEG.
+// A frame of the stream itself: one segment of the lowest rendition or DASH
+// video representation (fMP4 passed through, TS remuxed) or the first megabyte
+// of a plain file, decoded in the offscreen document and kept as a small JPEG.
 for (const [page, part] of [
   ['/hls-fmp4.html', '/media/hls-fmp4/master.m3u8'],
+  ['/dash.html', '/media/dash/manifest.mpd'],
   ['/hls-ts.html', '/media/hls-ts/index.m3u8'],
   ['/hls-aes.html', '/media/hls-aes/index.m3u8'],
   ['/progressive.html', '/media/progressive/clip.mp4'],

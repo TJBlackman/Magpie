@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -83,6 +85,17 @@ func main() {
 	// in, replayed as live streams, see liveSim.
 	mux.Handle("/live/", noCache(withMime(&liveSim{prefix: "/live/", dir: filepath.Join(media, "hls-ts"), starts: map[string]time.Time{}})))
 	mux.Handle("/live-fmp4/", noCache(withMime(&liveSim{prefix: "/live-fmp4/", dir: filepath.Join(media, "hls-live-fmp4"), starts: map[string]time.Time{}})))
+	// Live DASH: the dash fixture replayed as a dynamic MPD, see dashLiveSim.
+	// Its UTCTiming element points players and the recorder at /time.
+	mux.Handle("/live-dash/", noCache(withMime(&dashLiveSim{prefix: "/live-dash/", dir: filepath.Join(media, "dash"), starts: map[string]time.Time{}})))
+	// The same with the dash-timeline fixture: a $Time$ SegmentTimeline whose S
+	// entries slide with the window while startNumber stays 1, see timelineMPD.
+	mux.Handle("/live-dash-timeline/", noCache(withMime(&dashLiveSim{prefix: "/live-dash-timeline/", dir: filepath.Join(media, "dash-timeline"), starts: map[string]time.Time{}, timeline: true})))
+	mux.Handle("/time", noCache(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		fmt.Fprint(w, xsDateTime(time.Now()))
+	})))
 
 	mux.Handle("/", noCache(withMime(http.FileServer(http.Dir(public)))))
 
@@ -289,4 +302,275 @@ func (l *liveSim) playlist(w http.ResponseWriter, session string) {
 		b.WriteString("#EXT-X-ENDLIST\n")
 	}
 	fmt.Fprint(w, b.String())
+}
+
+// xsDateTime formats t as an xs:dateTime in UTC with milliseconds. The live
+// MPD attributes and /time both use it, so a player that syncs to /time and
+// the server's availability rule agree to the millisecond.
+func xsDateTime(t time.Time) string {
+	return t.UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+// dashLiveSim replays the static dash fixture in dir as a live DASH stream at
+// <prefix><session>/{manifest.mpd,init and chunk files}. Each session id gets
+// its own clock from its first request, and that instant becomes the MPD's
+// availabilityStartTime. Segment n (1 based, the $Number$ in the chunk name)
+// is published n segment durations after the start, once it is complete, the
+// way a packager publishes; until then it answers 404. Init segments are
+// always there. One segment duration after the last segment is out (24 s in)
+// the MPD turns static with the full duration, and segments stay available.
+//
+// With timeline set, dir holds a SegmentTimeline fixture with $Time$ names
+// instead, served by serveTimeline.
+type dashLiveSim struct {
+	prefix   string
+	dir      string
+	timeline bool
+	mu       sync.Mutex
+	starts   map[string]time.Time
+}
+
+var (
+	dashChunk    = regexp.MustCompile(`^chunk-[^-]+-(\d+)\.m4s$`)
+	dashTemplate = regexp.MustCompile(`<SegmentTemplate timescale="(\d+)" duration="(\d+)"`)
+	dashDuration = regexp.MustCompile(`mediaPresentationDuration="PT([0-9.]+)S"`)
+	dashPeriod   = regexp.MustCompile(`(<Period\b[^>]*\bstart=")[^"]*(")`)
+)
+
+func (d *dashLiveSim) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, d.prefix), "/")
+	if len(parts) != 2 || parts[0] == "" {
+		http.NotFound(w, r)
+		return
+	}
+	session, file := parts[0], filepath.Base(parts[1])
+
+	d.mu.Lock()
+	start, ok := d.starts[session]
+	if !ok {
+		start = time.Now().Truncate(time.Millisecond)
+		d.starts[session] = start
+	}
+	d.mu.Unlock()
+
+	data, err := os.ReadFile(filepath.Join(d.dir, "manifest.mpd"))
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	mpd := strings.ReplaceAll(string(data), "\r", "")
+	if d.timeline {
+		d.serveTimeline(w, r, mpd, file, start)
+		return
+	}
+	tmpl := dashTemplate.FindStringSubmatch(mpd)
+	if tmpl == nil || !dashDuration.MatchString(mpd) || !dashPeriod.MatchString(mpd) ||
+		!strings.Contains(mpd, `type="static"`) || !strings.Contains(mpd, "</MPD>") {
+		http.Error(w, "the dash fixture MPD does not have the ffmpeg shape dashLiveSim rewrites", 500)
+		return
+	}
+	scale, _ := strconv.ParseInt(tmpl[1], 10, 64)
+	dur, _ := strconv.ParseInt(tmpl[2], 10, 64)
+	if scale <= 0 || dur <= 0 {
+		http.Error(w, "the dash fixture MPD has no segment duration", 500)
+		return
+	}
+	seg := time.Duration(dur) * time.Second / time.Duration(scale)
+	// The video chunks on disk set the segment count. The audio set has a
+	// sixth 0.021 s chunk the MPD never lists; it stays unpublished.
+	chunks, _ := filepath.Glob(filepath.Join(d.dir, "chunk-0-*.m4s"))
+	count := len(chunks)
+
+	switch {
+	case file == "manifest.mpd":
+		ended := time.Since(start) >= time.Duration(count+1)*seg
+		fmt.Fprint(w, dashLive(mpd, start, ended, r.Host))
+	case strings.HasPrefix(file, "init-") && strings.HasSuffix(file, ".m4s"):
+		http.ServeFile(w, r, filepath.Join(d.dir, file))
+	default:
+		m := dashChunk.FindStringSubmatch(file)
+		if m == nil {
+			http.NotFound(w, r)
+			return
+		}
+		n, _ := strconv.Atoi(m[1])
+		if n < 1 || n > count || time.Since(start) < time.Duration(n)*seg {
+			http.NotFound(w, r)
+			return
+		}
+		http.ServeFile(w, r, filepath.Join(d.dir, file))
+	}
+}
+
+// dashLive rewrites the fixture MPD for a session that started at start:
+// dynamic with a 2 s update period while live, static with the fixture's
+// duration once ended. Both forms carry the session's availabilityStartTime
+// and a UTCTiming element naming this server's /time.
+func dashLive(mpd string, start time.Time, ended bool, host string) string {
+	// The ffmpeg MPD puts one root attribute per line, so the new attributes
+	// take the place of mediaPresentationDuration in the same layout.
+	attrs := []string{
+		fmt.Sprintf("availabilityStartTime=%q", xsDateTime(start)),
+		fmt.Sprintf("publishTime=%q", xsDateTime(time.Now())),
+	}
+	if ended {
+		total, _ := strconv.ParseFloat(dashDuration.FindStringSubmatch(mpd)[1], 64)
+		attrs = append(attrs, fmt.Sprintf("mediaPresentationDuration=\"PT%sS\"", strconv.FormatFloat(total, 'f', -1, 64)))
+	} else {
+		mpd = strings.Replace(mpd, `type="static"`, `type="dynamic"`, 1)
+		attrs = append(attrs, `minimumUpdatePeriod="PT2S"`, `timeShiftBufferDepth="PT20S"`, `suggestedPresentationDelay="PT4S"`)
+	}
+	mpd = dashDuration.ReplaceAllLiteralString(mpd, strings.Join(attrs, "\n\t"))
+	mpd = dashPeriod.ReplaceAllString(mpd, "${1}PT0S${2}")
+	utc := fmt.Sprintf("\t<UTCTiming schemeIdUri=\"urn:mpeg:dash:utc:http-xsdate:2014\" value=\"http://%s/time\"/>\n</MPD>", host)
+	return strings.Replace(mpd, "</MPD>", utc, 1)
+}
+
+// timelineWindow is how many of the newest segments a timeline session's MPD
+// lists. Four 4 s segments: the first leaves the window when the fifth is
+// published, so a recorder that keys on segment numbers, which restart at
+// startNumber in every MPD, sees no new number from then on.
+const timelineWindow = 4
+
+var (
+	dashRep       = regexp.MustCompile(`(?s)<Representation id="([^"]+)".*?</Representation>`)
+	dashTimescale = regexp.MustCompile(`<SegmentTemplate timescale="(\d+)"`)
+	dashTimeline  = regexp.MustCompile(`(?s)<SegmentTimeline>.*?</SegmentTimeline>`)
+	dashS         = regexp.MustCompile(`<S\b([^>]*)/>`)
+	dashSAttr     = regexp.MustCompile(`(\w+)="(-?\d+)"`)
+	dashTimeChunk = regexp.MustCompile(`^chunk-([^-]+)-(\d+)\.m4s$`)
+)
+
+// timelineSeg is one segment of a representation's SegmentTimeline, in its timescale.
+type timelineSeg struct {
+	t, d int64
+}
+
+// timelineRep is one representation of the timeline fixture.
+type timelineRep struct {
+	timescale int64
+	segs      []timelineSeg
+}
+
+// end is when segment i is complete, as an offset from availabilityStartTime.
+func (r timelineRep) end(i int) time.Duration {
+	s := r.segs[i]
+	return time.Duration(s.t+s.d) * time.Second / time.Duration(r.timescale)
+}
+
+// published is how many of the representation's segments are out at elapsed:
+// a segment is published once it is complete, as a packager publishes.
+func (r timelineRep) published(elapsed time.Duration) int {
+	n := 0
+	for n < len(r.segs) && r.end(n) <= elapsed {
+		n++
+	}
+	return n
+}
+
+// parseTimeline reads each representation's timescale and expanded S entries
+// from the fixture MPD.
+func parseTimeline(mpd string) (map[string]timelineRep, error) {
+	reps := map[string]timelineRep{}
+	for _, m := range dashRep.FindAllStringSubmatch(mpd, -1) {
+		ts := dashTimescale.FindStringSubmatch(m[0])
+		block := dashTimeline.FindString(m[0])
+		if ts == nil || block == "" {
+			return nil, fmt.Errorf("representation %s has no SegmentTemplate timescale or SegmentTimeline", m[1])
+		}
+		rep := timelineRep{}
+		rep.timescale, _ = strconv.ParseInt(ts[1], 10, 64)
+		var t int64
+		for _, s := range dashS.FindAllStringSubmatch(block, -1) {
+			attrs := map[string]int64{}
+			for _, a := range dashSAttr.FindAllStringSubmatch(s[1], -1) {
+				attrs[a[1]], _ = strconv.ParseInt(a[2], 10, 64)
+			}
+			if v, ok := attrs["t"]; ok {
+				t = v
+			}
+			for k := int64(0); k <= attrs["r"]; k++ {
+				rep.segs = append(rep.segs, timelineSeg{t: t, d: attrs["d"]})
+				t += attrs["d"]
+			}
+		}
+		if rep.timescale <= 0 || len(rep.segs) == 0 {
+			return nil, fmt.Errorf("representation %s has an empty timeline", m[1])
+		}
+		reps[m[1]] = rep
+	}
+	if len(reps) == 0 {
+		return nil, fmt.Errorf("the fixture MPD has no representations")
+	}
+	return reps, nil
+}
+
+// serveTimeline replays the dash-timeline fixture as a live stream whose
+// SegmentTimeline slides: each MPD lists the newest timelineWindow published
+// segments of every representation as explicit S entries and never changes
+// startNumber, the way $Time$ packagers do. availabilityStartTime is one
+// segment before the session started, so the first MPD already lists a
+// segment. A chunk answers 404 until it is published. Once every segment is
+// out and one more segment duration has passed, the MPD turns static and
+// keeps listing the same window, so only a recorder that followed the window
+// has the newest segment.
+func (d *dashLiveSim) serveTimeline(w http.ResponseWriter, r *http.Request, mpd, file string, start time.Time) {
+	reps, err := parseTimeline(mpd)
+	if err != nil || !dashDuration.MatchString(mpd) || !dashPeriod.MatchString(mpd) ||
+		!strings.Contains(mpd, `type="static"`) || !strings.Contains(mpd, "</MPD>") {
+		http.Error(w, fmt.Sprintf("the dash-timeline fixture MPD does not have the ffmpeg shape serveTimeline rewrites (%v)", err), 500)
+		return
+	}
+	// The video sets the segment duration and the count; the audio has the same count.
+	ref, ok := reps["0"]
+	if !ok {
+		http.Error(w, "the dash-timeline fixture MPD has no representation 0", 500)
+		return
+	}
+	seg := time.Duration(ref.segs[0].d) * time.Second / time.Duration(ref.timescale)
+	ast := start.Add(-seg)
+	elapsed := time.Since(ast)
+
+	switch {
+	case file == "manifest.mpd":
+		ended := elapsed >= time.Duration(len(ref.segs)+1)*seg
+		out := dashRep.ReplaceAllStringFunc(mpd, func(block string) string {
+			id := dashRep.FindStringSubmatch(block)[1]
+			rep := reps[id]
+			n := rep.published(elapsed)
+			from := n - timelineWindow
+			if from < 0 {
+				from = 0
+			}
+			var b strings.Builder
+			b.WriteString("<SegmentTimeline>\n")
+			for i := from; i < n; i++ {
+				fmt.Fprintf(&b, "\t\t\t\t\t\t<S t=\"%d\" d=\"%d\" />\n", rep.segs[i].t, rep.segs[i].d)
+			}
+			b.WriteString("\t\t\t\t\t</SegmentTimeline>")
+			return dashTimeline.ReplaceAllLiteralString(block, b.String())
+		})
+		fmt.Fprint(w, dashLive(out, ast, ended, r.Host))
+	case strings.HasPrefix(file, "init-") && strings.HasSuffix(file, ".m4s"):
+		http.ServeFile(w, r, filepath.Join(d.dir, file))
+	default:
+		m := dashTimeChunk.FindStringSubmatch(file)
+		if m == nil {
+			http.NotFound(w, r)
+			return
+		}
+		rep, ok := reps[m[1]]
+		t, _ := strconv.ParseInt(m[2], 10, 64)
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		for i, s := range rep.segs {
+			if s.t == t && rep.end(i) <= elapsed {
+				http.ServeFile(w, r, filepath.Join(d.dir, file))
+				return
+			}
+		}
+		http.NotFound(w, r)
+	}
 }

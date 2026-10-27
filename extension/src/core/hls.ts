@@ -5,6 +5,7 @@
  *    (NONE / AES-128), EXT-X-BYTERANGE, EXT-X-MEDIA-SEQUENCE, EXT-X-ENDLIST,
  *    EXT-X-DISCONTINUITY
  */
+import { languageName } from './format';
 
 export interface HlsVariant {
   uri: string;
@@ -23,6 +24,8 @@ export interface HlsRendition {
   name: string;
   uri?: string;
   isDefault: boolean;
+  /** AUTOSELECT=YES: a player may pick it without the user asking. The rendition rule falls back to it when none is DEFAULT. */
+  autoselect: boolean;
   language?: string;
 }
 
@@ -49,6 +52,8 @@ export interface HlsSegment {
   sequence: number;
   uri: string;
   duration: number;
+  /** Seconds from the start of the playlist: the running EXTINF sum before this segment. */
+  start: number;
   byteRange?: ByteRange;
   key: HlsKey;
   /** Init segment for fMP4 (EXT-X-MAP). Null for TS. */
@@ -66,6 +71,9 @@ export interface HlsMedia {
   /** "fmp4" when EXT-X-MAP present, "ts" otherwise (best guess). */
   container: 'fmp4' | 'ts' | 'unknown';
 }
+
+/** The shape both the HLS and the DASH parsers emit for one stream. */
+export type MediaPlaylist = HlsMedia;
 
 export type HlsPlaylist = HlsMaster | HlsMedia;
 
@@ -132,9 +140,11 @@ function parseMaster(lines: string[], baseUrl: string): HlsMaster {
       renditions.push({
         type: (a.TYPE ?? 'AUDIO') as HlsRendition['type'],
         groupId: a['GROUP-ID'] ?? '',
-        name: a.NAME ?? a['GROUP-ID'] ?? 'rendition',
+        // NAME is what players show. Without it (it is required, but not every packager writes it) the language's name says more than a GROUP-ID.
+        name: a.NAME ?? (a.LANGUAGE ? languageName(a.LANGUAGE) : undefined) ?? a['GROUP-ID'] ?? 'rendition',
         uri: a.URI ? resolveUrl(a.URI, baseUrl) : undefined,
         isDefault: a.DEFAULT === 'YES',
+        autoselect: a.AUTOSELECT === 'YES',
         language: a.LANGUAGE,
       });
     }
@@ -154,6 +164,7 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
   let pendingDiscontinuity = false;
   let prevEnd = 0;
   let mapPrevEnd = 0;
+  let start = 0;
 
   for (const line of lines) {
     if (line.startsWith('#EXT-X-TARGETDURATION:')) {
@@ -193,11 +204,13 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
         sequence: mediaSequence + index,
         uri: resolveUrl(line, baseUrl),
         duration: pendingDuration,
+        start,
         byteRange: pendingByteRange,
         key: { ...key },
         map,
         discontinuity: pendingDiscontinuity,
       });
+      start += pendingDuration;
       pendingDuration = null;
       pendingByteRange = undefined;
       pendingDiscontinuity = false;

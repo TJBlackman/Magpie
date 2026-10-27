@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Live DASH | Magpie Test Site</title><meta property="og:title" content="Lighthouse Webcam"><meta property="og:site_name" content="Magpie Test Site"><link rel="stylesheet" href="/site.css"></head>
+<body>
+<h1>Live DASH</h1>
+<p><a href="/">back</a></p>
+<p>The dash clip replayed as a dynamic MPD: a new 4 s segment is published every 4 s from the first request, players reload the MPD every 2 s, and it turns static with the full 20 s duration about 24 s in.</p>
+<p><a href="?mode=timeline">?mode=timeline</a> replays the dash-timeline clip instead: a $Time$ SegmentTimeline that lists the newest four segments and never moves startNumber. The first segment is out at once, and the MPD turns static about 20 s in.</p>
+<video controls muted playsinline></video>
+<div id="status">loading</div>
+<script>
+  // A fresh session per page load, so every visit starts the stream from its first segment.
+  const prefix = new URLSearchParams(location.search).get('mode') === 'timeline' ? '/live-dash-timeline/' : '/live-dash/';
+  document.querySelector('video').dataset.src = prefix + Math.random().toString(36).slice(2) + '/manifest.mpd';
+  // The session clock starts at the player's first manifest request, a little after this, so a test that
+  // measures from here overestimates how far into the session it is, never the other way round.
+  window.__sessionStart = Date.now();
+</script>
+<script src="/player.js"></script>
+</body>
+</html>
