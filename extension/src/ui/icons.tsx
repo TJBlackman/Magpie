@@ -21,6 +21,15 @@ export const IconDownload = (p: IconProps) => (
   </Icon>
 );
 
+export const IconImages = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3" y="5" width="15" height="13" rx="2" />
+    <path d="M21 8v9a3 3 0 0 1-3 3H7" />
+    <circle cx="8" cy="10" r="1.5" />
+    <path d="m3 16 4-4 3 3 3-3 5 5" />
+  </Icon>
+);
+
 export const IconSettings = (p: IconProps) => (
   <Icon {...p}>
     <circle cx="12" cy="12" r="3" />
@@ -114,6 +123,14 @@ export const IconPlus = (p: IconProps) => (
 export const IconCheck = (p: IconProps) => (
   <Icon {...p}>
     <path d="M20 6 9 17l-5-5" />
+  </Icon>
+);
+
+export const IconUpdate = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8 12 4-4 4 4" />
+    <path d="M12 16V8" />
   </Icon>
 );
 

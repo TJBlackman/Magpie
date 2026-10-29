@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import type { Job } from '../core/types';
 import { api } from './api';
 import { fmtBytes, fmtClock, fmtEta, fmtRate, jobProgress, nextRate, shortVariant, sourceLabel, type RateSample } from './format';
@@ -91,6 +91,7 @@ export function JobRow({ job, thumbs }: { job: Job; thumbs: boolean }) {
         <>
           <KindBadge kind={job.kind} />
           {job.live && <Badge tone="bad">LIVE</Badge>}
+          {job.group && <Badge tone="post">{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
           {rendition && <Badge>{rendition}</Badge>}
           <span className="min-w-0 flex-1 truncate" title={job.url}>
             {sourceLabel(job.url)}
@@ -128,6 +129,59 @@ export function JobRow({ job, thumbs }: { job: Job; thumbs: boolean }) {
       </div>
       {job.note && <div data-testid="job-note" className="mt-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">{job.note}</div>}
       {job.error && <div className="mt-1.5 rounded-md bg-live/10 px-2 py-1 text-[11px] text-rose-300">{job.error}</div>}
+    </MediaRow>
+  );
+}
+
+/**
+ * The files of one post, still waiting or running, as one row: one bar for the
+ * whole post, how many files are saved, and one Cancel for all of them. Files
+ * that are saved have left the list, and the engine says how many; a file
+ * that failed is listed under Failed on its own.
+ */
+export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
+  const first = jobs[0]!;
+  const total = first.group?.total ?? jobs.length;
+  const saved = Math.max(0, ...jobs.map((j) => j.group?.saved ?? 0));
+  const bytes = jobs.reduce((n, j) => n + j.bytes, 0);
+  const pct = (saved + jobs.reduce((n, j) => n + (jobProgress(j) ?? 0), 0)) / total;
+  const active = jobs.some((j) => j.state !== 'queued');
+  const rate = useRate(bytes, active);
+  const ids = useMemo(() => jobs.map((j) => j.id).join(' '), [jobs]);
+  const running = jobs.filter((j) => j.state === 'downloading').length;
+  const parts = [`${saved} of ${total} files saved`];
+  if (bytes) parts.push(fmtBytes(bytes));
+  if (rate > 0) parts.push(fmtRate(rate));
+  return (
+    <MediaRow
+      attrs={{ 'data-testid': 'job-group', 'data-group-id': first.group?.id, 'data-jobs': ids, 'data-state': active ? 'downloading' : 'queued', 'data-saved': saved, 'data-pct': Math.floor(pct * 100) }}
+      tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} />}
+      title={first.title || first.filename}
+      titleTip={first.filename}
+      meta={
+        <>
+          <KindBadge kind="post" />
+          <Badge>{`${total} files`}</Badge>
+          <span className="min-w-0 flex-1 truncate" title={first.url}>
+            {sourceLabel(first.url).split(' · ')[0]}
+          </span>
+        </>
+      }
+      action={
+        <IconButton label="Cancel" tone="danger" onClick={() => jobs.forEach((j) => void api.cancel(j.id))} className="size-9">
+          <IconX />
+        </IconButton>
+      }
+    >
+      <div className="h-1 overflow-hidden rounded bg-edge">
+        <div className="h-full rounded bg-shine transition-[width] duration-300" style={{ width: `${pct * 100}%` }} />
+      </div>
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-mute tabular-nums">
+        <Badge tone={active ? 'shine' : 'default'}>{active ? (running > 1 ? `${running} at once` : 'Downloading') : first.queuePosition ? `Queued, #${first.queuePosition}` : 'Queued'}</Badge>
+        <span className="min-w-0 truncate text-right" data-testid="job-status">
+          {parts.join(' · ')}
+        </span>
+      </div>
     </MediaRow>
   );
 }

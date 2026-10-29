@@ -39,4 +39,4 @@ try {
   pnpm site:deploy
 } finally { Pop-Location }
 
-Write-Host "Released $Version. Commit extension/package.json and website/site/index.html."
+Write-Host "Released $Version. Commit extension/package.json, website/site/index.html and website/site/version.json."

@@ -1,6 +1,7 @@
 # Publishes https://magpie.trevorblackman.dev (Cloudflare Worker static assets).
 # Copies the Chrome zip and the signed Firefox xpi into site/, points index.html
-# at them, removes files from older versions, and runs wrangler deploy.
+# at them, writes version.json (read by the extension's update check), removes
+# files from older versions, and runs wrangler deploy.
 #
 # Usually run by `pnpm release`. By hand, after the zips and `pnpm sign:firefox`:
 #   .\website\deploy.ps1                 # version from extension/package.json
@@ -26,6 +27,7 @@ $html = $html -replace 'magpie-\d+\.\d+\.\d+-chrome\.zip', "magpie-$Version-chro
 $html = $html -replace 'magpie-\d+\.\d+\.\d+-firefox\.(zip|xpi)', "magpie-$Version-firefox.xpi"
 $html = $html -replace 'v<b>\d+\.\d+\.\d+</b>', "v<b>$Version</b>"
 Set-Content $index $html -NoNewline
+Set-Content (Join-Path $site "version.json") (@{ version = $Version } | ConvertTo-Json -Compress) -NoNewline
 
 Push-Location $PSScriptRoot
 try { wrangler deploy } finally { Pop-Location }

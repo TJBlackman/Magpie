@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { useEffect, useRef, useState } from 'react';
 import type { Candidate, Envelope, Inspection, Job, Result, UiRequest } from '../core/types';
 import { SETTINGS_KEY, normalizeSettings, type Settings } from '../core/settings';
+import { DISMISSED_KEY, UPDATE_KEY, normalizeUpdate, updateFor } from '../core/update';
 import type { ArchiveEntry } from '../core/archive';
 import type { ThumbMap } from '../core/thumbs';
 import { ThumbCache } from './thumbs';
@@ -31,7 +32,40 @@ export const api = {
   removeArchive: (id: string) => call<null>({ type: 'removeArchive', id }),
   clearArchive: () => call<null>({ type: 'clearArchive' }),
   thumbs: (ids: { jobs?: string[]; archive?: string[] }) => call<ThumbMap>({ type: 'thumbs', ...ids }),
+  checkUpdate: () => call<null>({ type: 'checkUpdate' }),
 };
+
+/** A storage.local value, or undefined until loaded. Follows changes made elsewhere. */
+function useStored(key: string): unknown {
+  const [value, setValue] = useState<unknown>(undefined);
+  useEffect(() => {
+    void browser.storage.local.get(key).then((r) => setValue((r as Record<string, unknown>)[key] ?? null));
+    const listener = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+      if (area === 'local' && changes[key]) setValue(changes[key].newValue ?? null);
+    };
+    browser.storage.onChanged.addListener(listener);
+    return () => browser.storage.onChanged.removeListener(listener);
+  }, [key]);
+  return value;
+}
+
+/**
+ * A newer version than the installed one, or null. `dismissed` is true once the
+ * user closed the banner for that version; the next version shows it again.
+ * While enabled, asks the background to check, which it does at most every 12 hours.
+ */
+export function useUpdate(enabled: boolean): { latest: string | null; dismissed: boolean; dismiss: () => void } {
+  const state = useStored(UPDATE_KEY);
+  const dismissedVersion = useStored(DISMISSED_KEY);
+  useEffect(() => {
+    if (enabled) void api.checkUpdate();
+  }, [enabled]);
+  const latest = enabled && state !== undefined ? updateFor(normalizeUpdate(state), browser.runtime.getManifest().version) : null;
+  const dismiss = () => {
+    if (latest) void browser.storage.local.set({ [DISMISSED_KEY]: latest });
+  };
+  return { latest, dismissed: latest !== null && dismissedVersion === latest, dismiss };
+}
 
 /** Current settings plus a saver. null until loaded. Follows changes made elsewhere. */
 export function useSettings(): [Settings | null, (next: Settings) => Promise<void>] {

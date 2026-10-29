@@ -1,23 +1,52 @@
-const ILLEGAL = /[<>:"/\\|?*\u0000-\u001f]/g;
+/** Characters no path component may hold on Windows, plus `~`, which Chromium's download path check refuses too. */
+const ILLEGAL = new Set('<>:"/\\|?*~');
+/** Names Windows reserves, alone or before an extension; Chromium checks them on every OS. */
+const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9]|clock\$)(\.|$)|^(desktop\.ini|thumbs\.db)$/i;
+
+/**
+ * True for a code point the browser's download path check rejects anywhere:
+ * control and format characters (a zero width joiner inside an emoji, a soft
+ * hyphen, a bidi mark), Unicode noncharacters, and lone surrogates.
+ */
+function illegalCodePoint(cp: number): boolean {
+  if (cp < 0x20 || (cp >= 0x7f && cp <= 0x9f)) return true;
+  if (cp >= 0xd800 && cp <= 0xdfff) return true;
+  if ((cp & 0xfffe) === 0xfffe || (cp >= 0xfdd0 && cp <= 0xfdef)) return true;
+  return /\p{Cf}/u.test(String.fromCodePoint(cp));
+}
+
+/**
+ * One path component the downloads API accepts on every platform: reserved
+ * characters become spaces, invisible characters go, whitespace collapses,
+ * no dots or spaces at either end, no reserved Windows name, at most `max`
+ * code points (cut between characters, never inside a surrogate pair).
+ */
+export function cleanSegment(name: string, fallback: string, max = 120): string {
+  let out = '';
+  for (const ch of name) {
+    const cp = ch.codePointAt(0)!;
+    if (ILLEGAL.has(ch)) out += ' ';
+    else if (!illegalCodePoint(cp)) out += ch;
+  }
+  const trim = (s: string) => s.replace(/\s+/g, ' ').replace(/^[. ]+|[. ]+$/g, '');
+  out = trim(Array.from(trim(out)).slice(0, max).join(''));
+  if (RESERVED.test(out)) out = `_${out}`;
+  return out || fallback;
+}
 
 export function sanitizeFilename(name: string, fallback = 'video'): string {
-  const cleaned = name
-    .replace(ILLEGAL, ' ')
-    .replace(/\s+/g, ' ')
-    .replace(/[. ]+$/g, '')
-    .trim()
-    .slice(0, 120);
-  return cleaned || fallback;
+  return cleanSegment(name, fallback);
 }
 
 /** A container of 'audio' marks a stream without video (an audio only MPD), which is saved as .m4a. */
 export function guessExtension(kind: string, container: string | undefined, mime: string, url: string): string {
   if (kind === 'file') {
-    const m = /\.(mp4|m4v|webm|mov|mkv|m4a|mp3|ogg|ogv|flv)(\?|#|$)/i.exec(url);
+    const m = /\.(mp4|m4v|webm|mov|mkv|m4a|mp3|ogg|ogv|flv|jpe?g|png|webp|gif)(\?|#|$)/i.exec(url);
     if (m) return m[1]!.toLowerCase();
     if (mime.includes('webm')) return 'webm';
     if (mime.includes('ogg')) return 'ogv';
     if (mime.startsWith('audio/')) return 'm4a';
+    if (mime.startsWith('image/')) return mime.slice(6).replace('jpeg', 'jpg');
     return 'mp4';
   }
   return container === 'audio' ? 'm4a' : 'mp4';

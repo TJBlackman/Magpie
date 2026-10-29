@@ -209,6 +209,8 @@ export class Engine {
   private maxConcurrent = DEFAULT_SETTINGS.maxConcurrent;
   /** Latest inspection per candidate. Every new HLS or DASH manifest gets one, so only the newest are kept. */
   private inspections = new Map<string, Inspected>();
+  /** Files saved so far per group of a post's files, until the last one is saved (see archive()). */
+  private groups = new Map<string, number>();
 
   /**
    * `partBytes` is the size at which a live recording held in memory is saved
@@ -597,7 +599,7 @@ export class Engine {
       id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
       candidateId: candidate.id,
       title: candidate.pageTitle || candidate.url,
-      filename: buildFilename(candidate.pageTitle, candidate.kind, variant.audioOnly ? 'audio' : undefined, candidate.mime, candidate.url, variant.label),
+      filename: candidate.saveAs ?? buildFilename(candidate.pageTitle, candidate.kind, variant.audioOnly ? 'audio' : undefined, candidate.mime, candidate.url, variant.label),
       url: variant.uri,
       kind: candidate.kind,
       variantLabel: variant.label,
@@ -608,6 +610,10 @@ export class Engine {
       startedAt: Date.now(),
       thumb: candidate.thumb,
     };
+    if (candidate.group) {
+      const { id, index, total, candidateId } = candidate.group;
+      job.group = { id, index, total, candidateId };
+    }
     let dash: DashPlan | undefined;
     if (entry.dash) {
       try {
@@ -642,6 +648,9 @@ export class Engine {
       job.state = 'inspecting';
       void this.run(job, candidate, variant, media, dash, abort.signal, stop).finally(() => {
         this.running.delete(job.id);
+        // The last job of a post's group to end, however it ended, takes the group's counter with it.
+        const g = candidate.group?.id;
+        if (g && ![...this.jobs.values(), ...this.queue.map((q) => q.job)].some((j) => j.id !== job.id && j.group?.id === g)) this.groups.delete(g);
         this.pump();
       });
     }
@@ -758,7 +767,7 @@ export class Engine {
       if (part > 1 && out.bytes === 0) await out.abort();
       else {
         const saved = await this.save(out, part > 1 ? withPart(job.filename, part) : job.filename, job.id);
-        if (job.kind === 'file') secs = await mp4Duration(saved.file);
+        if (job.kind === 'file' && !candidate.mime.startsWith('image/')) secs = await mp4Duration(saved.file);
       }
       // The job stays 'saving' until history has the entry, then leaves the list:
       // the file is in the browser's downloads, and the record, if any, is in history.
@@ -768,6 +777,8 @@ export class Engine {
       this.emit();
     } catch (e) {
       await out.abort();
+      // A group with a file that failed or was cancelled never completes; its post stays new, so it can be saved again.
+      if (candidate.group) this.groups.delete(candidate.group.id);
       // Cancelled: the job already left the list. Failed: it stays, with the reason.
       if (!signal.aborted) {
         job.state = 'error';
@@ -812,7 +823,19 @@ export class Engine {
    */
   private async archive(job: Job, filename: string, candidate: Candidate, secs: number | undefined): Promise<boolean> {
     try {
-      return await this.platform.archive(makeEntry({ ...job, filename }, candidate, secs));
+      const g = candidate.group;
+      if (!g) return await this.platform.archive(makeEntry({ ...job, filename }, candidate, secs));
+      // One file of a post: the post goes to history once, when its last file is saved, under its folder.
+      const done = (this.groups.get(g.id) ?? 0) + 1;
+      // The group's other jobs learn the count, so the Downloads row can say "3 of 20 files saved".
+      for (const j of this.jobs.values()) if (j.group?.id === g.id) j.group.saved = done;
+      if (done < g.total) {
+        this.groups.set(g.id, done);
+        return false;
+      }
+      this.groups.delete(g.id);
+      const file = g.total > 1 ? filename.slice(0, filename.lastIndexOf('/')) : filename;
+      return await this.platform.archive(makeEntry({ id: g.id, filename: file, finishedAt: Date.now() }, g.post, undefined, g.total));
     } catch {
       return false;
     }
@@ -822,7 +845,14 @@ export class Engine {
   private async save(out: OutputFile, filename: string, jobId: string): Promise<{ id: number | undefined; file: File }> {
     const file = await out.finish();
     const blobUrl = URL.createObjectURL(file);
-    const id = await this.platform.saveBlob(blobUrl, filename, jobId);
+    let id: number | undefined;
+    try {
+      id = await this.platform.saveBlob(blobUrl, filename, jobId);
+    } catch (e) {
+      // The browser refused the name or the save. Without this a Firefox in memory file would stay in RAM.
+      URL.revokeObjectURL(blobUrl);
+      throw e;
+    }
     const release = () => {
       URL.revokeObjectURL(blobUrl);
       void OutputFile.remove(out.name);
@@ -1525,7 +1555,8 @@ function staleInspection(entry: Inspected, candidate: Candidate): boolean {
  * restarted), and then must exist.
  */
 function pickVariant(variants: Variant[], shown: Variant | undefined, variantId: string): Result<Variant> {
-  const found = shown ? variants.find((v) => v.label === shown.label) : variants.find((v) => v.id === variantId);
+  // 'best' is the top of the ladder, for a download started without a sheet (a post's video). Variants are sorted highest first.
+  const found = variantId === 'best' ? variants[0] : shown ? variants.find((v) => v.label === shown.label) : variants.find((v) => v.id === variantId);
   if (found) return ok(found);
   return err(variants.length ? "The stream's qualities changed; open it again and pick one." : 'No variant to download.');
 }

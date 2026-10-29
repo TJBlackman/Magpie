@@ -17,6 +17,7 @@ What works in v0.5:
 | DASH, SegmentList | yes | yes | unit tests, no fixture |
 | Live HLS (webcams, live events) | yes, one row per stream | yes, records until Stop or the stream ends | e2e (Chrome + Firefox) |
 | Live DASH (dynamic MPD, `$Number$` or `SegmentTimeline`) | yes | yes, records until Stop or the stream ends | e2e |
+| Reddit posts: gallery, image, GIF, video, crosspost | yes, one row per post, read from the page | yes, every file of the post at original quality, into one folder | e2e |
 | Hidden manifests, blob only players | no (phase 3 MSE capture) | no | fixture exists |
 | DRM | no | never | none |
 
@@ -62,7 +63,7 @@ To poke at the test site by hand: `pnpm server`, then open http://127.0.0.1:8787
 pnpm preview
 ```
 
-Opens http://localhost:5179 with the real popup rendered against a fake background (`extension/preview/fake-browser.ts` stands in for `wxt/browser`): nature videos on a page, downloads that progress and queue, a live cam, history and settings. Edits under `extension/src/ui` and `extension/entrypoints/popup` hot reload. The bar above the popup switches between the toolbar popup view and the opened as a page view, and between scenarios (default, empty, busy). Nothing in `extension/preview` ships in the extension.
+Opens http://localhost:5179 with the real popup rendered against a fake background (`extension/preview/fake-browser.ts` stands in for `wxt/browser`): nature videos on a page, downloads that progress and queue, a live cam, history and settings. Edits under `extension/src/ui` and `extension/entrypoints/popup` hot reload. The bar above the popup switches between the toolbar popup view and the opened as a page view, and between scenarios (default, empty, busy). `?update=1` adds the new version line. Nothing in `extension/preview` ships in the extension.
 
 ## Installing for daily use
 
@@ -97,6 +98,10 @@ Every row shows a frame of its stream. The frame comes from the stream itself, n
 Open Settings from the gear in the popup. "Parallel downloads" (default 2, range 1 to 10) caps how many downloads run at once. Every extra Download click joins a first in, first out queue and starts when a running download finishes. Raising the limit starts queued downloads right away. Cancel removes a queued download without starting it.
 
 The media list shows the page title first and the stream's host and file name underneath. Plain files show bytes of total, percent, speed and time left. HLS and DASH show segments done, percent, speed and an estimate of time left; when audio comes from a separate track, the count is the video segments and the audio rides along.
+
+## Update check
+
+Neither browser updates Magpie on its own: Chrome never updates an unpacked extension, and the Firefox build has no `update_url`. Instead the background reads `https://magpie.trevorblackman.dev/version.json` (`{"version":"0.5.1"}`) on start and whenever a popup opens, at most every 12 hours, or 30 minutes after a check that failed. The request sends no cookies and no version or ID. The answer goes to `storage.local` under `update`; the popup compares it with the installed version and, when the site's is newer, shows a line under the header with Get it (opens the website) and an X. The X hides that version only, stored under `updateDismissed`, so the next release shows the line again. Settings also says "0.5.1 available" next to the version at the bottom. "Tell me about new versions" in Settings (on by default) turns the check off, and then Magpie makes no request at all. `pnpm preview` with `?update=1` shows the line. Logic and tests are in `extension/src/core/update.ts`.
 
 ## Separate audio tracks
 
@@ -134,6 +139,14 @@ Numeric ids, hex ids (ObjectIds, hashes) and UUIDs always count, as does a time 
 History lives in the extension's own storage and never leaves the browser. Entries from private windows (Chrome incognito with "Allow in Incognito", Firefox private windows including "Always use private browsing mode") are kept in `storage.session` and forgotten when the last private window closes, like the rest of private browsing. "Remember downloads from private windows" in Settings keeps them with the rest.
 
 Nothing in the popup opens the saved file, because history keeps no download id. The file is in your downloads folder under the name shown on hover.
+
+## Reddit posts
+
+On reddit.com (a subreddit, a profile, or a post page) This page lists each post as one row, above any sniffed streams, with where it is from and what it holds: `r/comics · Gallery, 20 images`, `Video 1080p`, `GIF`. The sheet lists the files, and one button saves all of them: each gallery item, the image, or the GIF as the `i.redd.it` original, and a video as the largest packaged MP4, which already carries its audio, or the HLS master at best quality when there is no packaged list. A crosspost saves the post it embeds. Link and text posts get a row that says there is nothing to save. Ads never appear. Magpie is for media you own or have permission to save, such as your own subreddits and accounts.
+
+Nothing comes from Reddit's API, which is closed to logged out clients. The background runs `collectRedditPosts` (`extension/src/core/reddit.ts`) in the tab through `scripting.executeScript` whenever a popup asks for the tab's list, the same path that reads page titles. It walks the page's `shreddit-post` elements and returns raw facts per post; `redditAssets` turns them into the ordered file list. Both are pure enough for fixture tests: `extension/src/core/fixtures/reddit/` holds one captured element per post type, and those tests are the alarm when Reddit changes its markup. The page is read again when you press Download, since packaged MP4 links expire within hours.
+
+Files go to `Reddit/<subreddit>/<date> <author> · <title> [<post id>].<ext>` for one file and `Reddit/<subreddit>/<date> <author> · <title> [<post id>]/01.<ext>` for several. The date is the post's, in UTC, so a subreddit's folder sorts by when things were posted; the post id keeps names apart and is the post's URL (`https://redd.it/<id>`); the title is cut at 100 characters. Once the last file is saved, `post.json` is written into the folder (or `<name>.json` beside a single file) with the subreddit, title, author, created time, permalink, post type, download time, and each file's name and source URL. The sidecar is handed to the downloads API as a `data:` URL, so it needs no engine. A post whose download is cancelled or fails gets no sidecar. Only files on Reddit's media hosts (`*.redd.it`) or the page's own origin are fetched; anything else a post's markup points at is left alone, since downloads carry the user's cookies. Each file is an ordinary job that shares a group with the others: the Downloads tab shows the post as one row with one bar and one Cancel, and a file that fails is listed alone under Failed. The post goes to history once, when its last file is saved, with the folder as its name and the file count; history matches posts by permalink, so a saved post grays out or hides like a downloaded stream. The HLS master a video post's player loads folds under the post's row.
 
 ## Live streams
 
@@ -186,7 +199,7 @@ Chrome's service worker can be killed any time, so the engine lives in an offscr
 
 ## Roadmap
 
-Phase 2, remaining: audio language picker, pause and resume, filename templates.
+Phase 2, remaining: audio language picker, pause and resume, filename templates. Reddit: "Download all on this page", then paging through a whole subreddit or account (`docs/plan-reddit.md`).
 
 Phase 3: MSE capture content script for players that hide the manifest, DRM detection that explains itself, optional Go native host that hands the job to system ffmpeg for huge files.
 
@@ -203,6 +216,8 @@ Phase 3: MSE capture content script for players that hide the manifest, DRM dete
 - Filenames come from the page at the moment you click Download: JSON-LD video name, then `og:title`, `twitter:title`, `<title>`, `<h1>`, with a trailing or leading site name removed. If the tab has moved to another page, the title seen when the stream was detected is used instead.
 - Firefox is tested through Selenium, not Playwright, because Playwright's Firefox build cannot load extensions.
 - History misses a video, and shows it as available, when the site serves it from a different CDN host on the next visit, or signs the path in a segment without `=` or `~`.
+- `post.json` names the files as Magpie asked for them. When the same post is downloaded again into the same folder, the browser renames the copies (`01 (1).png`, `post (1).json`) and the second sidecar still says `01.png`. Firefox also turns `%` in a name into `_`.
+- Reddit rows depend on Reddit's page markup, which is internal and changes. When a post with media yields no files, the sheet says so; the fixture tests in `extension/src/core/reddit.test.ts` catch the change, and the selectors in `collectRedditPosts` are the only place to update. A packaged MP4 link that expired while the job waited fails that file instead of falling back to the HLS master; press Download again. old.reddit.com and external hosts (Imgur, Redgifs, YouTube) are not read.
 
 ## Website
 
@@ -216,6 +231,6 @@ pnpm release -Bump minor      # 0.2.1 -> 0.3.0
 pnpm release -Version 0.2.2   # exact version
 ```
 
-`scripts/release.ps1` runs typecheck and unit tests, bumps `extension/package.json`, builds both zips, has Mozilla sign the Firefox build (`pnpm sign:firefox`), and runs `website/deploy.ps1`. The deploy script copies the Chrome zip and signed xpi into `website/site`, rewrites the download links and version label in `index.html`, deletes files from older versions, runs `wrangler deploy`, and warns if the xpi is not served as `application/x-xpinstall`. Commit `extension/package.json` and `index.html` afterwards. The zips and xpi themselves are gitignored.
+`scripts/release.ps1` runs typecheck and unit tests, bumps `extension/package.json`, builds both zips, has Mozilla sign the Firefox build (`pnpm sign:firefox`), and runs `website/deploy.ps1`. The deploy script copies the Chrome zip and signed xpi into `website/site`, rewrites the download links and version label in `index.html`, writes `version.json` for the update check, deletes files from older versions, runs `wrangler deploy`, and warns if the xpi is not served as `application/x-xpinstall`. Commit `extension/package.json`, `index.html` and `version.json` afterwards. The zips and xpi themselves are gitignored.
 
 The page uses the popup's own palette (the `@theme` block in `extension/src/ui/style.css`) and shows screenshots of the real popup from `website/site/shots`. After a UI change, `pnpm site:shots` recaptures them: it starts the preview harness on port 5180 and photographs This page, the quality sheet, Downloads, History and the all tabs view with Playwright from `e2e/`. The pictures are committed, so a release without UI changes needs no recapture.

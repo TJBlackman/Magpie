@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconFilm, IconRadio } from './icons';
+import { IconFilm, IconImages, IconRadio, IconUpdate, IconX } from './icons';
 
-export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'file';
+export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'file' | 'post';
 
 export function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: Tone }) {
   const cls = {
@@ -13,6 +13,7 @@ export function Badge({ children, tone = 'default' }: { children: ReactNode; ton
     bad: 'bg-live/15 text-rose-300',
     good: 'bg-emerald-500/15 text-emerald-300',
     file: 'bg-violet-500/15 text-violet-300',
+    post: 'bg-orange-500/15 text-orange-300',
   }[tone];
   return <span className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${cls}`}>{children}</span>;
 }
@@ -58,9 +59,9 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
   );
 }
 
-const KIND_TONE: Record<MediaKind, Tone> = { hls: 'shine', dash: 'warn', file: 'file' };
+const KIND_TONE: Record<MediaKind, Tone> = { hls: 'shine', dash: 'warn', file: 'file', post: 'post' };
 
-/** HLS, DASH or FILE, in the kind's color. The same badge on every tab, so an item is easy to follow. */
+/** HLS, DASH, FILE or REDDIT, in the kind's color. The same badge on every tab, so an item is easy to follow. */
 export function KindBadge({ kind }: { kind: MediaKind }) {
   return <Badge tone={KIND_TONE[kind]}>{kindLabel(kind)}</Badge>;
 }
@@ -70,13 +71,13 @@ export function KindBadge({ kind }: { kind: MediaKind }) {
  * captured, else an icon in the kind's color. Live streams pulse either way.
  */
 export function MediaTile({ kind, live, thumb, muted, className = 'h-9 w-16' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; className?: string }) {
-  const tone = live ? 'bg-live/15 text-live' : { hls: 'bg-shine/12 text-shine', dash: 'bg-amber-500/15 text-amber-300', file: 'bg-violet-500/15 text-violet-300' }[kind];
+  const tone = live ? 'bg-live/15 text-live' : { hls: 'bg-shine/12 text-shine', dash: 'bg-amber-500/15 text-amber-300', file: 'bg-violet-500/15 text-violet-300', post: 'bg-orange-500/15 text-orange-300' }[kind];
   return (
     <div className={`relative ${className} shrink-0 overflow-hidden rounded-lg ${thumb ? 'bg-ink' : tone} ${muted ? 'grayscale' : ''}`}>
       {thumb ? (
         <img src={thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
       ) : (
-        <div className="flex size-full items-center justify-center">{live ? <IconRadio size={18} className="pulse" /> : <IconFilm size={18} />}</div>
+        <div className="flex size-full items-center justify-center">{live ? <IconRadio size={18} className="pulse" /> : kind === 'post' ? <IconImages size={18} /> : <IconFilm size={18} />}</div>
       )}
       {thumb && live && <span className="pulse absolute top-1 left-1 size-1.5 rounded-full bg-live shadow-[0_0_4px_var(--color-live)]" />}
     </div>
@@ -202,6 +203,24 @@ export function Toast({ message }: { message: string | null }) {
   return (
     <div role="status" className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center">
       <div className="veil-in rounded-lg bg-text px-3.5 py-2 text-xs font-semibold text-ink shadow-[0_6px_20px_rgba(0,0,0,.4)]">{message}</div>
+    </div>
+  );
+}
+
+/** A line under the header when the website has a newer Magpie. Get it opens the download page; X hides it until the next version. */
+export function UpdateBanner({ version, onGet, onDismiss }: { version: string; onGet: () => void; onDismiss: () => void }) {
+  return (
+    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex items-center gap-2 rounded-xl border border-shine/25 bg-shine/8 py-1 pr-1 pl-3 text-[12px]">
+      <IconUpdate size={15} className="shrink-0 text-shine" />
+      <span className="min-w-0 flex-1 truncate">
+        <b className="font-semibold">Magpie {version}</b> is out
+      </span>
+      <Button tone="shine" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
+        Get it
+      </Button>
+      <IconButton label="Hide until the next version" onClick={onDismiss} className="size-7">
+        <IconX size={14} />
+      </IconButton>
     </div>
   );
 }

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
-import { api, useArchive, useCandidates, useJobs, useSettings } from '../../src/ui/api';
-import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Toast } from '../../src/ui/components';
+import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
+import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Toast, UpdateBanner } from '../../src/ui/components';
 import { CandidateCard, QualitySheet } from '../../src/ui/candidates';
-import { JobRow } from '../../src/ui/jobs';
+import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
 import { IconPlay, IconSearch, IconSettings, IconX, Logo } from '../../src/ui/icons';
 import { shortUrl } from '../../src/ui/format';
-import type { Candidate } from '../../src/core/types';
+import type { Candidate, Job } from '../../src/core/types';
+import { SITE_URL } from '../../src/core/update';
 
 type View = 'page' | 'jobs' | 'history';
 
@@ -63,11 +64,31 @@ export function Popup() {
   const active = jobs.filter((j) => j.state !== 'error');
   const failed = jobs.filter((j) => j.state === 'error');
   const running = active.filter((j) => j.state === 'downloading' && !j.live).length;
-  // Candidates with a job waiting or running, so the card on This page goes gray.
-  const queued = new Map(active.map((j) => [j.candidateId, j.id]));
+  // Candidates with a job waiting or running, so the card on This page goes gray. A post's files point back at the post's card.
+  const queued = new Map(active.map((j) => [j.group?.candidateId ?? j.candidateId, j.id]));
+  // The files of one post are one row on Downloads; the others stay rows of their own.
+  const rows = useMemo(() => {
+    const out: ({ group: string; jobs: Job[]; job?: undefined } | { group?: undefined; job: Job })[] = [];
+    const seen = new Map<string, Job[]>();
+    for (const j of active) {
+      if (!j.group) {
+        out.push({ job: j });
+        continue;
+      }
+      const list = seen.get(j.group.id);
+      if (list) list.push(j);
+      else {
+        const fresh = [j];
+        seen.set(j.group.id, fresh);
+        out.push({ group: j.group.id, jobs: fresh });
+      }
+    }
+    return out;
+  }, [active]);
   const recording = active.some((j) => j.live && j.state === 'downloading');
   const [settings] = useSettings();
   const thumbs = settings?.thumbnails ?? true;
+  const update = useUpdate(settings?.updateCheck ?? false);
 
   const archive = useArchive();
   const [query, setQuery] = useState('');
@@ -84,7 +105,7 @@ export function Popup() {
     }
     setView('jobs');
     requestAnimationFrame(() => {
-      const row = document.querySelector<HTMLElement>(`[data-testid="job"][data-job-id="${queuedJobId}"]`);
+      const row = document.querySelector<HTMLElement>(`[data-testid="job"][data-job-id="${queuedJobId}"], [data-testid="job-group"][data-jobs~="${queuedJobId}"]`);
       row?.scrollIntoView({ block: 'nearest' });
       row?.classList.add('flash');
       row?.addEventListener('animationend', () => row.classList.remove('flash'), { once: true });
@@ -145,6 +166,8 @@ export function Popup() {
         </IconButton>
       </header>
 
+      {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
+
       <div role="tablist" className="mx-3.5 mb-2.5 flex rounded-xl border border-edge bg-panel p-[3px]">
         {tab('page', 'This page', <Pill n={fresh.length} />)}
         {tab('jobs', 'Downloads', <Pill n={active.length} live={recording} />)}
@@ -188,9 +211,7 @@ export function Popup() {
           <p className="px-1 py-1.5 text-[12px] text-dim">Nothing downloading</p>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {active.map((j) => (
-              <JobRow key={j.id} job={j} thumbs={thumbs} />
-            ))}
+            {rows.map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
           </div>
         )}
         {failed.length > 0 && (
@@ -233,7 +254,7 @@ export function Popup() {
       </Panel>
 
       {sheet && <QualitySheet key={sheet.id} candidate={sheet} thumbs={thumbs} onClose={() => setSheetId(null)} onStarted={() => (setSheetId(null), setToast('Added to downloads'))} />}
-      {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsPanel latest={update.latest} onClose={() => setSettingsOpen(false)} />}
       <Toast message={toast} />
     </div>
   );

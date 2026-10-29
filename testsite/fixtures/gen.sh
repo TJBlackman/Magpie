@@ -201,3 +201,14 @@ ffmpeg -hide_banner -loglevel error -i src/720.mp4 -map 0:a -c copy -f framemd5 
 
 echo "done -> $out"
 find "$out" -type f | wc -l
+
+echo "== reddit (originals a fake Reddit page links to: noisy PNGs so each is a few hundred KB, a GIF, a packaged MP4 with audio)"
+mkdir -p reddit
+for i in 1 2 3 4; do
+  # Noise so the PNG stays large; the lut makes each file differ from the others.
+  ffmpeg -hide_banner -loglevel error -y -f lavfi -i "nullsrc=size=400x400:rate=1,geq=random(1)*255:random(1)*255:random(1)*255,lutrgb=r=val*$i/4" -frames:v 1 -pix_fmt rgb24 "reddit/g$i.png"
+done
+ffmpeg -hide_banner -loglevel error -y -f lavfi -i "testsrc=size=320x240:rate=5:duration=2" "reddit/anim.gif"
+ffmpeg -hide_banner -loglevel error -y -f lavfi -i "color=c=0x2f6b3e:size=640x480:rate=1" -frames:v 1 "reddit/single.jpg"
+cp src/720.mp4 reddit/m2-res_720p.mp4
+cp src/360.mp4 reddit/m2-res_360p.mp4

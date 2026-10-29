@@ -43,7 +43,7 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ maxConcurrent: 'x' }).maxConcurrent).toBe(2);
   });
   it('keeps 25 archive entries by default and allows 0 to turn the archive off', () => {
-    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true });
+    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true, updateCheck: true });
     expect(normalizeSettings({ archiveSize: 0 }).archiveSize).toBe(0);
     expect(normalizeSettings({ archiveSize: '40' }).archiveSize).toBe(40);
     expect(normalizeSettings({ archiveSize: 9999 }).archiveSize).toBe(500);

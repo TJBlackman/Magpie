@@ -81,7 +81,7 @@ export function fmtClock(seconds: number): string {
 }
 
 export function kindLabel(kind: string): string {
-  return { hls: 'HLS', dash: 'DASH', file: 'FILE' }[kind] ?? kind.toUpperCase();
+  return { hls: 'HLS', dash: 'DASH', file: 'FILE', post: 'REDDIT' }[kind] ?? kind.toUpperCase();
 }
 
 /** The kind a stream URL points at, for history entries saved before the kind was kept. */

@@ -8,12 +8,14 @@ export interface Settings {
   archivePrivate: boolean;
   /** Fetch one small piece of each stream and show a frame of it on its row. */
   thumbnails: boolean;
+  /** Read the latest version number from the website now and then and say when there is a newer one. */
+  updateCheck: boolean;
 }
 
 export const SETTINGS_KEY = 'settings';
 export const MAX_CONCURRENT_LIMIT = 10;
 export const ARCHIVE_LIMIT = 500;
-export const DEFAULT_SETTINGS: Settings = { maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true };
+export const DEFAULT_SETTINGS: Settings = { maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true, updateCheck: true };
 
 /** A whole number from storage clamped to [min, max], or `fallback` when there is none. */
 function int(v: unknown, min: number, max: number, fallback: number): number {
@@ -29,5 +31,6 @@ export function normalizeSettings(raw: unknown): Settings {
     archiveSize: int(o.archiveSize, 0, ARCHIVE_LIMIT, DEFAULT_SETTINGS.archiveSize),
     archivePrivate: o.archivePrivate === true,
     thumbnails: o.thumbnails !== false,
+    updateCheck: o.updateCheck !== false,
   };
 }

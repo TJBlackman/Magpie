@@ -27,6 +27,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs }: { entry: A
             {fmtDate(entry.at)}
           </span>
           {entry.secs ? <span className="shrink-0">{`· ${fmtClock(entry.secs)}`}</span> : null}
+          {entry.files ? <span className="shrink-0">{`· ${entry.files} files`}</span> : null}
           {page && <span className="shrink-0">·</span>}
           {page && isWebUrl(page) ? (
             <a
