@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, expectAudioMatch, expectAvPair, expectFramesMatch, expectFramesPrefix, finished, openCandidate, playAndWait, probeTimes, test, view } from '../fixtures';
+import { expect, expectAudioCut, expectAudioMatch, expectAvPair, expectFramesCut, expectFramesMatch, expectFramesPrefix, finished, openCandidate, playAndWait, probeTimes, test, view } from '../fixtures';
 
 // /live.html replays the hls-ts clip as a live stream: two 4 s segments at the
 // start, one more every 4 s, EXT-X-ENDLIST after the fifth (about 12 s in).
@@ -73,6 +73,29 @@ test('live fmp4 stamped hours into the stream: the file starts at 0', async ({ m
   expect(duration).toBeGreaterThan(19.9);
   expect(duration).toBeLessThan(20.2);
   expectFramesMatch(file, '720');
+});
+
+// /live.html?src=ads replays the clip the way Twitch stitches ads into a viewer's playlist (see liveSim in the
+// test server): an fMP4 preroll behind EXT-X-MAP, the first two live segments, a TS midroll in place of the
+// third, then the last two. Each ad sits behind EXT-X-DISCONTINUITY tags on a clock of its own and is titled
+// after its source; the live segments are titled "live", under EXT-X-TWITCH tags.
+test('live with stitched ads: records the stream without them, the audio in step across the breaks', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/live.html?src=ads');
+  const popup = await magpie.popup();
+  const job = await startRecording(popup, '/live-ads/');
+  await expect(job.getByTestId('job-note')).toContainText(/Skipped \d+ s of Twitch ads/, { timeout: 30_000 });
+  const { jobId } = await finished(popup);
+  const file = await magpie.exportJob(popup, jobId, 'live-ads.mp4');
+  // Four of the five live segments, 120 frames each: the midroll took the third's place. No ad frames.
+  expectFramesCut(file, '720', 480);
+  // Their audio too, about 16 s at 46.875 packets a second, and nothing of the ads'.
+  expectAudioCut(file, 740, 760);
+  expectAvPair(file);
+  const { start, duration } = probeTimes(file);
+  expect(start).toBeLessThan(0.1);
+  expect(duration).toBeGreaterThan(15.9);
+  expect(duration).toBeLessThan(16.3);
 });
 
 // /live-dash.html replays the dash clip as a dynamic MPD on a session clock

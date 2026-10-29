@@ -876,6 +876,8 @@ export class Engine {
         if (isEncrypted(init)) throw new Error(DRM_INIT);
         checked = init;
       }
+      // After an EXT-X-DISCONTINUITY the file carries on at the playlist time, as a player plays it.
+      if (sink && media.segments[i]!.discontinuity) await sink.discontinuity(media.segments[i]!.start);
       sink ??= sinkFor(media.container, data, write, media.totalDuration);
       await sink.push(data, init);
       job.segmentsDone = i + 1;
@@ -984,31 +986,71 @@ export class Engine {
     const gap = LIVE_GAP;
 
     let media = first;
-    let next = media.segments[liveStartIndex(media, LIVE_LEAD_IN)]?.sequence ?? media.mediaSequence;
+    // The lead in counts live seconds; a preroll in the window is not footage.
+    const liveAtStart = media.segments.filter((s) => !stitchedAd(media, s));
+    let next = liveAtStart[liveStartIndex({ ...media, segments: liveAtStart }, LIVE_LEAD_IN)]?.sequence ?? (media.segments.at(-1)?.sequence ?? media.mediaSequence - 1) + 1;
     let sink: Sink | null = null;
-    /** Seconds in the current part; the whole recording unless it is saved in parts. */
-    let partDuration = 0;
+    /**
+     * Where the current part's content ends in the file by the playlist's count, in seconds: the segments
+     * written plus the holes left by any that could not be fetched (a sink places a segment by the stream's
+     * clock, so a missing one leaves its seconds empty). The MPEG-TS sink measures its own end instead
+     * (Sink.end), exact where EXTINF is nominal (Twitch's 2.000 s segments run 2.002 s); this count stands
+     * for fMP4. The header gets the end, and a cut carries on from it.
+     */
+    let partEnd = 0;
+    /** Seconds of stitched ads left out, and the note that says so. */
+    let adSeconds = 0;
+    let adNote: string | undefined;
+    /** The last listed segment was an ad, so the next one kept starts on the stream's clock again. */
+    let afterAd = false;
+    /** The next segment written starts on another clock than the last one did. */
+    let cut = false;
     let failures = 0;
     let finalPass = false;
     /** Why the recording ended early, if it did. */
     let why: string | undefined;
     job.duration = 0;
-    // The init went out before the length was known; give it the recorded duration.
+    // The init went out before the length was known; give it the part's span.
     const finishPart = async () => {
       if (!sink) return;
       await sink.flush();
-      if (sink.firstInit && partDuration) await output.current().overwriteStart(patchDurations(sink.firstInit, partDuration));
+      const end = sink.end ?? partEnd;
+      if (sink.firstInit && end) await output.current().overwriteStart(patchDurations(sink.firstInit, end));
     };
 
     for (;;) {
       const newest = media.segments.at(-1);
       if (newest && next - (newest.sequence + 1) > Math.max(3, media.segments.length)) {
-        // The whole window is far behind what we already have: the stream restarted its numbering.
+        // The whole window is far behind what we already have: the stream restarted its numbering, and its clock.
         next = media.segments[0]!.sequence;
+        cut = true;
         job.note = 'The stream restarted during the recording.';
       }
-      const fresh = media.segments.filter((s) => s.sequence >= next);
-      if (fresh.length && fresh[0]!.sequence > next && job.segmentsDone > 0) job.note = gap;
+      const listed = media.segments.filter((s) => s.sequence >= next);
+      // Segments that left the window unfetched are a hole of about their number times a segment's length,
+      // unless a cut is pending, which closes it. After an ad they were likely more of the ad.
+      if (listed.length && listed[0]!.sequence > next && job.segmentsDone > 0 && !afterAd) {
+        job.note = gap;
+        if (!cut) partEnd += (listed[0]!.sequence - next) * (listed.reduce((a, s) => a + s.duration, 0) / listed.length);
+      }
+      // Stitched ads are left out. The segment after one, like any after an EXT-X-DISCONTINUITY, is on
+      // another clock than the last one written, and the sink carries the file on from where it is.
+      const fresh: HlsSegment[] = [];
+      const cuts = new Set<number>();
+      for (const seg of listed) {
+        if (stitchedAd(media, seg)) {
+          adSeconds += seg.duration;
+          afterAd = true;
+          continue;
+        }
+        if (seg.discontinuity || afterAd) cuts.add(seg.sequence);
+        afterAd = false;
+        fresh.push(seg);
+      }
+      if (adSeconds && (!job.note || job.note === adNote)) {
+        adNote = `Skipped ${Math.round(adSeconds)} s of Twitch ads.`;
+        job.note = adNote;
+      }
       for (const seg of fresh) {
         await allow(seg.uri);
         if (seg.map) await allow(seg.map.uri);
@@ -1020,9 +1062,24 @@ export class Engine {
         WINDOW,
         async (i) => {
           const seg = fresh[i]!;
+          // An init that no longer loads: an EXT-X-MAP stays in force past the fMP4 ad it came with, so the
+          // TS segments after one list the ad's init, and its signed URL may have expired with the ad.
+          const initOrNull = async () => {
+            const loading = initFor(seg);
+            if (!loading) return null;
+            try {
+              return await loading;
+            } catch (e) {
+              if (signal.aborted || !(e instanceof HttpError || e instanceof TypeError)) throw e;
+              return null;
+            }
+          };
           try {
-            const [raw, init] = await Promise.all([fetchBytes(seg.uri, { signal, byteRange: seg.byteRange }), initFor(seg)]);
-            return { data: await decryptSegment(raw, seg.key, seg.sequence, signal), init };
+            const [raw, init] = await Promise.all([fetchBytes(seg.uri, { signal, byteRange: seg.byteRange }), initOrNull()]);
+            const data = await decryptSegment(raw, seg.key, seg.sequence, signal);
+            // An MPEG-TS segment carries its own program tables, so it goes on without the init; fMP4 cannot.
+            if (seg.map && !init && sniffContainer(data) !== 'ts') return null;
+            return { data, init };
           } catch (e) {
             // A segment that expired or failed to load leaves a gap; decrypt and other errors end the job.
             if (signal.aborted || !(e instanceof HttpError || e instanceof TypeError)) throw e;
@@ -1034,29 +1091,36 @@ export class Engine {
       for (const seg of fresh) {
         const got = await pool.next();
         next = seg.sequence + 1;
+        if (cuts.has(seg.sequence)) cut = true;
         if (!got) {
           job.note = gap;
+          // The hole it leaves, unless a cut is pending, which closes it.
+          if (!cut) partEnd += seg.duration;
           continue;
         }
+        if (sink && cut) await sink.discontinuity(sink.end ?? partEnd);
+        cut = false;
         sink ??= sinkFor(media.container, got.data, write, 0);
         await sink.push(got.data, got.init);
         job.segmentsDone++;
         job.duration += seg.duration;
-        partDuration += seg.duration;
+        partEnd += seg.duration;
         if (output.current().inMemory && output.current().bytes >= this.partBytes) {
           await finishPart();
           await output.nextPart();
           sink = null;
-          partDuration = 0;
+          partEnd = 0;
           job.note = PART_NOTE;
         }
         this.emitThrottled();
       }
+      // Past any ads at the end of the window too, so they are not counted again next pass.
+      if (listed.length) next = listed.at(-1)!.sequence + 1;
 
       if (media.endList || finalPass) break;
       const target = (media.targetDuration || 2) * 1000;
-      // As the HLS spec asks: wait one target duration after a change, half of one when nothing was new.
-      await stop.sleep(fresh.length ? target : target / 2, signal);
+      // As the HLS spec asks: wait one target duration after a change (ads count), half of one when nothing was new.
+      await stop.sleep(listed.length ? target : target / 2, signal);
       if (signal.aborted) throw new DOMException('aborted', 'AbortError');
       // After Stop, reload once more so the file runs up to the moment of the click.
       finalPass = stop.requested;
@@ -1561,7 +1625,22 @@ async function streamFile(
   }
 }
 
-/** Fetches each distinct EXT-X-MAP init segment once per job. */
+/**
+ * Twitch stitches ads into each viewer's live playlist: a run of segments on
+ * a clock of its own behind EXT-X-DISCONTINUITY tags, titled after their
+ * source, "Amazon|<creative id>" (streamlink's Twitch plugin keys on the same
+ * title), where the stream's own segments are titled "live". They stand in
+ * for the live content of the break, and the stream's clock runs on without
+ * them. The playlist says it is Twitch's with EXT-X-TWITCH tags; elsewhere
+ * titles mean nothing. Only the known ad title counts: an ad titled some
+ * other way is recorded, behind cuts like any discontinuity, which is the
+ * lesser harm next to dropping a stream whose live segments got a new title.
+ */
+export function stitchedAd(media: MediaPlaylist, seg: HlsSegment): boolean {
+  return media.twitch && /^Amazon(\||$)/.test(seg.title);
+}
+
+/** Fetches each distinct EXT-X-MAP init segment once per job. One that failed is fetched again for the next segment that lists it. */
 function initLoader(signal: AbortSignal): (seg: HlsSegment) => Promise<Uint8Array> | null {
   const cache = new Map<string, Promise<Uint8Array>>();
   return (seg) => {
@@ -1570,6 +1649,7 @@ function initLoader(signal: AbortSignal): (seg: HlsSegment) => Promise<Uint8Arra
     let p = cache.get(key);
     if (!p) {
       p = fetchBytes(seg.map.uri, { signal, byteRange: seg.map.byteRange });
+      p.catch(() => cache.delete(key));
       cache.set(key, p);
     }
     return p;
@@ -1588,18 +1668,24 @@ export function sinkContainer(container: MediaPlaylist['container'], first: Uint
 }
 
 /**
- * The sink for a single stream (see sinkContainer). An MPEG-TS init goes in
- * front of every segment, as downloadPair does, so mux.js finds the program
- * tables in each one.
+ * The sink for a single stream (see sinkContainer). An MPEG-TS init (a DASH
+ * Initialization or an HLS EXT-X-MAP holding the PAT and PMT) goes in front
+ * of every segment, as downloadPair does, so mux.js finds the program tables
+ * in each one. An fMP4 init, an EXT-X-MAP left in force past a stitched fMP4
+ * ad, is nothing to mux.js and is left out.
  */
 function sinkFor(container: MediaPlaylist['container'], first: Uint8Array, write: Write, durationSec: number): Sink {
   if (sinkContainer(container, first) === 'fmp4') return passthroughSink(write);
   const ts = tsSink(write, durationSec);
   return {
-    push: (segment, segInit) => ts.push(segInit ? joinBytes(segInit, segment) : segment, null),
+    push: (segment, segInit) => ts.push(segInit && initContainer(segInit, 'ts') === 'ts' ? joinBytes(segInit, segment) : segment, null),
+    discontinuity: (atSec) => ts.discontinuity(atSec),
     flush: () => ts.flush(),
     get firstInit() {
       return ts.firstInit;
+    },
+    get end() {
+      return ts.end;
     },
   };
 }
@@ -1759,7 +1845,7 @@ export class LiveCursor {
  * nothing is out.
  */
 export function liveStartSec(window: HlsSegment[], leadInSec: number): number | undefined {
-  const media: MediaPlaylist = { kind: 'media', segments: window, targetDuration: 0, mediaSequence: 0, endList: false, totalDuration: 0, container: 'fmp4' };
+  const media: MediaPlaylist = { kind: 'media', segments: window, targetDuration: 0, mediaSequence: 0, endList: false, totalDuration: 0, twitch: false, container: 'fmp4' };
   return window[liveStartIndex(media, leadInSec)]?.start;
 }
 

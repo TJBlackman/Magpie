@@ -437,12 +437,13 @@ export function toPlaylist(segments: HlsSegment[], endList: boolean, container: 
     mediaSequence: segments[0]?.sequence ?? 0,
     endList,
     totalDuration: segments.reduce((a, s) => a + s.duration, 0),
+    twitch: false,
     container,
   };
 }
 
 function segment(index: number, sequence: number, uri: string, start: number, duration: number, map: HlsSegment['map'], byteRange?: ByteRange): HlsSegment {
-  return { index, sequence, uri, duration, start, byteRange, key: { method: 'NONE' }, map, discontinuity: false };
+  return { index, sequence, uri, duration, title: '', start, byteRange, key: { method: 'NONE' }, map, discontinuity: false };
 }
 
 function containerOf(rep: DashRepresentation): MediaPlaylist['container'] {

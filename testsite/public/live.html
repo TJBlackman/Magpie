@@ -4,13 +4,14 @@
 <body>
 <h1>Live HLS</h1>
 <p><a href="/">back</a></p>
-<p>The hls-ts clip replayed as a live stream: a new segment every 4 s, ends after about 12 s. Add <code>?churn=cachebust</code> or <code>?churn=msn</code> to make the player change the playlist URL on every reload, <code>?src=fmp4</code> to play fMP4 segments stamped hours into the stream.</p>
+<p>The hls-ts clip replayed as a live stream: a new segment every 4 s, ends after about 12 s. Add <code>?churn=cachebust</code> or <code>?churn=msn</code> to make the player change the playlist URL on every reload, <code>?src=fmp4</code> to play fMP4 segments stamped hours into the stream, <code>?src=ads</code> for ads stitched in the way Twitch does it (a preroll, then one in place of the third segment; ends after about 16 s).</p>
 <video controls muted playsinline></video>
 <div id="status">loading</div>
 <script>
   // A fresh session per page load, so every visit starts the stream from its first segment.
-  // ?src=fmp4 plays an fMP4 rendition whose timestamps start hours in.
-  const prefix = new URLSearchParams(location.search).get('src') === 'fmp4' ? '/live-fmp4/' : '/live/';
+  // ?src=fmp4 plays an fMP4 rendition whose timestamps start hours in, ?src=ads the clip with stitched ads.
+  const src = new URLSearchParams(location.search).get('src');
+  const prefix = src === 'fmp4' ? '/live-fmp4/' : src === 'ads' ? '/live-ads/' : '/live/';
   document.querySelector('video').dataset.src = prefix + Math.random().toString(36).slice(2) + '/master.m3u8';
 </script>
 <script src="/player.js"></script>

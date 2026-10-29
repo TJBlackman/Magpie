@@ -60,6 +60,32 @@ seg.m4s
     expect(p.segments[0]!.key.iv?.[15]).toBe(0x0f);
     expect(p.segments[1]!.byteRange).toEqual({ length: 500, offset: 1000 });
     expect(p.totalDuration).toBeCloseTo(7.5);
+    expect(p.segments.map((s) => s.title)).toEqual(['', '']);
+    expect(p.twitch).toBe(false);
+  });
+
+  it('keeps the EXTINF title and notices Twitch tags', () => {
+    const p = parseHls(
+      `#EXTM3U
+#EXT-X-TARGETDURATION:2
+#EXT-X-TWITCH-ELAPSED-SECS:13065.052
+#EXT-X-DISCONTINUITY
+#EXTINF:2.000,Amazon|2474283100494
+ad.ts
+#EXT-X-DISCONTINUITY
+#EXTINF:2.000,live
+a.ts
+#EXTINF:2,
+b.ts
+#EXTINF:2
+c.ts`,
+      'https://usw2x.playlist.ttvnw.net/v1/playlist/x.m3u8',
+    );
+    if (p.kind !== 'media') throw new Error('not a media playlist');
+    expect(p.twitch).toBe(true);
+    expect(p.segments.map((s) => s.title)).toEqual(['Amazon|2474283100494', 'live', '', '']);
+    expect(p.segments.map((s) => s.duration)).toEqual([2, 2, 2, 2]);
+    expect(p.segments.map((s) => s.discontinuity)).toEqual([true, true, false, false]);
   });
 });
 
