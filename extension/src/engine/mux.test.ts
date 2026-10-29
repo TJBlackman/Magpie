@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { box, boxes, joinInits, mergeSink, patchDurations, placeFragment, renumberTrack, startOf, Timeline, trackTimescales, tsTrackProducer, type Box } from './mux';
+import { box, boxes, joinInits, mergeSink, patchDurations, placeFragment, renumberTrack, renumberTracks, startOf, Timeline, trackHandlers, trackTimescales, tsSink, tsTrackProducer, type Box } from './mux';
 function concat(...parts: Uint8Array[]): Uint8Array {
   const out = new Uint8Array(parts.reduce((a, p) => a + p.length, 0));
   let o = 0;
@@ -63,6 +63,19 @@ describe('Timeline', () => {
     expect(times(first)).toEqual([0, 960]);
     const next = t.rebase(fragment(7204 * 90000, 7204 * 48000 + 960));
     expect(times(next)).toEqual([4 * 90000, 4 * 48000 + 960]);
+  });
+
+  it('carries on from the given seconds after a restart, whichever way the clock jumped', () => {
+    const t = new Timeline();
+    t.learn(init);
+    t.rebase(fragment(7200 * 90000, 7200 * 48000));
+    // Back to a clock near 60 s, as a stitched ad's is, with the audio 0.02 s after the video.
+    t.restart(4);
+    expect(times(t.rebase(fragment(60 * 90000, 60 * 48000 + 960)))).toEqual([4 * 90000, 4 * 48000 + 960]);
+    expect(times(t.rebase(fragment(64 * 90000, 64 * 48000 + 960)))).toEqual([8 * 90000, 8 * 48000 + 960]);
+    // Then hours ahead again.
+    t.restart(12);
+    expect(times(t.rebase(fragment(7300 * 90000, 7300 * 48000)))).toEqual([12 * 90000, 12 * 48000]);
   });
 
   // trak with a 2 entry elst v0: an empty edit of `delay` (movie timescale 1000), then the media from 0.
@@ -331,6 +344,19 @@ describe('fragment rewrites', () => {
     expect(tfhds(data).map((b) => dvOf(data).getUint32(b.body + 4))).toEqual([5, 5]);
   });
 
+  it('renumbers only the tracks a map names', () => {
+    const data = segment(moof(1, 481, 0x20000, 0), moof(2, 482, 0x20000, 0), moof(3, 7, 0x20000, 0));
+    expect(renumberTracks(data, new Map([[481, 256], [482, 257]]))).toBe(data);
+    expect(tfhds(data).map((b) => dvOf(data).getUint32(b.body + 4))).toEqual([256, 257, 7]);
+  });
+
+  it('reads each track id and handler type from an init', () => {
+    const hdlr = (type: string) => box('hdlr', u32(0, 0), new TextEncoder().encode(type), pad(13));
+    const init = box('moov', trak(0, 256, 90000, 0, []), box('trak', tkhd(1, 257, 0), box('mdia', mdhd(0, 48000), hdlr('soun'))), box('trak', tkhd(0, 3, 0), box('mdia', mdhd(0, 1000), hdlr('vide'))));
+    // The first trak's hdlr names no type (the merge test builders leave it zero), so it is left out.
+    expect(trackHandlers(init)).toEqual(new Map([[257, 'soun'], [3, 'vide']]));
+  });
+
   it('numbers moofs from the running count and points base_data_offset at the moof', () => {
     const data = segment(moof(1, 1, 0x1, 0), moof(1, 1, 0x20000, 0));
     expect(placeFragment(data, 7, 5000)).toBe(9);
@@ -579,6 +605,47 @@ describe.skipIf(!existsSync(join(media, 'hls-altaudio-ts')) || !existsSync(join(
 
   it('flushes nothing before the first push', async () => {
     expect(await tsTrackProducer('video').flush()).toEqual({ init: null, fragments: [] });
+  });
+
+  it('tsSink carries on at the recorded seconds after a discontinuity, with one init', async () => {
+    const out: Uint8Array[] = [];
+    const sink = tsSink(async (c) => {
+      out.push(c);
+    }, 0);
+    const first = read('hls-ts/seg000.ts');
+    await sink.push(first, null);
+    // The video's end, 120 frames at 30 fps, whatever the audio did around it.
+    expect(sink.end).toBeCloseTo(4, 5);
+    // The same bytes again: on the stream's clock they start where the first push did, 4 s back in the file.
+    await sink.discontinuity(4);
+    await sink.push(first, null);
+    await sink.flush();
+    expect(sink.end).toBeCloseTo(8, 5);
+    const typeOf = (c: Uint8Array) => String.fromCharCode(...c.subarray(4, 8));
+    const inits = out.filter((c) => typeOf(c) === 'ftyp');
+    expect(inits).toHaveLength(1);
+    expect(trackHandlers(inits[0]!)).toEqual(new Map([[256, 'vide'], [257, 'soun']]));
+    const fragments = out.filter((c) => typeOf(c) === 'moof');
+    expect(fragments).toHaveLength(2);
+    // Each transmuxer numbers its fragments on from the last: one moof per track per segment.
+    const sequences = (frag: Uint8Array) => at(frag, 'moof/mfhd').map((b) => dvOf(frag).getUint32(b.body + 4));
+    expect(sequences(fragments[0]!)).toEqual([0, 0]);
+    expect(sequences(fragments[1]!)).toEqual([1, 1]);
+    // Each fragment's tfdt by track: the PIDs ffmpeg gave the streams, 256 video (90 kHz) and 257 audio (48 kHz).
+    const starts = (frag: Uint8Array) =>
+      Object.fromEntries(
+        at(frag, 'moof/traf').map((traf) => [
+          dvOf(frag).getUint32(at(frag, 'tfhd', traf.body, traf.end)[0]!.body + 4),
+          Number(dvOf(frag).getBigUint64(at(frag, 'tfdt', traf.body, traf.end)[0]!.body + 4)),
+        ]),
+      );
+    const one = starts(fragments[0]!);
+    const two = starts(fragments[1]!);
+    expect(one[256]).toBe(0);
+    expect(one[257]).toBeLessThan(1024);
+    expect(two[256]).toBe(4 * 90000);
+    // The audio sits where the stream has it against the video: one frame (1024 samples) before, in this fixture.
+    expect(Math.abs(two[257]! - 4 * 48000)).toBeLessThanOrEqual(1024);
   });
 
   it('merges the two producers into tracks 256 and 257 starting 21 ms apart', async () => {

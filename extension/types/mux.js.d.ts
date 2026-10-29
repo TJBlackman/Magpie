@@ -4,6 +4,7 @@ declare module 'mux.js' {
       remux?: boolean;
       keepOriginalTimestamps?: boolean;
       baseMediaDecodeTime?: number;
+      firstSequenceNumber?: number;
     }
     interface TransmuxSegment {
       initSegment: Uint8Array;
@@ -13,9 +14,17 @@ declare module 'mux.js' {
       metadata?: unknown[];
       info?: unknown;
     }
+    /** A track's fragment placed on the output clock: 90 kHz ticks, the audio's converted from its sample rate. */
+    interface SegmentTimingInfo {
+      start: { dts: number; pts: number };
+      end: { dts: number; pts: number };
+      baseMediaDecodeTime: number;
+      prependedContentDuration: number;
+    }
     class Transmuxer {
       constructor(options?: TransmuxerOptions);
       on(event: 'data', cb: (segment: TransmuxSegment) => void): void;
+      on(event: 'videoSegmentTimingInfo' | 'audioSegmentTimingInfo', cb: (info: SegmentTimingInfo) => void): void;
       on(event: 'done', cb: () => void): void;
       on(event: string, cb: (...args: unknown[]) => void): void;
       off(event: string, cb?: (...args: unknown[]) => void): void;

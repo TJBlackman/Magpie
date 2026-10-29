@@ -16,6 +16,7 @@ import {
   pairProblem,
   periodChange,
   sinkContainer,
+  stitchedAd,
   supportedTiming,
   type UsedInit,
 } from './engine';
@@ -102,6 +103,20 @@ describe('pairProblem', () => {
   });
 });
 
+describe('stitchedAd', () => {
+  const segments = '#EXTINF:2,Amazon|2474283100494\nad.ts\n#EXTINF:2,Amazon\nold.ts\n#EXT-X-DISCONTINUITY\n#EXTINF:2,live\na.ts\n#EXTINF:2,\nb.ts\n#EXTINF:2,Other|1\nc.ts\n';
+
+  it('is a segment of a Twitch playlist titled after the ad source, with or without a creative id', () => {
+    const m = media(`#EXT-X-TWITCH-ELAPSED-SECS:13065.052\n${segments}`);
+    expect(m.segments.map((s) => stitchedAd(m, s))).toEqual([true, true, false, false, false]);
+  });
+
+  it('is nothing on another site, whatever the titles say', () => {
+    const m = media(segments);
+    expect(m.segments.map((s) => stitchedAd(m, s))).toEqual([false, false, false, false, false]);
+  });
+});
+
 describe('missingLast', () => {
   const list = media(FMP4);
   const err = (status: number) => new HttpError(status, 'https://cdn.example/s2.m4s');
@@ -167,6 +182,7 @@ const staticList = () => availableRange(liveRep(20), undefined, AST + 30).media.
 const numbers = (segments: HlsSegment[]) => segments.map((s) => s.sequence);
 const seg = (sequence: number, start: number, duration: number): HlsSegment => ({
   index: 0,
+  title: '',
   sequence,
   uri: `s${sequence}.m4s`,
   duration,
