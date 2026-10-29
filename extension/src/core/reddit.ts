@@ -1,3 +1,5 @@
+import { cleanSegment } from './filename';
+
 /**
  * Reddit posts: read what the page shows, turn it into the files to save.
  *
@@ -18,6 +20,8 @@ export interface RedditRaw {
   /** `r/comics`, '' on a profile post without one. */
   subreddit: string;
   author: string;
+  /** The `created-timestamp` attribute as written: `2026-10-13T11:04:05.164000+0000`. */
+  created: string;
   /** The `post-type` attribute: image, gallery, gif, video, crosspost, link, text, ... */
   type: string;
   /** `content-href`: the image or GIF original, `https://www.reddit.com/gallery/<id>` for a gallery, the v.redd.it id for a video. */
@@ -79,6 +83,7 @@ export function collectRedditPosts(root: ParentNode = document): RedditRaw[] {
       title: attr(el, 'post-title'),
       subreddit: attr(el, 'subreddit-prefixed-name'),
       author: attr(el, 'author'),
+      created: attr(el, 'created-timestamp'),
       type: attr(el, 'post-type'),
       contentHref: attr(el, 'content-href') ? abs(attr(el, 'content-href')) : '',
       gallery: pages.map((p) => p.url),
@@ -108,6 +113,8 @@ export interface RedditPost {
   /** `comics`, without the `r/` prefix. */
   subreddit: string;
   author: string;
+  /** When the post was made, ISO 8601 in UTC (`2026-10-13T11:04:05Z`), '' when the page did not say. */
+  created: string;
   type: string;
   assets: RedditAsset[];
   preview: string;
@@ -115,6 +122,18 @@ export interface RedditPost {
   summary: string;
   /** Why there is nothing to save, when there is nothing. */
   note?: string;
+}
+
+/**
+ * Reddit's timestamp as plain ISO 8601 in UTC: microseconds dropped, `+0000`
+ * made `Z`. Other offsets are kept with a colon. Anything unexpected is '',
+ * so a folder never gets a mangled date.
+ */
+export function normalizeCreated(raw: string): string {
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.exec(raw.trim());
+  if (!m) return '';
+  const zone = (m[2] ?? 'Z').replace(/^([+-]\d{2})(\d{2})$/, '$1:$2');
+  return `${m[1]}${zone === '+00:00' || zone === '-00:00' ? 'Z' : zone}`;
 }
 
 const IMAGE_MIME: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif' };
@@ -183,6 +202,7 @@ export function redditAssets(raw: RedditRaw): RedditPost {
     title: raw.title,
     subreddit: raw.subreddit.replace(/^r\//, ''),
     author: raw.author,
+    created: normalizeCreated(raw.created),
     type: raw.type,
     assets: [],
     preview: raw.preview,
@@ -217,22 +237,29 @@ export function redditAssets(raw: RedditRaw): RedditPost {
   return post;
 }
 
-const ILLEGAL = /[<>:"/\\|?*\u0000-\u001f]/g;
+/** One path segment the downloads API accepts anywhere (see cleanSegment). */
+function segment(name: string, fallback: string, max = 120): string {
+  return cleanSegment(name, fallback, max);
+}
 
-/** One path segment: no separators or reserved characters, no trailing dots, at most 120 characters. */
-function segment(name: string, fallback: string): string {
-  const cleaned = name.replace(ILLEGAL, ' ').replace(/\s+/g, ' ').replace(/[. ]+$/g, '').trim().slice(0, 120);
-  return cleaned || fallback;
+/** `2026-10-13 thisecommercelife · The day all billionaires died [1x4toay]`: the post's name on disk. */
+export function postName(post: RedditPost): string {
+  const date = post.created.slice(0, 10);
+  const who = segment(post.author, '');
+  const lead = [date, who].filter(Boolean).join(' ');
+  const title = segment(post.title, 'post', 100);
+  return `${lead ? `${lead} · ` : ''}${title} [${post.id}]`;
 }
 
 /**
  * Where each asset is saved, relative to the downloads folder:
- *   Reddit/<subreddit>/<title> [<post id>].<ext>          one file
- *   Reddit/<subreddit>/<title> [<post id>]/01.<ext>       two or more
- * The post id keeps names unique across posts with the same title.
+ *   Reddit/<subreddit>/<date> <author> · <title> [<post id>].<ext>          one file
+ *   Reddit/<subreddit>/<date> <author> · <title> [<post id>]/01.<ext>       two or more
+ * The date is the post's, in UTC. The post id keeps names unique across
+ * posts with the same title, and names the post's URL: https://redd.it/<id>.
  */
 export function assetPaths(post: RedditPost): string[] {
-  const dir = ['Reddit', segment(post.subreddit || post.author, 'reddit'), `${segment(post.title, 'post')} [${post.id}]`];
+  const dir = ['Reddit', segment(post.subreddit || post.author, 'reddit'), postName(post)];
   const ext = (a: RedditAsset) => (a.kind === 'hls' ? 'mp4' : extOf(a.url) || 'bin');
   if (post.assets.length === 1) return [`${dir.slice(0, 2).join('/')}/${dir[2]}.${ext(post.assets[0]!)}`];
   const width = String(post.assets.length).length;
@@ -243,4 +270,45 @@ export function assetPaths(post: RedditPost): string[] {
 export function postPath(post: RedditPost): string {
   const paths = assetPaths(post);
   return paths.length === 1 ? paths[0]! : paths[0]!.slice(0, paths[0]!.lastIndexOf('/'));
+}
+
+/**
+ * The sidecar written beside a post's files once the last one is saved:
+ * `post.json` in the post's folder, or `<name>.json` next to a single file.
+ * Everything the page said about the post, and where each file came from.
+ */
+export function sidecar(post: RedditPost, paths: string[], downloadedAt: Date): { filename: string; json: string } {
+  const first = paths[0] ?? postPath(post);
+  const filename = paths.length === 1 ? first.replace(/\.[a-z0-9]+$/i, '') + '.json' : `${first.slice(0, first.lastIndexOf('/'))}/post.json`;
+  const body = {
+    source: 'reddit',
+    id: post.id,
+    url: post.permalink,
+    subreddit: post.subreddit,
+    author: post.author,
+    title: post.title,
+    created: post.created,
+    type: post.type,
+    downloaded: downloadedAt.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    files: post.assets.map((a, i) => ({ name: (paths[i] ?? '').slice((paths[i] ?? '').lastIndexOf('/') + 1), source: a.url })),
+  };
+  return { filename, json: JSON.stringify(body, null, 2) + '\n' };
+}
+
+/**
+ * True when a file a post names may be fetched: it lives on Reddit's media
+ * hosts (i.redd.it, v.redd.it, packaged-media.redd.it and the rest of
+ * redd.it), or on the page's own origin (the test site serves its fixtures
+ * itself). Anything else the page's markup points at is left alone, since the
+ * download carries the user's cookies.
+ */
+export function assetAllowed(url: string, pageUrl: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    if (u.hostname === 'redd.it' || u.hostname.endsWith('.redd.it')) return true;
+    return u.origin === new URL(pageUrl).origin;
+  } catch {
+    return false;
+  }
 }

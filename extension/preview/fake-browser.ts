@@ -112,7 +112,7 @@ function redditPost(id: string, t: Tab, title: string, count: number): Candidate
   const assets = Array.from({ length: count }, (_, i) => ({ url: `https://i.redd.it/${id}${i}.jpg`, kind: 'file' as const, mime: 'image/jpeg', label: `${i + 1} of ${count} · JPG` }));
   const permalink = `https://www.reddit.com/r/EarthPorn/comments/${id}/${title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}/`;
   return cand(`p${id}`, t, title, permalink, 'post', {
-    post: { id, permalink, title, subreddit: 'EarthPorn', author: 'wanderer', type: count > 1 ? 'gallery' : 'image', assets, preview: '', summary: count > 1 ? `Gallery, ${count} images` : 'Image, JPG' },
+    post: { id, permalink, title, subreddit: 'EarthPorn', author: 'wanderer', created: '2026-10-21T14:03:00Z', type: count > 1 ? 'gallery' : 'image', assets, preview: '', summary: count > 1 ? `Gallery, ${count} images` : 'Image, JPG' },
     thumb: paintThumb(title),
   });
 }

@@ -648,6 +648,9 @@ export class Engine {
       job.state = 'inspecting';
       void this.run(job, candidate, variant, media, dash, abort.signal, stop).finally(() => {
         this.running.delete(job.id);
+        // The last job of a post's group to end, however it ended, takes the group's counter with it.
+        const g = candidate.group?.id;
+        if (g && ![...this.jobs.values(), ...this.queue.map((q) => q.job)].some((j) => j.id !== job.id && j.group?.id === g)) this.groups.delete(g);
         this.pump();
       });
     }
@@ -824,6 +827,8 @@ export class Engine {
       if (!g) return await this.platform.archive(makeEntry({ ...job, filename }, candidate, secs));
       // One file of a post: the post goes to history once, when its last file is saved, under its folder.
       const done = (this.groups.get(g.id) ?? 0) + 1;
+      // The group's other jobs learn the count, so the Downloads row can say "3 of 20 files saved".
+      for (const j of this.jobs.values()) if (j.group?.id === g.id) j.group.saved = done;
       if (done < g.total) {
         this.groups.set(g.id, done);
         return false;
@@ -840,7 +845,14 @@ export class Engine {
   private async save(out: OutputFile, filename: string, jobId: string): Promise<{ id: number | undefined; file: File }> {
     const file = await out.finish();
     const blobUrl = URL.createObjectURL(file);
-    const id = await this.platform.saveBlob(blobUrl, filename, jobId);
+    let id: number | undefined;
+    try {
+      id = await this.platform.saveBlob(blobUrl, filename, jobId);
+    } catch (e) {
+      // The browser refused the name or the save. Without this a Firefox in memory file would stay in RAM.
+      URL.revokeObjectURL(blobUrl);
+      throw e;
+    }
     const release = () => {
       URL.revokeObjectURL(blobUrl);
       void OutputFile.remove(out.name);

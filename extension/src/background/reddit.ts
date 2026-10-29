@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { candidateId, manifestUrl } from '../core/detect';
-import { collectRedditPosts, redditAssets, type RedditPost } from '../core/reddit';
+import { assetAllowed, collectRedditPosts, redditAssets, type RedditPost } from '../core/reddit';
 import type { Candidate } from '../core/types';
 import { runInTabTimed } from './pagetitle';
 
@@ -19,10 +19,20 @@ export function mayHoldPosts(url: string | undefined): boolean {
   }
 }
 
+/**
+ * The post with only the files Magpie will fetch: Reddit's media hosts and
+ * the page's own origin (see assetAllowed). A post left with nothing says so.
+ */
+export function restrictAssets(post: RedditPost, pageUrl: string): RedditPost {
+  const assets = post.assets.filter((a) => assetAllowed(a.url, pageUrl));
+  if (assets.length === post.assets.length) return post;
+  return { ...post, assets, note: assets.length ? post.note : 'The files are not on Reddit, so they are left alone.' };
+}
+
 /** The posts the tab shows right now, as read from its page, or none when the page cannot be read. */
-export async function readPosts(tabId: number): Promise<RedditPost[]> {
+export async function readPosts(tabId: number, pageUrl: string): Promise<RedditPost[]> {
   const raws = await runInTabTimed(tabId, collectRedditPosts, COLLECT_MS).catch(() => undefined);
-  return (raws ?? []).map(redditAssets);
+  return (raws ?? []).map((r) => restrictAssets(redditAssets(r), pageUrl));
 }
 
 /**
@@ -56,7 +66,7 @@ export function postCandidate(post: RedditPost, tab: { id: number; url: string; 
 export async function collectTab(tabId: number): Promise<Candidate[] | null> {
   const tab = await browser.tabs.get(tabId).catch(() => null);
   if (!tab?.url || tab.id === undefined || !mayHoldPosts(tab.url)) return null;
-  const posts = await readPosts(tabId);
+  const posts = await readPosts(tabId, tab.url);
   const now = Date.now();
   // The list sorts newest first; a post further down the page counts as seen a little earlier.
   return posts.map((p, i) => postCandidate(p, { id: tab.id!, url: tab.url!, incognito: tab.incognito }, now - i));

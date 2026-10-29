@@ -9,6 +9,27 @@ const FIXTURES = join(testsiteDir, 'public', 'media', 'reddit');
 const md5 = (buf: Buffer) => createHash('md5').update(buf).digest('hex');
 const fixtureMd5 = (name: string) => md5(readFileSync(join(FIXTURES, name)));
 
+/**
+ * The post.json the background wrote for the post with `id`, decoded from the
+ * data: URL it handed the downloads API. Playwright saves extension downloads
+ * under names of its own, so the URL is the reliable way to find it.
+ */
+async function sidecarFor(popup: Page, id: string): Promise<{ filename: string; body: Record<string, unknown> }> {
+  let found: { filename: string; body: Record<string, unknown> } | undefined;
+  await expect
+    .poll(async () => {
+      const items = await popup.evaluate(() => chrome.downloads.search({}).then((list) => list.map((d) => ({ url: d.url, filename: d.filename, state: d.state }))));
+      for (const d of items) {
+        if (!d.url.startsWith('data:application/json') || d.state !== 'complete') continue;
+        const body = JSON.parse(decodeURIComponent(d.url.slice(d.url.indexOf(',') + 1))) as Record<string, unknown>;
+        if (body.id === id) found = { filename: d.filename, body };
+      }
+      return found !== undefined;
+    })
+    .toBe(true);
+  return found!;
+}
+
 /** The post row whose permalink holds `part`. Post rows carry the permalink as their URL. */
 function post(popup: Page, part: string) {
   return popup.locator(`[data-testid="candidate"][data-url*="${part}"]`);
@@ -97,7 +118,7 @@ test('gallery: every original saved byte for byte into one folder, one history e
   await expect(popup.getByTestId('job-group').first()).toContainText('4 files');
 
   const { jobId, filename } = await finished(popup, previous);
-  expect(filename).toBe('Reddit/magpietest/Four noisy squares [gal1]');
+  expect(filename).toBe('Reddit/magpietest/2026-10-28 fixture · Four noisy squares [gal1]');
   await view(popup, 'History');
   const entry = popup.locator(`[data-testid="archive-entry"][data-job-id="${jobId}"]`);
   await expect(entry).toContainText('4 files');
@@ -113,6 +134,21 @@ test('gallery: every original saved byte for byte into one folder, one history e
     expect(md5(readFileSync(file)), `file ${i + 1}`).toBe(want[i]);
   }
 
+  // post.json beside the files: subreddit, title, author, date, URL, and where each file came from.
+  const { body } = await sidecarFor(popup, 'gal1');
+  expect(body).toMatchObject({
+    source: 'reddit',
+    id: 'gal1',
+    url: 'http://127.0.0.1:8787/r/magpietest/comments/gal1/four_noisy_squares/',
+    subreddit: 'magpietest',
+    author: 'fixture',
+    title: 'Four noisy squares',
+    created: '2026-10-28T10:00:00Z',
+    type: 'gallery',
+  });
+  expect(body.downloaded).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+  expect(body.files).toEqual([1, 2, 3, 4].map((n) => ({ name: `0${n}.png`, source: `http://127.0.0.1:8787/crawl/reddit/g${n}.png` })));
+
   // Saved: the post is hidden on This page and shows as downloaded when asked for.
   await view(popup, 'This page');
   await expect(row).toHaveCount(0);
@@ -125,9 +161,13 @@ test('gif: the original GIF, not the MP4 the player uses', async ({ magpie }) =>
   const previous = await newestEntry(popup);
   const [id] = await startPost(popup, '/comments/gif1/', 1);
   const { filename } = await finished(popup, previous);
-  expect(filename).toBe('Reddit/magpietest/A test pattern [gif1].gif');
+  expect(filename).toBe('Reddit/magpietest/2026-10-28 fixture · A test pattern [gif1].gif');
   const file = await magpie.exportJob(popup, id!, 'reddit-gif.gif');
   expect(md5(readFileSync(file))).toBe(fixtureMd5('anim.gif'));
+  // A single file gets its .json beside it, naming that one file.
+  const { body } = await sidecarFor(popup, 'gif1');
+  expect(body).toMatchObject({ type: 'gif', author: 'fixture', created: '2026-10-28T10:00:00Z' });
+  expect(body.files).toEqual([{ name: '2026-10-28 fixture · A test pattern [gif1].gif', source: 'http://127.0.0.1:8787/media/reddit/anim.gif' }]);
 });
 
 test('video: the largest packaged MP4, audio included, in one fetch', async ({ magpie }) => {
@@ -135,7 +175,7 @@ test('video: the largest packaged MP4, audio included, in one fetch', async ({ m
   const previous = await newestEntry(popup);
   const [id] = await startPost(popup, '/comments/vid1/', 1);
   const { filename } = await finished(popup, previous);
-  expect(filename).toBe('Reddit/magpietest/Harbor with audio [vid1].mp4');
+  expect(filename).toBe('Reddit/magpietest/2026-10-28 fixture · Harbor with audio [vid1].mp4');
   const file = await magpie.exportJob(popup, id!, 'reddit-video.mp4');
   expect(md5(readFileSync(file))).toBe(fixtureMd5('m2-res_720p.mp4'));
   expectAvPair(file);
@@ -146,7 +186,7 @@ test('video without packaged MP4s: the HLS master at its best quality, audio mer
   const previous = await newestEntry(popup);
   const [id] = await startPost(popup, '/comments/hls1/', 1);
   const { filename } = await finished(popup, previous);
-  expect(filename).toBe('Reddit/magpietest/Night train, HLS only [hls1].mp4');
+  expect(filename).toBe('Reddit/magpietest/2026-10-28 fixture · Night train, HLS only [hls1].mp4');
   const file = await magpie.exportJob(popup, id!, 'reddit-hls.mp4');
   expectFramesMatch(file, '720');
   expectAudioMatch(file);

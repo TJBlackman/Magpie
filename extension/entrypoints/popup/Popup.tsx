@@ -85,7 +85,6 @@ export function Popup() {
     }
     return out;
   }, [active]);
-  const failedInGroup = (id: string) => failed.filter((j) => j.group?.id === id).length;
   const recording = active.some((j) => j.live && j.state === 'downloading');
   const [settings] = useSettings();
   const thumbs = settings?.thumbnails ?? true;
@@ -212,7 +211,7 @@ export function Popup() {
           <p className="px-1 py-1.5 text-[12px] text-dim">Nothing downloading</p>
         ) : (
           <div className="flex flex-col gap-1.5">
-            {rows.map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} failed={failedInGroup(r.group)} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
+            {rows.map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
           </div>
         )}
         {failed.length > 0 && (

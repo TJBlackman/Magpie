@@ -136,13 +136,13 @@ export function JobRow({ job, thumbs }: { job: Job; thumbs: boolean }) {
 /**
  * The files of one post, still waiting or running, as one row: one bar for the
  * whole post, how many files are saved, and one Cancel for all of them. Files
- * that are saved have left the list; `failed` is how many of the post's files
- * failed, listed under Failed on their own.
+ * that are saved have left the list, and the engine says how many; a file
+ * that failed is listed under Failed on its own.
  */
-export function GroupRow({ jobs, failed, thumbs }: { jobs: Job[]; failed: number; thumbs: boolean }) {
+export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
   const first = jobs[0]!;
   const total = first.group?.total ?? jobs.length;
-  const saved = Math.max(0, total - jobs.length - failed);
+  const saved = Math.max(0, ...jobs.map((j) => j.group?.saved ?? 0));
   const bytes = jobs.reduce((n, j) => n + j.bytes, 0);
   const pct = (saved + jobs.reduce((n, j) => n + (jobProgress(j) ?? 0), 0)) / total;
   const active = jobs.some((j) => j.state !== 'queued');

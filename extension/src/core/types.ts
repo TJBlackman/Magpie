@@ -137,8 +137,8 @@ export interface Job {
   error?: string;
   /** The candidate's frame, so the row looks the same as it did on the page. */
   thumb?: string;
-  /** One file of a post: the Downloads tab lists the group as one row. */
-  group?: Pick<AssetGroup, 'id' | 'index' | 'total' | 'candidateId'>;
+  /** One file of a post: the Downloads tab lists the group as one row. `saved` is how many of the group's files are saved so far. */
+  group?: Pick<AssetGroup, 'id' | 'index' | 'total' | 'candidateId'> & { saved?: number };
   startedAt: number;
   /** When the job failed. */
   finishedAt?: number;
