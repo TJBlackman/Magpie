@@ -7,9 +7,24 @@ import muxjs from 'mux.js';
  */
 export interface Sink {
   push(segment: Uint8Array, init: Uint8Array | null): Promise<void>;
+  /**
+   * The stream's clock jumps before the next segment (an EXT-X-DISCONTINUITY,
+   * or segments left out since the last push): that segment starts `atSec`
+   * seconds into the file whatever its own timestamps say, and the ones after
+   * it follow on from there.
+   */
+  discontinuity(atSec: number): Promise<void>;
   flush(): Promise<void>;
   /** The init segment written at offset 0, or null when the file does not start with one. */
   readonly firstInit: Uint8Array | null;
+  /**
+   * Seconds into the file the content written so far ends, by the sink's own
+   * measure of its fragments: where the video reached, the track the others
+   * are placed against, or the audio where there is no video. Null when the
+   * sink has no measure, and the caller's count of the playlist's durations
+   * stands.
+   */
+  readonly end: number | null;
 }
 
 export type Write = (chunk: Uint8Array) => Promise<void>;
@@ -33,9 +48,16 @@ export function passthroughSink(write: Write): Sink {
       wroteAny = true;
       await write(data);
     },
+    async discontinuity(atSec) {
+      timeline.restart(atSec);
+    },
     async flush() {},
     get firstInit() {
       return firstInit;
+    },
+    // The fragments' trun sample durations would give it; the playlist's count stands.
+    get end() {
+      return null;
     },
   };
 }
@@ -51,10 +73,25 @@ export class Timeline {
   private shift = new Map<number, bigint>();
   private startSec: number | null = null;
   private anchored = false;
+  /** Where in the file, in seconds, the stream time `startSec` lands: 0 until a restart. */
+  private offsetSec = 0;
 
   /** Read each track's timescale from an init segment (moov > trak > tkhd, mdia > mdhd). */
   learn(init: Uint8Array): void {
     for (const [track, timescale] of trackTimescales(init)) this.timescales.set(track, timescale);
+  }
+
+  /**
+   * The stream's clock jumps: the fragments from here on are placed as if the
+   * stream had started over at `atSec` seconds into the file. Each track's
+   * shift is worked out again from its next fragment, the earliest of them
+   * landing at `atSec`, so the tracks keep their offsets from each other.
+   */
+  restart(atSec: number): void {
+    this.shift.clear();
+    this.startSec = null;
+    this.anchored = false;
+    this.offsetSec = atSec;
   }
 
   /**
@@ -125,7 +162,7 @@ export class Timeline {
         }
       }
     }
-    // The earliest start among the tracks first seen here, in seconds, becomes 0.
+    // The earliest start among the tracks first seen here, in seconds, becomes offsetSec (0 in a file without restarts).
     const fresh = tfdts.filter((t) => !this.shift.has(t.track));
     for (const t of fresh) {
       const ts = this.timescales.get(t.track);
@@ -133,7 +170,7 @@ export class Timeline {
     }
     for (const t of fresh) {
       const ts = this.timescales.get(t.track);
-      if (!this.shift.has(t.track)) this.shift.set(t.track, ts && this.startSec !== null ? BigInt(Math.floor(this.startSec * ts)) : t.time);
+      if (!this.shift.has(t.track)) this.shift.set(t.track, ts && this.startSec !== null ? BigInt(Math.floor((this.startSec - this.offsetSec) * ts)) : t.time);
     }
     for (const t of tfdts) {
       let time = t.time - this.shift.get(t.track)!;
@@ -204,32 +241,81 @@ export function* boxes(data: Uint8Array, start: number, end: number, type?: stri
  * 0 when not known yet (live); the caller patches the init at the end.
  */
 export function tsSink(write: Write, durationSec: number): Sink {
-  const transmuxer = new muxjs.mp4.Transmuxer({ remux: true });
   let firstInit: Uint8Array | null = null;
+  /** The track id each handler type ('vide', 'soun') has in firstInit. */
+  const firstTracks = new Map<string, number>();
   let pending: Uint8Array[] = [];
-  transmuxer.on('data', (seg) => {
-    if (!firstInit) {
-      firstInit = patchDurations(seg.initSegment, durationSec);
-      pending.push(firstInit);
-    }
-    pending.push(seg.data);
-  });
+  /** Whether the current transmuxer has had a segment: mux.js builds its pipeline on the first push and throws on a flush before it. */
+  let pushed = false;
+  /** Fragments out so far; the next transmuxer numbers its own from there. */
+  let emitted = 0;
+  /**
+   * Where each track's content ends, in seconds. The video's is the end a cut carries on from: mux.js places
+   * a segment's audio at its own offset from the segment's first video frame (Twitch's runs about 40 ms
+   * behind), so the next segment's audio lands where the stream has it against its video, and the video
+   * itself continues without a gap.
+   */
+  let videoEnd = 0;
+  let audioEnd = 0;
+  // A Transmuxer places every segment against the first one it saw, so after a jump in the stream's clock the
+  // segments go through a new one that counts from the seconds recorded so far. Its setBaseMediaDecodeTime is no
+  // use here: in mux.js 6.3 it moves the transmuxer's own copy of the offset, not the one each track took when
+  // it was found, and that is the one the fragments are built from.
+  const transmuxerFrom = (sec: number) => {
+    const t = new muxjs.mp4.Transmuxer({ remux: true, baseMediaDecodeTime: Math.round(sec * 90000), firstSequenceNumber: emitted });
+    // Each track's fragment start and end on the file's clock, in 90 kHz ticks (the audio's converted).
+    t.on('videoSegmentTimingInfo', (info) => {
+      videoEnd = Math.max(videoEnd, info.end.dts / 90000);
+    });
+    t.on('audioSegmentTimingInfo', (info) => {
+      audioEnd = Math.max(audioEnd, info.end.dts / 90000);
+    });
+    t.on('data', (seg) => {
+      emitted++;
+      if (!firstInit) {
+        firstInit = patchDurations(seg.initSegment, durationSec);
+        for (const [id, handler] of trackHandlers(seg.initSegment)) firstTracks.set(handler, id);
+        pending.push(firstInit, seg.data);
+        return;
+      }
+      // mux.js takes track ids from the PMT, so a stream that changed PIDs at a cut would name tracks the one
+      // moov in the file does not have; they get the ids the same handler types have there.
+      const ids = new Map<number, number>();
+      for (const [id, handler] of trackHandlers(seg.initSegment)) {
+        const first = firstTracks.get(handler);
+        if (first !== undefined && first !== id) ids.set(id, first);
+      }
+      pending.push(ids.size ? renumberTracks(seg.data, ids) : seg.data);
+    });
+    return t;
+  };
+  let transmuxer = transmuxerFrom(0);
+  const drain = async () => {
+    const out = pending;
+    pending = [];
+    for (const chunk of out) await write(chunk);
+  };
   return {
     async push(segment) {
+      pushed = true;
       transmuxer.push(segment);
       transmuxer.flush();
-      const out = pending;
-      pending = [];
-      for (const chunk of out) await write(chunk);
+      await drain();
+    },
+    async discontinuity(atSec) {
+      // push flushed and drained after the last segment, so the old transmuxer holds nothing.
+      transmuxer = transmuxerFrom(atSec);
+      pushed = false;
     },
     async flush() {
-      transmuxer.flush();
-      const out = pending;
-      pending = [];
-      for (const chunk of out) await write(chunk);
+      if (pushed) transmuxer.flush();
+      await drain();
     },
     get firstInit() {
       return firstInit;
+    },
+    get end() {
+      return videoEnd || audioEnd;
     },
   };
 }
@@ -560,6 +646,39 @@ function audioTrex(data: Uint8Array, moov: Box, sourceId: number, id: number): U
   const out = found ? data.slice(found.start, found.end) : box('trex', fallback);
   view(out).setUint32((found ? found.body - found.start : 8) + 4, id);
   return out;
+}
+
+/** Each track's id and handler type ('vide', 'soun') in an init segment (moov > trak > tkhd, mdia > hdlr). */
+export function trackHandlers(init: Uint8Array): Map<number, string> {
+  const dv = view(init);
+  const out = new Map<number, string>();
+  for (const moov of boxes(init, 0, init.byteLength, 'moov')) {
+    for (const trak of boxes(init, moov.body, moov.end, 'trak')) {
+      let track = -1;
+      let handler = '';
+      for (const tkhd of boxes(init, trak.body, trak.end, 'tkhd')) track = dv.getUint32(tkhd.body + (init[tkhd.body] === 1 ? 20 : 12));
+      for (const mdia of boxes(init, trak.body, trak.end, 'mdia')) {
+        // hdlr: version and flags, pre_defined, then the handler type.
+        for (const hdlr of boxes(init, mdia.body, mdia.end, 'hdlr')) if (hdlr.body + 12 <= hdlr.end) handler = String.fromCharCode(...init.subarray(hdlr.body + 8, hdlr.body + 12));
+      }
+      if (track >= 0 && handler) out.set(track, handler);
+    }
+  }
+  return out;
+}
+
+/** Give every traf in `fragment` whose track id `ids` maps the id it maps to, in place, and return it. */
+export function renumberTracks(fragment: Uint8Array, ids: Map<number, number>): Uint8Array {
+  const dv = view(fragment);
+  for (const moof of boxes(fragment, 0, fragment.byteLength, 'moof')) {
+    for (const traf of boxes(fragment, moof.body, moof.end, 'traf')) {
+      for (const tfhd of boxes(fragment, traf.body, traf.end, 'tfhd')) {
+        const to = ids.get(dv.getUint32(tfhd.body + 4));
+        if (to !== undefined) dv.setUint32(tfhd.body + 4, to);
+      }
+    }
+  }
+  return fragment;
 }
 
 /** Set the track id of every traf in `fragment` in place and return it. */

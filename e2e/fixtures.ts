@@ -129,6 +129,27 @@ export function expectFramesPrefix(file: string, rendition: '720' | '480' | '360
   return got.length;
 }
 
+/**
+ * `file` must hold the reference frames with one run taken out of the middle:
+ * a prefix of the reference, then a suffix of it, `count` frames in all. What a
+ * recording holds when an ad stood in for part of the stream.
+ */
+export function expectFramesCut(file: string, rendition: '720' | '480' | '360', count: number) {
+  const { got, want } = frameHashes(file, rendition);
+  expectOneCut(got, want, 'frame', count);
+}
+
+/** `got` is `want` less one run from the middle: a non empty prefix of `want`, then a non empty suffix of it. */
+function expectOneCut(got: string[], want: string[], what: string, count: number) {
+  expect(got.length, `${what} count`).toBe(count);
+  expect(got.length, `${what} count`).toBeLessThan(want.length);
+  let prefix = 0;
+  while (prefix < got.length && got[prefix] === want[prefix]) prefix++;
+  expect(prefix, `${what}s before the cut`).toBeGreaterThan(0);
+  expect(prefix, `${what}s before the cut`).toBeLessThan(got.length);
+  expect(got.slice(prefix), `${what}s after the cut`).toEqual(want.slice(want.length - (got.length - prefix)));
+}
+
 function hashOnly(line: string): string {
   // framemd5 lines: stream, dts, pts, duration, size, hash. Timestamps may
   // shift after a remux, so compare size + hash only.
@@ -243,6 +264,29 @@ export function expectAudioMatch(file: string, opts: { allowMissing?: number } =
   expect(got.length, 'audio packet count').toBeGreaterThanOrEqual(want.length - missing);
   expect(got.length, 'audio packet count').toBeLessThanOrEqual(want.length);
   expect(got, 'encoded audio packet hashes').toEqual(want.slice(0, got.length));
+  return got.length;
+}
+
+/**
+ * The audio packets of `file` must be the reference's with one run taken out
+ * of the middle (see expectFramesCut), between `min` and `max` packets in all:
+ * where the cut falls between two packets depends on how the segmenter split
+ * them. A muxed MPEG-TS recording may also start a packet or two in: mux.js
+ * drops the audio frames before the first video frame, 21 ms in the fixture.
+ * Returns the packet count.
+ */
+export function expectAudioCut(file: string, min: number, max: number): number {
+  const got = audioPackets(file);
+  const want = readFileSync(join(refDir, 'audio.packets'), 'utf8')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  expect(got.length, 'audio packet count').toBeGreaterThanOrEqual(min);
+  expect(got.length, 'audio packet count').toBeLessThanOrEqual(max);
+  const lead = want.indexOf(got[0] ?? '');
+  expect(lead, 'reference packets before the first one saved').toBeGreaterThanOrEqual(0);
+  expect(lead, 'reference packets before the first one saved').toBeLessThanOrEqual(2);
+  expectOneCut(got, want.slice(lead), 'audio packet', got.length);
   return got.length;
 }
 

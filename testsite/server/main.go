@@ -85,6 +85,8 @@ func main() {
 	// in, replayed as live streams, see liveSim.
 	mux.Handle("/live/", noCache(withMime(&liveSim{prefix: "/live/", dir: filepath.Join(media, "hls-ts"), starts: map[string]time.Time{}})))
 	mux.Handle("/live-fmp4/", noCache(withMime(&liveSim{prefix: "/live-fmp4/", dir: filepath.Join(media, "hls-live-fmp4"), starts: map[string]time.Time{}})))
+	// The hls-ts clip with ads stitched in the way Twitch does it, see liveSim.
+	mux.Handle("/live-ads/", noCache(withMime(&liveSim{prefix: "/live-ads/", dir: filepath.Join(media, "hls-ts"), ads: filepath.Join(media, "ad"), starts: map[string]time.Time{}})))
 	// Live DASH: the dash fixture replayed as a dynamic MPD, see dashLiveSim.
 	// Its UTCTiming element points players and the recorder at /time.
 	mux.Handle("/live-dash/", noCache(withMime(&dashLiveSim{prefix: "/live-dash/", dir: filepath.Join(media, "dash"), starts: map[string]time.Time{}})))
@@ -231,11 +233,30 @@ func (s *slowWriter) Write(p []byte) (int, error) {
 // session id gets its own clock from its first playlist request. Two segments
 // are out at the start and one more each target duration; the window keeps the
 // newest four, and EXT-X-ENDLIST follows the last segment, about 12 s in.
+//
+// With ads, a directory holding the ad clip as TS (ad000.ts) and as fMP4
+// (ad-init.mp4, ad000.m4s), the playlist is stitched the way Twitch stitches
+// ads into a viewer's: the fMP4 ad as a preroll, the first two live segments,
+// the TS ad in place of the third, then the rest, six entries in all, so
+// EXT-X-ENDLIST comes about 16 s in. Each ad sits behind EXT-X-DISCONTINUITY
+// tags on a clock of its own (the ad clip is stamped 60 s in) and is titled
+// after its source, where the live segments are titled "live", under
+// EXT-X-TWITCH tags. The fMP4 ad lists its init with EXT-X-MAP, which by the
+// HLS spec stays in force for the TS segments after it.
 type liveSim struct {
 	prefix string
 	dir    string
+	ads    string
 	mu     sync.Mutex
 	starts map[string]time.Time
+}
+
+// liveEntry is one segment of the replayed playlist: its EXTINF line and file
+// name, whether a discontinuity precedes it, and the init it lists, if any.
+type liveEntry struct {
+	inf, name string
+	disc      bool
+	mapName   string
 }
 
 func (l *liveSim) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -251,18 +272,24 @@ func (l *liveSim) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "index.m3u8":
 		l.playlist(w, session)
 	default:
-		http.ServeFile(w, r, filepath.Join(l.dir, filepath.Base(file)))
+		dir := l.dir
+		if l.ads != "" && strings.HasPrefix(file, "ad") {
+			dir = l.ads
+		}
+		http.ServeFile(w, r, filepath.Join(dir, filepath.Base(file)))
 	}
 }
 
-func (l *liveSim) playlist(w http.ResponseWriter, session string) {
+// program is the whole playlist as entries, with the target duration and the
+// header lines after EXTM3U (the version, and the init of an fMP4 rendition).
+func (l *liveSim) program() ([]liveEntry, int, string, error) {
 	data, err := os.ReadFile(filepath.Join(l.dir, "index.m3u8"))
 	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+		return nil, 0, "", err
 	}
 	target := 4
-	var infs, names []string
+	var entries []liveEntry
+	var inf string
 	head := "#EXT-X-VERSION:3\n"
 	for _, line := range strings.Split(strings.ReplaceAll(string(data), "\r", ""), "\n") {
 		switch {
@@ -271,10 +298,39 @@ func (l *liveSim) playlist(w http.ResponseWriter, session string) {
 		case strings.HasPrefix(line, "#EXT-X-TARGETDURATION:"):
 			fmt.Sscanf(line, "#EXT-X-TARGETDURATION:%d", &target)
 		case strings.HasPrefix(line, "#EXTINF:"):
-			infs = append(infs, line)
+			inf = line
 		case line != "" && !strings.HasPrefix(line, "#"):
-			names = append(names, line)
+			entries = append(entries, liveEntry{inf: inf, name: line})
 		}
+	}
+	if l.ads == "" {
+		return entries, target, head, nil
+	}
+	if len(entries) < 5 {
+		return nil, 0, "", fmt.Errorf("the ads replay needs five live segments, %s has %d", l.dir, len(entries))
+	}
+	live := func(e liveEntry, disc bool) liveEntry {
+		return liveEntry{inf: e.inf + "live", name: e.name, disc: disc}
+	}
+	ad := func(name, source, mapName string) liveEntry {
+		return liveEntry{inf: "#EXTINF:4.000000,Amazon|" + source, name: name, disc: true, mapName: mapName}
+	}
+	stitched := []liveEntry{
+		ad("ad000.m4s", "preroll", "ad-init.mp4"),
+		live(entries[0], true),
+		live(entries[1], false),
+		ad("ad000.ts", "midroll", ""),
+		live(entries[3], true),
+		live(entries[4], false),
+	}
+	return stitched, target, "#EXT-X-VERSION:6\n", nil
+}
+
+func (l *liveSim) playlist(w http.ResponseWriter, session string) {
+	entries, target, head, err := l.program()
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
 	}
 
 	l.mu.Lock()
@@ -286,8 +342,8 @@ func (l *liveSim) playlist(w http.ResponseWriter, session string) {
 	l.mu.Unlock()
 
 	n := 2 + int(time.Since(start)/(time.Duration(target)*time.Second))
-	if n > len(names) {
-		n = len(names)
+	if n > len(entries) {
+		n = len(entries)
 	}
 	from := n - 4
 	if from < 0 {
@@ -295,10 +351,26 @@ func (l *liveSim) playlist(w http.ResponseWriter, session string) {
 	}
 	var b strings.Builder
 	fmt.Fprintf(&b, "#EXTM3U\n%s#EXT-X-TARGETDURATION:%d\n#EXT-X-MEDIA-SEQUENCE:%d\n", head, target, from)
-	for i := from; i < n; i++ {
-		fmt.Fprintf(&b, "%s\n%s\n", infs[i], names[i])
+	if l.ads != "" {
+		// What Twitch writes above the segments: the discontinuities gone from the window, and its own tags.
+		discs := 0
+		for _, e := range entries[:from] {
+			if e.disc {
+				discs++
+			}
+		}
+		fmt.Fprintf(&b, "#EXT-X-DISCONTINUITY-SEQUENCE:%d\n#EXT-X-TWITCH-ELAPSED-SECS:%d.000\n#EXT-X-TWITCH-TOTAL-SECS:%d.000\n", discs, 13065+from*target, 13071+from*target)
 	}
-	if n == len(names) {
+	for _, e := range entries[from:n] {
+		if e.disc {
+			b.WriteString("#EXT-X-DISCONTINUITY\n")
+		}
+		if e.mapName != "" {
+			fmt.Fprintf(&b, "#EXT-X-MAP:URI=\"%s\"\n", e.mapName)
+		}
+		fmt.Fprintf(&b, "%s\n%s\n", e.inf, e.name)
+	}
+	if n == len(entries) {
 		b.WriteString("#EXT-X-ENDLIST\n")
 	}
 	fmt.Fprint(w, b.String())

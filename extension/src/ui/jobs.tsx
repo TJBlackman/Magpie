@@ -127,7 +127,7 @@ export function JobRow({ job, thumbs }: { job: Job; thumbs: boolean }) {
           {statusText(job, pct, rate)}
         </span>
       </div>
-      {job.note && <div className="mt-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">{job.note}</div>}
+      {job.note && <div data-testid="job-note" className="mt-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">{job.note}</div>}
       {job.error && <div className="mt-1.5 rounded-md bg-live/10 px-2 py-1 text-[11px] text-rose-300">{job.error}</div>}
     </MediaRow>
   );

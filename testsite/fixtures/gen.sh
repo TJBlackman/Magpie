@@ -171,6 +171,20 @@ open(path, 'w').write(mpd)
 print(f'dash-single: {n} representations rewritten to SegmentBase')
 PY
 
+echo "== 8 ad (a 4 s clip the live-ads replay stitches in as an ad, TS and fMP4, stamped 60 s in like Twitch's)"
+mkdir -p ad
+ffmpeg -hide_banner -loglevel error -y \
+  -f lavfi -i "testsrc2=size=1280x720:rate=$FPS:duration=4" \
+  -f lavfi -i "sine=frequency=440:beep_factor=2:sample_rate=48000:duration=4" \
+  -vf "drawtext=text='AD %{n}':fontsize=96:fontcolor=white:box=1:boxcolor=red@0.8:x=20:y=20" \
+  $X264 -b:v 2000k $AAC -shortest ad/src.mp4
+ffmpeg -hide_banner -loglevel error -y -i ad/src.mp4 -c copy -output_ts_offset 60 -f hls \
+  -hls_time 4 -hls_playlist_type vod -hls_flags independent_segments \
+  -hls_segment_filename ad/ad%03d.ts ad/ts.m3u8
+ffmpeg -hide_banner -loglevel error -y -i ad/src.mp4 -c copy -output_ts_offset 60 -f hls \
+  -hls_time 4 -hls_playlist_type vod -hls_segment_type fmp4 -hls_flags independent_segments \
+  -hls_segment_filename ad/ad%03d.m4s -hls_fmp4_init_filename ad-init.mp4 ad/fmp4.m3u8
+
 echo "== reference hashes (decoded frames) for the e2e checker"
 mkdir -p ref
 for name in 720 480 360; do

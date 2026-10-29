@@ -152,7 +152,7 @@ function passSide(files: string[], durations: number[]): PassSide {
   let start = 0;
   const segments = files.map((uri, index): HlsSegment => {
     const duration = durations[index] ?? 0;
-    const seg: HlsSegment = { index, sequence: index, uri, duration, start, key: { method: 'NONE' }, map: null, discontinuity: false };
+    const seg: HlsSegment = { index, sequence: index, uri, duration, title: '', start, key: { method: 'NONE' }, map: null, discontinuity: false };
     start += duration;
     return seg;
   });

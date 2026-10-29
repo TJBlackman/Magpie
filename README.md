@@ -160,6 +160,8 @@ Download on a live stream records. It starts with up to 30 seconds already publi
 
 fMP4 fragments from a live stream carry the stream's own clock, often hours in. The recorder shifts every track by the same number of seconds so the file starts at 0, removes the start delay that all tracks share from the init's edit list (an offset some encoders put there), and turns per segment `sidx` boxes into `free` boxes.
 
+Twitch stitches ads into each viewer's playlist: a run of segments on a clock of its own behind `EXT-X-DISCONTINUITY` tags, titled after their source (`Amazon|<creative id>`) where the stream's own segments are titled `live`. They stand in for the live content of the break, and the stream's clock runs on without them. The recorder leaves them out, notes the seconds skipped on the job, and carries the file on from where it was when the stream comes back, as it does after any `EXT-X-DISCONTINUITY` (MPEG-TS and fMP4 alike, VOD downloads too, and a stream that restarts its numbering). An ad under some other title would be recorded, behind cuts, so the file still plays through. Before this, a preroll put the stream hours into the file behind a hole and a midroll stacked the ad over the start with its audio dropped, which players showed as a frozen picture or silence.
+
 ### Long recordings
 
 Downloads are assembled in OPFS, on disk. Both browsers cap an extension's OPFS at 10 GiB unless it has the `unlimitedStorage` permission; Firefox also needs `navigator.storage.persist()`, which it grants that permission without a prompt. With both, the cap is the free disk (Chrome) or half the disk (Firefox).

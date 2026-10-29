@@ -52,6 +52,8 @@ export interface HlsSegment {
   sequence: number;
   uri: string;
   duration: number;
+  /** What follows the duration in EXTINF, "" when nothing does. Twitch names each segment's source here: "live", or an ad's. */
+  title: string;
   /** Seconds from the start of the playlist: the running EXTINF sum before this segment. */
   start: number;
   byteRange?: ByteRange;
@@ -68,6 +70,8 @@ export interface HlsMedia {
   mediaSequence: number;
   endList: boolean;
   totalDuration: number;
+  /** The playlist carries EXT-X-TWITCH tags: Twitch's own, where a segment titled other than "live" is a stitched ad. */
+  twitch: boolean;
   /** "fmp4" when EXT-X-MAP present, "ts" otherwise (best guess). */
   container: 'fmp4' | 'ts' | 'unknown';
 }
@@ -160,8 +164,10 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
   let key: HlsKey = { method: 'NONE' };
   let map: HlsSegment['map'] = null;
   let pendingDuration: number | null = null;
+  let pendingTitle = '';
   let pendingByteRange: ByteRange | undefined;
   let pendingDiscontinuity = false;
+  let twitch = false;
   let prevEnd = 0;
   let mapPrevEnd = 0;
   let start = 0;
@@ -175,6 +181,8 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
       endList = true;
     } else if (line.startsWith('#EXT-X-DISCONTINUITY')) {
       pendingDiscontinuity = true;
+    } else if (line.startsWith('#EXT-X-TWITCH-')) {
+      twitch = true;
     } else if (line.startsWith('#EXT-X-KEY:')) {
       const a = parseAttributes(line.slice('#EXT-X-KEY:'.length));
       key = {
@@ -191,7 +199,10 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
       }
       map = { uri: resolveUrl(a.URI ?? '', baseUrl), byteRange };
     } else if (line.startsWith('#EXTINF:')) {
-      pendingDuration = parseFloat(line.slice('#EXTINF:'.length).split(',')[0] ?? '0');
+      const inf = line.slice('#EXTINF:'.length);
+      const comma = inf.indexOf(',');
+      pendingDuration = parseFloat(comma < 0 ? inf : inf.slice(0, comma));
+      pendingTitle = comma < 0 ? '' : inf.slice(comma + 1).trim();
     } else if (line.startsWith('#EXT-X-BYTERANGE:')) {
       pendingByteRange = parseByteRange(line.slice('#EXT-X-BYTERANGE:'.length), prevEnd);
       prevEnd = pendingByteRange.offset + pendingByteRange.length;
@@ -204,6 +215,7 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
         sequence: mediaSequence + index,
         uri: resolveUrl(line, baseUrl),
         duration: pendingDuration,
+        title: pendingTitle,
         start,
         byteRange: pendingByteRange,
         key: { ...key },
@@ -212,6 +224,7 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
       });
       start += pendingDuration;
       pendingDuration = null;
+      pendingTitle = '';
       pendingByteRange = undefined;
       pendingDiscontinuity = false;
       if (!pendingByteRange) {
@@ -236,6 +249,7 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
     mediaSequence,
     endList,
     totalDuration: segments.reduce((a, s) => a + s.duration, 0),
+    twitch,
     container,
   };
 }
