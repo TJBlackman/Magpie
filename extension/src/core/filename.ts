@@ -13,11 +13,12 @@ export function sanitizeFilename(name: string, fallback = 'video'): string {
 /** A container of 'audio' marks a stream without video (an audio only MPD), which is saved as .m4a. */
 export function guessExtension(kind: string, container: string | undefined, mime: string, url: string): string {
   if (kind === 'file') {
-    const m = /\.(mp4|m4v|webm|mov|mkv|m4a|mp3|ogg|ogv|flv)(\?|#|$)/i.exec(url);
+    const m = /\.(mp4|m4v|webm|mov|mkv|m4a|mp3|ogg|ogv|flv|jpe?g|png|webp|gif)(\?|#|$)/i.exec(url);
     if (m) return m[1]!.toLowerCase();
     if (mime.includes('webm')) return 'webm';
     if (mime.includes('ogg')) return 'ogv';
     if (mime.startsWith('audio/')) return 'm4a';
+    if (mime.startsWith('image/')) return mime.slice(6).replace('jpeg', 'jpg');
     return 'mp4';
   }
   return container === 'audio' ? 'm4a' : 'mp4';

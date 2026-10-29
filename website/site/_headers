@@ -1,2 +1,7 @@
 /*
   Cache-Control: public, max-age=0, must-revalidate, no-transform
+
+# The extension's update check. Extensions with host access skip CORS, but a
+# Chrome user can withhold site access, and then this header is what lets it through.
+/version.json
+  Access-Control-Allow-Origin: *

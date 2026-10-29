@@ -17,7 +17,7 @@ export default defineConfig({
   manifest: ({ browser, manifestVersion }) => {
     const common = {
       name: 'Magpie',
-      description: 'Collects shiny streaming video (HLS, DASH, plain files) and saves it to disk.',
+      description: 'Collects shiny streaming video (HLS, DASH, plain files) and every file of a Reddit post, and saves it to disk. For media you own or have permission to save.',
       // unlimitedStorage: downloads are assembled in OPFS, which is otherwise capped at 10 GiB.
       permissions: ['webRequest', 'downloads', 'storage', 'unlimitedStorage', 'tabs'],
       host_permissions: ['<all_urls>'],

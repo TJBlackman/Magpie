@@ -5,7 +5,15 @@ import { fmtBytes, sourceLabel } from './format';
 import { Badge, Button, IconButton, KindBadge, MediaRow, MediaTile } from './components';
 import { IconDownload, IconRadio, IconX } from './icons';
 
+/** "r/comics · Gallery, 20 images": where a post is from and what it holds. */
+function postLabel(candidate: Candidate): string {
+  const p = candidate.post;
+  const from = p?.subreddit ? `r/${p.subreddit}` : p?.author ? `u/${p.author}` : '';
+  return [from, p?.summary].filter(Boolean).join(' · ');
+}
+
 function Meta({ candidate, queued }: { candidate: Candidate; queued?: boolean }) {
+  const post = candidate.kind === 'post';
   return (
     <>
       <KindBadge kind={candidate.kind} />
@@ -25,7 +33,7 @@ function Meta({ candidate, queued }: { candidate: Candidate; queued?: boolean })
         </span>
       )}
       <span className="min-w-0 flex-1 truncate" title={candidate.url}>
-        {sourceLabel(candidate.url)}
+        {post ? postLabel(candidate) : sourceLabel(candidate.url)}
       </span>
       {candidate.contentLength ? <span className="shrink-0">{fmtBytes(candidate.contentLength)}</span> : null}
     </>
@@ -53,7 +61,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, qu
       titleTestId="candidate-title"
       meta={<Meta candidate={candidate} queued={queued} />}
       onOpen={() => onOpen(candidate, queuedJobId)}
-      openTip={candidate.archived ? 'Download this again' : queued ? 'Already downloading. Show it in Downloads' : candidate.live ? 'Record this stream' : 'Download this video'}
+      openTip={candidate.archived ? 'Download this again' : queued ? 'Already downloading. Show it in Downloads' : candidate.live ? 'Record this stream' : candidate.kind === 'post' ? 'Download every file of this post' : 'Download this video'}
       dim={done}
       action={
         <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${action}`} aria-hidden="true">
@@ -94,10 +102,14 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
     };
   }, [candidate.id]);
 
+  // A post has no quality to pick: every file of it is saved.
+  const post = candidate.kind === 'post';
+  const files = inspection?.variants.length ?? 0;
+
   const start = async () => {
-    if (!variantId || busy) return;
+    if ((!variantId && !post) || busy) return;
     setBusy(true);
-    const r = await api.start(candidate.id, variantId);
+    const r = await api.start(candidate.id, post ? 'all' : variantId!);
     setBusy(false);
     if (!r.ok) setError(r.error);
     else onStarted();
@@ -139,7 +151,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
             <div aria-busy="true">
               <div className="skeleton mb-1.5 h-11 rounded-lg" />
               <div className="skeleton mb-1.5 h-11 w-4/5 rounded-lg" />
-              <div className="mt-1 text-center text-[11.5px] text-mute">Reading the playlist...</div>
+              <div className="mt-1 text-center text-[11.5px] text-mute">{post ? 'Reading the post...' : 'Reading the playlist...'}</div>
             </div>
           )}
           {inspection?.notes.map((n) => (
@@ -147,7 +159,17 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
               {n}
             </div>
           ))}
-          {inspection && (
+          {inspection && post && (
+            <ol className="flex flex-col gap-1" data-testid="post-files">
+              {inspection.variants.map((v) => (
+                <li key={v.id} className="flex items-center gap-2.5 rounded-lg border border-edge bg-ink px-3 py-1.5 text-[12px]" title={v.uri}>
+                  <span className="min-w-0 flex-1 truncate font-semibold">{v.label}</span>
+                  <span className="shrink-0 truncate text-[11px] text-mute">{sourceLabel(v.uri).split(' · ')[1] ?? ''}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {inspection && !post && (
             <ul className="flex flex-col gap-1.5">
               {inspection.variants.map((v) => {
                 const on = v.id === variantId;
@@ -170,10 +192,10 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
             </ul>
           )}
         </div>
-        {inspection && !error && (
-          <Button tone={candidate.live ? 'live' : 'shine'} onClick={() => void start()} disabled={!variantId || busy} className="mt-3 h-10 w-full justify-center text-[13px]" testId="start">
+        {inspection && !error && (!post || files > 0) && (
+          <Button tone={candidate.live ? 'live' : 'shine'} onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 h-10 w-full justify-center text-[13px]" testId="start">
             {candidate.live ? <IconRadio /> : <IconDownload />}
-            {candidate.live ? 'Start recording' : `Download${short ? ` ${short}` : ''}`}
+            {candidate.live ? 'Start recording' : post ? `Download ${files} ${files === 1 ? 'file' : 'files'}` : `Download${short ? ` ${short}` : ''}`}
           </Button>
         )}
         {error && (

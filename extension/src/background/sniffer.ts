@@ -100,6 +100,43 @@ export class Sniffer {
     this.notify(c.tabId);
   }
 
+  /**
+   * The posts a Reddit tab shows, read from its page just now. A post already
+   * listed keeps its row (and its id); a sniffed stream the post's player
+   * loaded folds under it. Posts no longer on the page stay, like any sighting.
+   */
+  async setPosts(tabId: number, posts: Candidate[]): Promise<void> {
+    await this.restored;
+    if (!posts.length) return;
+    const tabMap = getOrSet(this.byTab, tabId, () => new Map<string, Candidate>());
+    let changed = false;
+    for (const p of posts) {
+      const known = tabMap.get(p.id);
+      if (known) {
+        if (known.pageTitle !== p.pageTitle || known.thumb !== p.thumb || JSON.stringify(known.post) !== JSON.stringify(p.post)) changed = true;
+        known.pageTitle = p.pageTitle;
+        known.post = p.post;
+        known.children = p.children;
+        known.seenAt = p.seenAt;
+        if (p.thumb) known.thumb = p.thumb;
+      } else {
+        tabMap.set(p.id, p);
+        this.remember(tabId, p.url, p.id);
+        changed = true;
+      }
+      const row = tabMap.get(p.id)!;
+      for (const other of tabMap.values()) {
+        if (other === row || other.parentId || other.kind === 'post' || !folds(row, other)) continue;
+        other.parentId = row.id;
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    void this.persist();
+    void this.badge(tabId);
+    this.notify(tabId);
+  }
+
   /** Keep a captured frame with the candidate, so every popup after this one has it. */
   setThumb(id: string, thumb: string): void {
     const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
@@ -126,8 +163,9 @@ export class Sniffer {
         if (!force && Date.now() - (this.titleReadAt.get(t) ?? 0) < 3000) return;
         this.titleReadAt.set(t, Date.now());
         // One read per page the tab has shown streams for.
+        // A post row's title is the post's own, never the page's.
         const byPage = new Map<string, Candidate[]>();
-        for (const c of list) byPage.set(c.pageUrl, [...(byPage.get(c.pageUrl) ?? []), c]);
+        for (const c of list) if (c.kind !== 'post') byPage.set(c.pageUrl, [...(byPage.get(c.pageUrl) ?? []), c]);
         for (const group of byPage.values()) {
           const title = await pageTitleFor(group[0]!);
           if (!title) continue;
@@ -320,9 +358,11 @@ export class Sniffer {
 /**
  * True when `child` belongs under `parent`. A manifest goes under a master
  * that lists it, reloads with a fresh token included. A plain file goes only
- * under an MPD, when one of its fold rules matches (see matchesFoldRule).
+ * under an MPD, when one of its fold rules matches (see matchesFoldRule). A
+ * post takes the HLS master its player loads, which it lists as a child.
  */
 function folds(parent: Candidate, child: { url: string; kind: MediaKind }): boolean {
+  if (parent.kind === 'post') return child.kind === 'hls' && listsChild(parent, child.url);
   if (child.kind === 'file') return parent.kind === 'dash' && !!parent.children?.some((rule) => matchesFoldRule(rule, child.url));
   return listsChild(parent, child.url);
 }

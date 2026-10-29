@@ -15,8 +15,10 @@ export interface ArchiveEntry {
   src: string;
   /** When the download finished, ms. */
   at: number;
-  /** HLS, DASH or a plain file, so the row looks the same as it did on the page. Missing on entries from before 0.4. */
+  /** HLS, DASH, a plain file or a post, so the row looks the same as it did on the page. Missing on entries from before 0.4. */
   kind?: MediaKind;
+  /** A post saved as several files: how many. `file` is then the folder. */
+  files?: number;
   /** Length in seconds, when known. */
   secs?: number;
   /** Downloaded in a private window. Kept out of storage.local unless the user allows it. */
@@ -165,6 +167,7 @@ export function makeEntry(
   job: { id: string; filename: string; finishedAt?: number },
   candidate: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito' | 'kind' | 'thumb'>,
   secs?: number,
+  files?: number,
 ): ArchiveEntry {
   const src = streamKey(candidate.url);
   const entry: ArchiveEntry = {
@@ -178,6 +181,7 @@ export function makeEntry(
     kind: candidate.kind,
   };
   if (secs !== undefined && Number.isFinite(secs) && secs > 0) entry.secs = Math.round(secs * 10) / 10;
+  if (files !== undefined && files > 1) entry.files = files;
   if (candidate.incognito) entry.priv = true;
   if (candidate.thumb && candidate.thumb.length <= MAX_THUMB) entry.thumb = candidate.thumb;
   return entry;
@@ -204,6 +208,9 @@ export function normalizeArchive(raw: unknown): ArchiveEntry[] {
       at: r.at,
     };
     if (typeof r.secs === 'number' && Number.isFinite(r.secs) && r.secs > 0) e.secs = r.secs;
+    if (typeof r.files === 'number' && Number.isInteger(r.files) && r.files > 1) e.files = r.files;
+    if (r.kind === 'hls' || r.kind === 'dash' || r.kind === 'file' || r.kind === 'post') e.kind = r.kind;
+    if (typeof r.thumb === 'string' && r.thumb.length <= MAX_THUMB && r.thumb) e.thumb = r.thumb;
     if (r.priv === true) e.priv = true;
     out.push(e);
   }

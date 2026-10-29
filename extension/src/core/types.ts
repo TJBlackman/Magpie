@@ -1,7 +1,24 @@
 import type { ArchiveEntry } from './archive';
+import type { RedditPost } from './reddit';
 import type { Settings } from './settings';
 
-export type MediaKind = 'hls' | 'dash' | 'file';
+/** `post` is a Reddit post read from the page: a row whose download is every file of the post. */
+export type MediaKind = 'hls' | 'dash' | 'file' | 'post';
+
+/**
+ * One file of a post. The post's files download as ordinary jobs that share a
+ * group; the post goes to history once, when the last of them is saved.
+ */
+export interface AssetGroup {
+  id: string;
+  /** 0 based place of this file among the group's. */
+  index: number;
+  total: number;
+  /** The post row, so the card grays while any of its files is on Downloads. */
+  candidateId: string;
+  /** The post, for its history entry. */
+  post: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito' | 'kind' | 'thumb'>;
+}
 
 /** A piece of media the sniffer saw a tab load. */
 export interface Candidate {
@@ -32,8 +49,14 @@ export interface Candidate {
   incognito?: boolean;
   /** Set on copies sent to the UI when the archive already has this stream. Never stored. */
   archived?: boolean;
-  /** One frame of the stream as a small JPEG data URL, once captured. */
+  /** One frame of the stream as a small JPEG data URL, once captured. For a post, the URL of its preview image. */
   thumb?: string;
+  /** The Reddit post this row is, with the files it saves. */
+  post?: RedditPost;
+  /** Set on one file of a post, a candidate the background makes for the engine. */
+  group?: AssetGroup;
+  /** Where to save, relative to the downloads folder, with extension. Replaces the name built from the title. */
+  saveAs?: string;
 }
 
 export interface Variant {
@@ -114,6 +137,8 @@ export interface Job {
   error?: string;
   /** The candidate's frame, so the row looks the same as it did on the page. */
   thumb?: string;
+  /** One file of a post: the Downloads tab lists the group as one row. */
+  group?: Pick<AssetGroup, 'id' | 'index' | 'total' | 'candidateId'>;
   startedAt: number;
   /** When the job failed. */
   finishedAt?: number;
@@ -135,7 +160,9 @@ export type UiRequest =
   | { type: 'removeArchive'; id: string }
   | { type: 'clearArchive' }
   /** Thumbnails for rows that arrived in a change event, which carries none. Answered with a ThumbMap. */
-  | { type: 'thumbs'; jobs?: string[]; archive?: string[] };
+  | { type: 'thumbs'; jobs?: string[]; archive?: string[] }
+  /** Read version.json if the last check is old enough. Answers at once; the result lands in storage.local under UPDATE_KEY. */
+  | { type: 'checkUpdate' };
 
 /** Messages the background forwards to the engine host. */
 export type EngineRequest =

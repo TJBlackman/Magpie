@@ -9,10 +9,12 @@
  *   ?mode=all          the popup opened as a page of its own (every tab)
  *   ?scenario=empty    first run, nothing anywhere
  *   ?scenario=busy     many pages, many downloads, long history
+ *   ?update=1          the website has a newer version
  */
 import type { ArchiveEntry } from '../src/core/archive';
 import { pickThumbs, withoutThumb } from '../src/core/thumbs';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
+import { UPDATE_KEY } from '../src/core/update';
 import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type Result, type UiRequest, type Variant } from '../src/core/types';
 
 const MB = 1024 * 1024;
@@ -102,11 +104,22 @@ const tabs: Tab[] = [
   { id: 7, title: 'Wildframe: Dolomites, whales, foxes and a live geyser', url: 'https://wildframe.tv/collections/autumn-2026' },
   { id: 8, title: 'Old Faithful Geyser Live Cam', url: 'https://wildframe.tv/live/old-faithful' },
   { id: 9, title: 'Nature Docs: the long cuts', url: 'https://naturedocs.org/films' },
+  { id: 10, title: 'r/EarthPorn', url: 'https://www.reddit.com/r/EarthPorn/' },
 ];
+
+/** A Reddit post row: a gallery of a few originals, as the page collector would read it. */
+function redditPost(id: string, t: Tab, title: string, count: number): Candidate {
+  const assets = Array.from({ length: count }, (_, i) => ({ url: `https://i.redd.it/${id}${i}.jpg`, kind: 'file' as const, mime: 'image/jpeg', label: `${i + 1} of ${count} · JPG` }));
+  const permalink = `https://www.reddit.com/r/EarthPorn/comments/${id}/${title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}/`;
+  return cand(`p${id}`, t, title, permalink, 'post', {
+    post: { id, permalink, title, subreddit: 'EarthPorn', author: 'wanderer', type: count > 1 ? 'gallery' : 'image', assets, preview: '', summary: count > 1 ? `Gallery, ${count} images` : 'Image, JPG' },
+    thumb: paintThumb(title),
+  });
+}
 /** In the toolbar popup everything is on the active tab; opened as a page, media spreads over three tabs. */
 const tab = (i: number): Tab => (allTabs ? tabs[i] : tabs[0]) ?? tabs[0]!;
 
-const MIME: Record<Candidate['kind'], string> = { hls: 'application/vnd.apple.mpegurl', dash: 'application/dash+xml', file: 'video/mp4' };
+const MIME: Record<Candidate['kind'], string> = { hls: 'application/vnd.apple.mpegurl', dash: 'application/dash+xml', file: 'video/mp4', post: '' };
 let seenAt = now;
 /** Listed in seed order: the sniffer sorts newest first, so each seed is a little older than the last. */
 function cand(id: string, t: Tab, title: string, url: string, kind: Candidate['kind'], extra: Partial<Candidate> = {}): Candidate {
@@ -123,6 +136,8 @@ function seedCandidates(): Candidate[] {
     cand('c4', tab(1), 'Old Faithful Geyser Live Cam', 'https://live.wildframe.tv/cams/old-faithful/chunklist.m3u8', 'hls', { live: true, reloads: 14 }),
     cand('c5', tab(2), 'Monsoon Storm over the Sonoran Desert', 'https://dash.wildframe.tv/v/sonoran-monsoon/manifest.mpd', 'dash'),
     cand('c6', tab(2), 'Aurora Borealis Timelapse, Tromso', 'https://cdn.wildframe.tv/v/aurora-tromso/master.m3u8', 'hls'),
+    redditPost('1xr7a2', allTabs ? tabs[3]! : tabs[0]!, 'Dawn over the Dolomites, 12 shots from a week of hiking [OC]', 12),
+    redditPost('1xq9zz', allTabs ? tabs[3]! : tabs[0]!, 'Fog in the valley this morning [OC] [4000x6000]', 1),
   ];
   if (scenario === 'busy') {
     list.push(
@@ -213,6 +228,7 @@ function seedArchive(): ArchiveEntry[] {
 
 type Changes = Record<string, { oldValue?: unknown; newValue?: unknown }>;
 const store: Record<string, unknown> = { [SETTINGS_KEY]: { ...DEFAULT_SETTINGS } };
+if (params.get('update') === '1') store[UPDATE_KEY] = { checkedAt: now, ok: true, latest: '9.0.0' };
 const storageListeners = new Set<(changes: Changes, area: string) => void>();
 const settings = (): Settings => normalizeSettings(store[SETTINGS_KEY]);
 
@@ -256,6 +272,7 @@ const LIVE_NOTE = 'Live stream. Download records from about 30 seconds back unti
 const fmtBytes = (n: number) => (n < 1024 ** 3 ? `${(n / MB).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);
 
 function variantsFor(c: Candidate): Variant[] {
+  if (c.kind === 'post') return (c.post?.assets ?? []).map((a, i) => ({ id: String(i), label: a.label, uri: a.url }));
   if (c.kind === 'file') return [{ id: 'file', label: `${c.mime}${c.contentLength ? ` · ${fmtBytes(c.contentLength)}` : ''}`, uri: c.url }];
   if (c.url.endsWith('chunklist.m3u8') || c.url.endsWith('playlist.m3u8')) {
     return [{ id: 'v0', label: c.live ? 'Live · ts' : '102 segments · 10m 12s · fmp4', uri: c.url }];
@@ -310,7 +327,37 @@ function promote() {
   for (const j of state.jobs.filter((j) => j.state === 'queued').sort((a, b) => a.startedAt - b.startedAt)) j.queuePosition = pos++;
 }
 
+/** Every file of a post as one job each, in a group, like the real background does. */
+function startPost(c: Candidate): Result<Job> {
+  const assets = c.post?.assets ?? [];
+  if (!assets.length) return err('Nothing to save for this post.');
+  const group = `g${seq++}`;
+  const folder = `Reddit/${c.post!.subreddit}/${c.pageTitle} [${c.post!.id}]`;
+  const jobs = assets.map((a, i): Job => ({
+    id: `j${seq++}`,
+    candidateId: `${c.id}~${i}`,
+    title: c.pageTitle,
+    filename: assets.length === 1 ? `${folder}.jpg` : `${folder}/${String(i + 1).padStart(2, '0')}.jpg`,
+    url: a.url,
+    kind: 'file',
+    variantLabel: a.label,
+    state: 'queued',
+    segmentsTotal: 1,
+    segmentsDone: 0,
+    bytes: 0,
+    bytesTotal: (2 + Math.random() * 6) * MB,
+    thumb: c.thumb,
+    group: { id: group, index: i, total: assets.length, candidateId: c.id },
+    startedAt: Date.now() + i,
+  }));
+  state.jobs.unshift(...jobs);
+  promote();
+  emitJobs();
+  return ok(jobs[0]!);
+}
+
 function start(c: Candidate, variantId: string): Result<Job> {
+  if (c.kind === 'post') return startPost(c);
   const ins = state.inspections.get(c.id);
   const v = ins?.variants.find((x) => x.id === variantId);
   if (!v) return err('Inspect the stream first.');
@@ -355,9 +402,16 @@ function finish(j: Job) {
     emitJobs();
   }, 900);
   setTimeout(() => {
-    const c = state.candidates.find((x) => x.id === j.candidateId);
+    const c = state.candidates.find((x) => x.id === (j.group?.candidateId ?? j.candidateId));
     const size = settings().archiveSize;
-    if (size > 0) {
+    // A post goes to history once, when its last file is saved.
+    const last = !j.group || state.jobs.filter((x) => x.group?.id === j.group!.id).length === 1;
+    if (size > 0 && last && j.group) {
+      const dot = j.filename.lastIndexOf('/');
+      state.archive.unshift({ id: j.group.id, title: j.title, file: j.group.total > 1 ? j.filename.slice(0, dot) : j.filename, page: c?.pageUrl ?? '', src: c?.url ?? j.url, at: Date.now(), kind: 'post', files: j.group.total > 1 ? j.group.total : undefined, thumb: j.thumb });
+      state.archive = state.archive.slice(0, size);
+      emitArchive();
+    } else if (size > 0) {
       const total = j.live ? j.duration : j.segmentsTotal ? j.segmentsTotal * 6 : 418;
       state.archive.unshift({ id: j.id, title: j.title, file: j.filename, page: c?.pageUrl ?? '', src: c?.url ?? j.url, at: Date.now(), kind: j.kind, secs: total, thumb: j.thumb });
       state.archive = state.archive.slice(0, size);
@@ -449,6 +503,8 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
       return ok(null);
     case 'thumbs':
       return ok({ jobs: pickThumbs(state.jobs, req.jobs), archive: pickThumbs(state.archive, req.archive) });
+    case 'checkUpdate':
+      return ok(null);
   }
 }
 

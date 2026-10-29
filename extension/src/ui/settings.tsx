@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { ARCHIVE_LIMIT, MAX_CONCURRENT_LIMIT, type Settings } from '../core/settings';
-import { useSettings } from './api';
+import { SITE_URL } from '../core/update';
+import { openPage, useSettings } from './api';
 import { IconButton } from './components';
 import { IconBack, IconMinus, IconPlus } from './icons';
 
@@ -63,8 +64,8 @@ function Card({ label, htmlFor, control, children }: { label: string; htmlFor?: 
   );
 }
 
-/** Settings, sliding in over the popup. Changes save as you make them. */
-export function SettingsPanel({ onClose }: { onClose: () => void }) {
+/** Settings, sliding in over the popup. Changes save as you make them. `latest` is a newer version on the website, if any. */
+export function SettingsPanel({ latest, onClose }: { latest: string | null; onClose: () => void }) {
   const [settings, save] = useSettings();
   const [saved, setSaved] = useState(false);
   /** The history size being typed. Saved on Enter or leaving the field, so typing "50" never saves a 5 that trims the list. */
@@ -135,7 +136,20 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
           <Card label="Remember private window downloads" htmlFor="archive-private" control={<Switch id="archive-private" testId="archive-private" checked={settings.archivePrivate} onChange={(on) => void update({ archivePrivate: on })} />}>
             When off, downloads from private windows leave history when you close the last private window, like the rest of private browsing.
           </Card>
-          <div className="mt-auto pt-2 text-center text-[11px] text-dim">Magpie {browser.runtime.getManifest().version}</div>
+          <Card label="Tell me about new versions" htmlFor="update-check" control={<Switch id="update-check" testId="update-check" checked={settings.updateCheck} onChange={(on) => void update({ updateCheck: on })} />}>
+            At most every 12 hours Magpie reads magpie.trevorblackman.dev/version.json, a file holding one version number, and shows a line at the top when there is a newer one. The request carries nothing about you or your downloads. Off sends nothing.
+          </Card>
+          <div className="mt-auto pt-2 text-center text-[11px] text-dim">
+            Magpie {browser.runtime.getManifest().version}
+            {latest && (
+              <>
+                {' · '}
+                <button type="button" className="text-shine hover:underline" onClick={() => openPage(SITE_URL)} data-testid="update-link">
+                  {latest} available
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
