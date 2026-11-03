@@ -3,13 +3,15 @@ import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
 import { IconFilm, IconImages, IconRadio, IconUpdate, IconX } from './icons';
 
-export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'file' | 'post';
+export type Tone = 'default' | 'shine' | 'warn' | 'alert' | 'bad' | 'good' | 'file' | 'post';
 
 export function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: Tone }) {
   const cls = {
     default: 'bg-edge text-mute',
     shine: 'bg-shine/12 text-shine',
     warn: 'bg-amber-500/15 text-amber-300',
+    // Solid yellow, so it reads as a warning and stands apart from the tinted DASH badge.
+    alert: 'bg-amber-400 text-ink',
     bad: 'bg-live/15 text-rose-300',
     good: 'bg-emerald-500/15 text-emerald-300',
     file: 'bg-violet-500/15 text-violet-300',

@@ -34,8 +34,8 @@ function Meta({ candidate, queued }: { candidate: Candidate; queued?: boolean })
       )}
       {candidate.archived && (
         <span data-testid="archived-badge" data-keep className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
-          <Badge tone="good">
-            DOWNLOADED <span className="font-medium tracking-normal opacity-80">{fmtAgo(candidate.archived.at)}</span>
+          <Badge tone="alert">
+            DOWNLOADED <span className="font-medium tracking-normal opacity-75">{fmtAgo(candidate.archived.at)}</span>
           </Badge>
         </span>
       )}
@@ -163,7 +163,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
             </div>
           )}
           {candidate.archived && (
-            <div className="mb-2 rounded-lg bg-emerald-500/10 px-2.5 py-2 text-[11.5px] text-emerald-200" data-testid="archived-note">
+            <div className="mb-2 rounded-lg border border-amber-400/40 bg-amber-400/12 px-2.5 py-2 text-[11.5px] text-amber-200" data-testid="archived-note">
               Already downloaded {savedAs(candidate.archived)}. Check your downloads folder before saving another copy.
             </div>
           )}
