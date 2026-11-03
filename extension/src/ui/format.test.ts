@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtClock, fmtDate, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
+import { fmtAgo, fmtClock, fmtDate, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
 import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
@@ -43,7 +43,7 @@ describe('normalizeSettings', () => {
     expect(normalizeSettings({ maxConcurrent: 'x' }).maxConcurrent).toBe(2);
   });
   it('keeps 25 archive entries by default and allows 0 to turn the archive off', () => {
-    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true, updateCheck: true });
+    expect(normalizeSettings(undefined)).toEqual({ maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true, updateCheck: true, hideDownloaded: false });
     expect(normalizeSettings({ archiveSize: 0 }).archiveSize).toBe(0);
     expect(normalizeSettings({ archiveSize: '40' }).archiveSize).toBe(40);
     expect(normalizeSettings({ archiveSize: 9999 }).archiveSize).toBe(500);
@@ -58,6 +58,22 @@ describe('normalizeSettings', () => {
 describe('archive rows', () => {
   it('show the date without the time', () => {
     expect(fmtDate(new Date(2026, 9, 26, 10, 42).getTime(), 'en-US')).toBe('Oct 26, 2026');
+  });
+  it('say how long ago media was downloaded, then the date after a month', () => {
+    const now = new Date(2026, 10, 3, 12, 0).getTime();
+    const ago = (ms: number) => fmtAgo(now - ms, now, 'en-US');
+    expect(ago(20_000)).toBe('just now');
+    expect(ago(12 * 60_000)).toBe('12m ago');
+    expect(ago(5 * 3600_000 + 59 * 60_000)).toBe('5h ago');
+    expect(ago(3 * 86_400_000)).toBe('3d ago');
+    expect(ago(29 * 86_400_000)).toBe('29d ago');
+    expect(fmtAgo(new Date(2026, 8, 1, 9, 0).getTime(), now, 'en-US')).toBe('Sep 1, 2026');
+    // A clock that moved back never says "-2m ago".
+    expect(fmtAgo(now + 120_000, now)).toBe('just now');
+  });
+  it('hide downloaded media only when asked', () => {
+    expect(normalizeSettings({ hideDownloaded: true }).hideDownloaded).toBe(true);
+    expect(normalizeSettings({ hideDownloaded: 'yes' }).hideDownloaded).toBe(false);
   });
   it('link only web pages', () => {
     expect(isWebUrl('https://example.com/watch?v=1')).toBe(true);

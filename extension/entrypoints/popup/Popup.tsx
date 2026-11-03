@@ -54,7 +54,10 @@ export function Popup() {
     void resolveScope().then(setScope);
   }, []);
   const [candidates, refreshCandidates] = useCandidates(scope?.tabId, scope !== null);
-  const [showDownloaded, setShowDownloaded] = useState(false);
+  const [settings, saveSettings] = useSettings();
+  // Media already in history stays on the list, gray with when it was downloaded, unless the user hides it. The choice is kept.
+  const showDownloaded = !(settings?.hideDownloaded ?? false);
+  const toggleDownloaded = () => settings && void saveSettings({ ...settings, hideDownloaded: showDownloaded });
   // Derived lists are memoized: the popup re-renders with every progress event while something downloads.
   const fresh = useMemo(() => candidates.filter((c) => !c.archived), [candidates]);
   const downloaded = candidates.length - fresh.length;
@@ -86,7 +89,6 @@ export function Popup() {
     return out;
   }, [active]);
   const recording = active.some((j) => j.live && j.state === 'downloading');
-  const [settings] = useSettings();
   const thumbs = settings?.thumbnails ?? true;
   const update = useUpdate(settings?.updateCheck ?? false);
 
@@ -176,7 +178,7 @@ export function Popup() {
 
       <Panel shown={view === 'page'}>
         <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
-          <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={() => setShowDownloaded((v) => !v)} />
+          <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
           {scope && !scope.all && candidates.length > 0 && (
             <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
               Clear

@@ -20,6 +20,16 @@ export interface AssetGroup {
   post: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito' | 'kind' | 'thumb'>;
 }
 
+/** The history entry a candidate matched, as much of it as the card and sheet show. */
+export interface Archived {
+  /** When the download finished, ms. */
+  at: number;
+  /** Saved file name, or the folder of a post saved as several files. */
+  file: string;
+  /** A post saved as several files: how many. */
+  files?: number;
+}
+
 /** A piece of media the sniffer saw a tab load. */
 export interface Candidate {
   id: string;
@@ -47,8 +57,8 @@ export interface Candidate {
   children?: string[];
   /** Seen in a private window. */
   incognito?: boolean;
-  /** Set on copies sent to the UI when the archive already has this stream. Never stored. */
-  archived?: boolean;
+  /** Set on copies sent to the UI when the archive already has this stream: when it was saved and under what name. Never stored. */
+  archived?: Archived;
   /** One frame of the stream as a small JPEG data URL, once captured. For a post, the URL of its preview image. */
   thumb?: string;
   /** The Reddit post this row is, with the files it saves. */

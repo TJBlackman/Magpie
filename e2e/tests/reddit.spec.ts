@@ -149,11 +149,10 @@ test('gallery: every original saved byte for byte into one folder, one history e
   expect(body.downloaded).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   expect(body.files).toEqual([1, 2, 3, 4].map((n) => ({ name: `0${n}.png`, source: `http://127.0.0.1:8787/crawl/reddit/g${n}.png` })));
 
-  // Saved: the post is hidden on This page and shows as downloaded when asked for.
+  // Saved: the post stays on This page, gray, marked as downloaded with its folder and file count.
   await view(popup, 'This page');
-  await expect(row).toHaveCount(0);
-  await popup.getByRole('button', { name: '1 downloaded' }).click();
-  await expect(row.getByTestId('archived-badge')).toBeVisible();
+  await expect(row).toHaveAttribute('data-state', 'archived');
+  await expect(row.getByTestId('archived-badge')).toHaveAttribute('title', /\[gal1\] \(4 files\)$/);
 });
 
 test('gif: the original GIF, not the MP4 the player uses', async ({ magpie }) => {

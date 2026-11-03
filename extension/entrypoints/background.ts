@@ -330,7 +330,12 @@ export default defineBackground(() => {
         const list = await sniffer.forTab(req.tabId);
         const byTab = new Map<number, Candidate[]>();
         for (const c of list) byTab.set(c.tabId, [...(byTab.get(c.tabId) ?? []), c]);
-        const shown = list.map((c) => (archive.has(c, byTab.get(c.tabId)) ? { ...c, archived: true } : c));
+        const shown = list.map((c) => {
+          const e = archive.find(c, byTab.get(c.tabId));
+          if (!e) return c;
+          // A card for media already saved shows the frame its history entry kept, so it needs no capture.
+          return { ...c, archived: { at: e.at, file: e.file, files: e.files }, thumb: c.thumb ?? e.thumb };
+        });
         wantThumbs(shown);
         return ok(shown);
       }

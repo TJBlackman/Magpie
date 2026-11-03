@@ -31,7 +31,7 @@ test('a started download grays its card on This page and opens on the Downloads 
   await expect(row).toHaveAttribute('data-state', 'fresh');
   await start(popup, '/crawl/progressive/clip.mp4');
   await expect(row).toHaveAttribute('data-state', 'queued');
-  await expect(row).toHaveClass(/grayscale/);
+  await expect(row.getByTestId('candidate-title')).toHaveClass(/grayscale/);
   await expect(row.getByTestId('queued-badge')).toBeVisible();
   // Opening a gray card shows its job on Downloads instead of a second quality sheet.
   await row.getByRole('button').first().click();
@@ -150,7 +150,8 @@ test('dash: 720p, with its length in history', async ({ magpie }) => {
   await view(popup, 'History');
   await expect(popup.getByTestId('archive-entry').first()).toContainText('0:20');
   await view(popup, 'This page');
-  await expect(popup.locator('[data-testid="candidate"][data-url*="dash/manifest.mpd"]')).toHaveCount(0);
+  await expect(popup.locator('[data-testid="candidate"][data-url*="dash/manifest.mpd"]').first()).toHaveAttribute('data-state', 'archived');
+  await expect(popup.locator('[data-testid="candidate"][data-url*="dash/manifest.mpd"]:not([data-state="archived"])')).toHaveCount(0);
 });
 
 test('dash timeline: SegmentTimeline with $Time$ names', async ({ magpie }) => {

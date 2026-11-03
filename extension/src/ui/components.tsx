@@ -110,28 +110,31 @@ export function MediaRow({
   action?: ReactNode;
   onOpen?: () => void;
   openTip?: string;
-  /** Already downloaded or in the queue: drawn in grayscale and faded. */
+  /** Already downloaded or in the queue: drawn in grayscale and faded, except meta items marked `data-keep`. */
   dim?: boolean;
   attrs?: Record<string, string | number | undefined>;
   children?: ReactNode;
 }) {
+  // The parts fade one by one instead of the whole row, so a tag that says why the row is gray (DOWNLOADED) keeps its color.
+  const fade = dim ? 'opacity-50 grayscale transition-opacity group-hover:opacity-80' : '';
+  const fadeMeta = dim ? '[&>*:not([data-keep])]:opacity-50 [&>*:not([data-keep])]:grayscale group-hover:[&>*:not([data-keep])]:opacity-80' : '';
   const body = (
     <>
-      {tile}
+      <div className={`shrink-0 ${fade}`}>{tile}</div>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[12.5px] font-semibold" data-testid={titleTestId} title={titleTip}>
+        <div className={`truncate text-[12.5px] font-semibold ${fade}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-mute">{meta}</div>
+        <div className={`mt-1 flex items-center gap-1.5 text-[11px] text-mute ${fadeMeta}`}>{meta}</div>
       </div>
     </>
   );
   return (
-    <div {...attrs} className={`rounded-xl border border-edge bg-panel transition ${onOpen ? 'hover:border-edge2 hover:bg-panel2' : ''} ${dim ? 'opacity-50 grayscale hover:opacity-80' : ''}`}>
+    <div {...attrs} className={`group rounded-xl border border-edge bg-panel transition ${onOpen ? 'hover:border-edge2 hover:bg-panel2' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full items-center gap-2.5 p-2 text-left">
           {body}
-          {action}
+          <span className={`shrink-0 ${fade}`}>{action}</span>
         </button>
       ) : (
         <div className="flex items-center gap-2.5 p-2">
