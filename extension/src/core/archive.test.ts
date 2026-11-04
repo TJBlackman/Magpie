@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addEntry,
+  findArchived,
   indexArchive,
   isArchived,
   makeEntry,
@@ -139,6 +140,26 @@ describe('isArchived', () => {
     const a = 'https://vod.example/exp=1793000000~hmac=aaaa1111/v/9/playlist.m3u8';
     const b = 'https://vod.example/exp=1793055555~hmac=bbbb2222/v/9/playlist.m3u8';
     expect(hides(a, '', b, '')).toBe(false);
+  });
+});
+
+describe('findArchived', () => {
+  const url = 'https://cdn.example/v/1/master.m3u8';
+  it('returns the newest entry for the stream, so the card can say when it was saved', () => {
+    const index = indexArchive([entry({ id: 'new', at: 3000, file: 'Harbor at Dusk (1).mp4' }), entry({ id: 'old', at: 1000 })]);
+    expect(findArchived({ url, pageUrl: 'https://other.example/' }, index)?.id).toBe('new');
+  });
+  it('returns the newest entry through the page rule too', () => {
+    const a = 'https://vod.example/exp=1793000000~acl=%2F*~hmac=aaaa1111/v/9/playlist.m3u8';
+    const b = 'https://vod.example/exp=1793055555~acl=%2F*~hmac=bbbb2222/v/9/playlist.m3u8';
+    const page = 'https://site.example/video/9';
+    const index = indexArchive([entry({ id: 'new', at: 3000, src: streamKey(a), page }), entry({ id: 'old', at: 1000, src: streamKey(a), page })]);
+    expect(findArchived({ url: b, pageUrl: page }, index)?.id).toBe('new');
+  });
+  it('is undefined for new media and live streams', () => {
+    const index = indexArchive([entry()]);
+    expect(findArchived({ url: 'https://cdn.example/v/2/master.m3u8', pageUrl: '' }, index)).toBeUndefined();
+    expect(findArchived({ url, pageUrl: '', live: true }, index)).toBeUndefined();
   });
 });
 

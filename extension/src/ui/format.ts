@@ -108,6 +108,18 @@ export function fmtDate(ms: number, locale?: string): string {
   return new Date(ms).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+/** How long ago, short enough for a badge: "just now", "12m ago", "5h ago", "3d ago", then the date. */
+export function fmtAgo(ms: number, now = Date.now(), locale?: string): string {
+  const mins = Math.floor(Math.max(0, now - ms) / 60_000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return fmtDate(ms, locale);
+}
+
 /** "Oct 26, 2026, 10:42 AM", for tooltips. */
 export function fmtDateTime(ms: number, locale?: string): string {
   return new Date(ms).toLocaleString(locale, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });

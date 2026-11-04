@@ -1,9 +1,14 @@
 import { memo, useEffect, useState } from 'react';
-import type { Candidate, Inspection, Variant } from '../core/types';
+import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
-import { fmtBytes, sourceLabel } from './format';
+import { fmtAgo, fmtBytes, fmtDateTime, sourceLabel } from './format';
 import { Badge, Button, IconButton, KindBadge, MediaRow, MediaTile } from './components';
 import { IconDownload, IconRadio, IconX } from './icons';
+
+/** "Oct 26, 2026, 10:42 AM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
+function savedAs(a: Archived): string {
+  return `${fmtDateTime(a.at)} as ${a.file}${a.files ? ` (${a.files} files)` : ''}`;
+}
 
 /** "r/comics · Gallery, 20 images": where a post is from and what it holds. */
 function postLabel(candidate: Candidate): string {
@@ -28,8 +33,10 @@ function Meta({ candidate, queued }: { candidate: Candidate; queued?: boolean })
         </span>
       )}
       {candidate.archived && (
-        <span data-testid="archived-badge" title="Already in your history">
-          <Badge tone="good">DOWNLOADED</Badge>
+        <span data-testid="archived-badge" data-keep className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
+          <Badge tone="alert">
+            DOWNLOADED <span className="font-medium tracking-normal opacity-75">{fmtAgo(candidate.archived.at)}</span>
+          </Badge>
         </span>
       )}
       <span className="min-w-0 flex-1 truncate" title={candidate.url}>
@@ -50,7 +57,7 @@ function Meta({ candidate, queued }: { candidate: Candidate; queued?: boolean })
 export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, queuedJobId, onOpen }: { candidate: Candidate; thumbs: boolean; queuedJobId?: string; onOpen: (candidate: Candidate, queuedJobId?: string) => void }) {
   const queued = !!queuedJobId;
   const title = candidate.pageTitle || sourceLabel(candidate.url);
-  const done = candidate.archived || queued;
+  const done = !!candidate.archived || queued;
   const action = done ? 'bg-edge text-mute' : candidate.live ? 'bg-live text-white shadow-[0_2px_8px_rgba(244,63,94,.35)]' : 'bg-shine text-shine-ink shadow-[0_2px_8px_rgba(34,211,238,.3)]';
   return (
     <MediaRow
@@ -118,6 +125,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
   const title = candidate.pageTitle || sourceLabel(candidate.url);
   const chosen = inspection?.variants.find((v) => v.id === variantId);
   const short = chosen ? shortName(chosen) : '';
+  const again = candidate.archived ? ' again' : '';
 
   return (
     <>
@@ -152,6 +160,11 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
               <div className="skeleton mb-1.5 h-11 rounded-lg" />
               <div className="skeleton mb-1.5 h-11 w-4/5 rounded-lg" />
               <div className="mt-1 text-center text-[11.5px] text-mute">{post ? 'Reading the post...' : 'Reading the playlist...'}</div>
+            </div>
+          )}
+          {candidate.archived && (
+            <div className="mb-2 rounded-lg border border-amber-400/40 bg-amber-400/12 px-2.5 py-2 text-[11.5px] text-amber-200" data-testid="archived-note">
+              Already downloaded {savedAs(candidate.archived)}. Check your downloads folder before saving another copy.
             </div>
           )}
           {inspection?.notes.map((n) => (
@@ -195,7 +208,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
         {inspection && !error && (!post || files > 0) && (
           <Button tone={candidate.live ? 'live' : 'shine'} onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 h-10 w-full justify-center text-[13px]" testId="start">
             {candidate.live ? <IconRadio /> : <IconDownload />}
-            {candidate.live ? 'Start recording' : post ? `Download ${files} ${files === 1 ? 'file' : 'files'}` : `Download${short ? ` ${short}` : ''}`}
+            {candidate.live ? 'Start recording' : post ? `Download ${files} ${files === 1 ? 'file' : 'files'}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}
         {error && (

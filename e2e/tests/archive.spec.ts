@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { download, expect, openSettings, playAndWait, start, test, view, type Magpie } from '../fixtures';
+import { download, expect, openCandidate, openSettings, playAndWait, start, test, view, type Magpie } from '../fixtures';
 
 async function setArchiveSize(magpie: Magpie, n: number) {
   const popup = await magpie.popup();
@@ -17,7 +17,7 @@ function candidate(page: Page, urlPart: string) {
   return page.locator(`[data-testid="candidate"][data-url*="${urlPart}"]`);
 }
 
-test('a finished download moves to history and its media is hidden', async ({ magpie }) => {
+test('a finished download moves to history and its media is marked as downloaded', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-ts.html');
   const popup = await magpie.popup();
@@ -34,20 +34,30 @@ test('a finished download moves to history and its media is hidden', async ({ ma
   await expect(link).toHaveText('127.0.0.1/hls-ts.html');
   await expect(popup.getByTestId('job')).toHaveCount(0);
 
-  // Already downloaded: hidden from the media list, one click shows it again.
+  // Already downloaded: still listed, gray, with when and as what. The sheet says so before a second copy.
   await view(popup, 'This page');
   const row = candidate(popup, '/media/hls-ts/index.m3u8');
-  await expect(row).toHaveCount(0);
-  await popup.getByRole('button', { name: '1 downloaded' }).click();
-  await expect(row).toBeVisible();
-  await expect(row.getByTestId('archived-badge')).toBeVisible();
+  await expect(row).toHaveAttribute('data-state', 'archived');
+  const badge = row.getByTestId('archived-badge');
+  await expect(badge).toHaveText(/^DOWNLOADED (just now|\dm ago)$/);
+  await expect(badge).toHaveAttribute('title', /^Downloaded .+ as Harbor at Dusk\.mp4$/);
+  const sheet = await openCandidate(popup, '/media/hls-ts/index.m3u8');
+  await expect(sheet.getByTestId('archived-note')).toContainText('as Harbor at Dusk.mp4');
+  await expect(sheet.getByTestId('start')).toHaveText(/^Download.* again$/);
+  await popup.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+
+  // Hidden on request, and the next popup keeps that choice.
   await popup.getByRole('button', { name: 'Hide downloaded' }).click();
   await expect(row).toHaveCount(0);
-
   // The popup for that tab says so instead of "Nothing detected yet".
   const forTab = await magpie.popupFor(page);
   await expect(forTab.getByText('Everything here is already downloaded')).toBeVisible({ timeout: 15_000 });
   await expect(forTab.getByTestId('archive-entry')).toHaveCount(1);
+  await forTab.getByRole('button', { name: '1 downloaded' }).click();
+  await expect(candidate(forTab, '/media/hls-ts/index.m3u8')).toHaveAttribute('data-state', 'archived');
+  await expect(popup.getByRole('button', { name: 'Hide downloaded' })).toBeVisible();
+  await expect(row).toBeVisible();
 
   // The page link opens in a new tab.
   await view(popup, 'History');
@@ -73,14 +83,14 @@ test('history size keeps the newest entries, and 0 turns history off', async ({ 
 
   await download(popup, '/media/progressive/clip.mp4');
   const entries = popup.getByTestId('archive-entry');
-  // A plain MP4's length comes from its movie header, and a plain file hides like a stream.
+  // A plain MP4's length comes from its movie header, and a plain file is marked like a stream.
   await expect(entries.first()).toContainText('0:20');
-  await expect(candidate(popup, '/media/progressive/clip.mp4')).toHaveCount(0);
+  await expect(candidate(popup, '/media/progressive/clip.mp4').first()).toHaveAttribute('data-state', 'archived');
   await download(popup, '/media/hls-ts/index.m3u8');
   await expect(entries).toHaveCount(1);
   await expect(entries.first().getByTestId('archive-title')).toHaveText('Harbor at Dusk');
-  // The entry that fell out no longer hides its media.
-  await expect(candidate(popup, '/media/progressive/clip.mp4').first()).toBeVisible();
+  // The entry that fell out no longer marks its media.
+  await expect(candidate(popup, '/media/progressive/clip.mp4').first()).toHaveAttribute('data-state', 'fresh');
 
   const settings = await magpie.popup();
   await openSettings(settings);

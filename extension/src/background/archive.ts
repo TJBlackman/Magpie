@@ -2,8 +2,8 @@ import { browser } from 'wxt/browser';
 import {
   ARCHIVE_KEY,
   addEntry,
+  findArchived,
   indexArchive,
-  isArchived,
   mergeStores,
   normalizeArchive,
   splitForStorage,
@@ -46,9 +46,14 @@ export class Archive {
     return this.entries;
   }
 
-  /** True when the archive has this candidate's stream. `siblings` are the tab's other streams. False until the archive has loaded. */
+  /** The newest entry for this candidate's stream. `siblings` are the tab's other streams. Undefined until the archive has loaded. */
+  find(c: Candidate, siblings: Candidate[] = []): ArchiveEntry | undefined {
+    return this.loaded ? findArchived(c, this.index, siblings) : undefined;
+  }
+
+  /** True when the archive has this candidate's stream. */
   has(c: Candidate, siblings: Candidate[] = []): boolean {
-    return this.loaded && isArchived(c, this.index, siblings);
+    return this.find(c, siblings) !== undefined;
   }
 
   /** Add a finished download. False when the archive is off. */

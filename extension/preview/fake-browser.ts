@@ -250,7 +250,7 @@ function emit(event: Extract<Envelope, { magpie: 'ui' }>['event']) {
 const emitJobs = () => emit({ type: 'jobs', jobs: state.jobs.map(withoutThumb) });
 const emitArchive = () => emit({ type: 'archive', entries: state.archive.map(withoutThumb) });
 
-const inHistory = (c: Candidate) => !c.live && state.archive.some((e) => e.src === c.url);
+const inHistory = (c: Candidate) => (c.live ? undefined : state.archive.find((e) => e.src === c.url));
 
 /* Frames arrive one at a time a moment after the popup asks, like the real capture. */
 const capturing = new Set<string>();
@@ -261,7 +261,9 @@ function captureThumbs(list: Candidate[]) {
     if (c.thumb || c.kind === 'dash' || capturing.has(c.id)) continue;
     capturing.add(c.id);
     setTimeout(() => {
-      c.thumb = paintThumb(c.pageTitle);
+      // A new object, not the old one changed in place: memoized cards only redraw when their candidate is a new object.
+      const thumb = paintThumb(c.pageTitle);
+      state.candidates = state.candidates.map((x) => (x.id === c.id ? { ...x, thumb } : x));
       capturing.delete(c.id);
       emit({ type: 'candidates', tabId: c.tabId });
     }, delay);
@@ -457,7 +459,12 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
     case 'candidates': {
       const list = state.candidates.filter((c) => req.tabId === undefined || c.tabId === req.tabId).sort((a, b) => b.seenAt - a.seenAt);
       captureThumbs(list.filter((c) => !inHistory(c)));
-      return ok(list.map((c) => (inHistory(c) ? { ...c, archived: true } : c)));
+      return ok(
+        list.map((c) => {
+          const e = inHistory(c);
+          return e ? { ...c, archived: { at: e.at, file: e.file, files: e.files }, thumb: c.thumb ?? e.thumb } : c;
+        }),
+      );
     }
     case 'clearCandidates':
       state.candidates = state.candidates.filter((c) => c.tabId !== req.tabId);

@@ -124,18 +124,23 @@ export function pageKey(url: string): string {
   }
 }
 
+/** Each key points at the newest entry that has it. */
 export interface ArchiveIndex {
-  src: Set<string>;
+  src: Map<string, ArchiveEntry>;
   /** pageKey and skeleton, joined by a space. */
-  page: Set<string>;
+  page: Map<string, ArchiveEntry>;
 }
 
+/** `entries` newest first, so the first entry with a key keeps it. */
 export function indexArchive(entries: ArchiveEntry[]): ArchiveIndex {
-  const index: ArchiveIndex = { src: new Set(), page: new Set() };
+  const index: ArchiveIndex = { src: new Map(), page: new Map() };
   for (const e of entries) {
-    if (e.src) index.src.add(e.src);
+    if (!e.src) continue;
+    if (!index.src.has(e.src)) index.src.set(e.src, e);
     const p = pageKey(e.page);
-    if (p && e.src) index.page.add(`${p} ${skeleton(e.src)}`);
+    if (!p) continue;
+    const k = `${p} ${skeleton(e.src)}`;
+    if (!index.page.has(k)) index.page.set(k, e);
   }
   return index;
 }
@@ -143,23 +148,29 @@ export function indexArchive(entries: ArchiveEntry[]): ArchiveIndex {
 type Seen = Pick<Candidate, 'url' | 'pageUrl' | 'live'>;
 
 /**
- * True when the candidate is a stream the archive already has: the same stream
- * key on any page, or the same page with the same stream shape. A live stream
- * never is; its next recording holds new footage.
+ * The newest entry for the candidate's stream, if the archive has one: the
+ * same stream key on any page, or the same page with the same stream shape. A
+ * live stream never has one; its next recording holds new footage.
  *
  * `siblings` are the other streams in the same tab. When one of them has the
  * same page and shape but another stream key, the shape cannot tell the videos
  * apart (a course page, a feed), so only the exact stream key counts.
  */
-export function isArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []): boolean {
-  if (c.live) return false;
+export function findArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []): ArchiveEntry | undefined {
+  if (c.live) return undefined;
   const key = streamKey(c.url);
-  if (index.src.has(key)) return true;
+  const exact = index.src.get(key);
+  if (exact) return exact;
   const p = pageKey(c.pageUrl);
-  if (!p) return false;
+  if (!p) return undefined;
   const shape = skeleton(c.url);
-  if (!index.page.has(`${p} ${shape}`)) return false;
-  return !siblings.some((s) => pageKey(s.pageUrl) === p && skeleton(s.url) === shape && streamKey(s.url) !== key);
+  const same = index.page.get(`${p} ${shape}`);
+  if (!same) return undefined;
+  return siblings.some((s) => pageKey(s.pageUrl) === p && skeleton(s.url) === shape && streamKey(s.url) !== key) ? undefined : same;
+}
+
+export function isArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []): boolean {
+  return findArchived(c, index, siblings) !== undefined;
 }
 
 /** The entry for a finished job. */

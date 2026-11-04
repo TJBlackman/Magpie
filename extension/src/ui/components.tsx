@@ -3,13 +3,15 @@ import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
 import { IconFilm, IconImages, IconRadio, IconUpdate, IconX } from './icons';
 
-export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'file' | 'post';
+export type Tone = 'default' | 'shine' | 'warn' | 'alert' | 'bad' | 'good' | 'file' | 'post';
 
 export function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: Tone }) {
   const cls = {
     default: 'bg-edge text-mute',
     shine: 'bg-shine/12 text-shine',
     warn: 'bg-amber-500/15 text-amber-300',
+    // Solid yellow, so it reads as a warning and stands apart from the tinted DASH badge.
+    alert: 'bg-amber-400 text-ink',
     bad: 'bg-live/15 text-rose-300',
     good: 'bg-emerald-500/15 text-emerald-300',
     file: 'bg-violet-500/15 text-violet-300',
@@ -110,28 +112,31 @@ export function MediaRow({
   action?: ReactNode;
   onOpen?: () => void;
   openTip?: string;
-  /** Already downloaded or in the queue: drawn in grayscale and faded. */
+  /** Already downloaded or in the queue: drawn in grayscale and faded, except meta items marked `data-keep`. */
   dim?: boolean;
   attrs?: Record<string, string | number | undefined>;
   children?: ReactNode;
 }) {
+  // The parts fade one by one instead of the whole row, so a tag that says why the row is gray (DOWNLOADED) keeps its color.
+  const fade = dim ? 'opacity-50 grayscale transition-opacity group-hover:opacity-80' : '';
+  const fadeMeta = dim ? '[&>*:not([data-keep])]:opacity-50 [&>*:not([data-keep])]:grayscale group-hover:[&>*:not([data-keep])]:opacity-80' : '';
   const body = (
     <>
-      {tile}
+      <div className={`shrink-0 ${fade}`}>{tile}</div>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[12.5px] font-semibold" data-testid={titleTestId} title={titleTip}>
+        <div className={`truncate text-[12.5px] font-semibold ${fade}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
-        <div className="mt-1 flex items-center gap-1.5 text-[11px] text-mute">{meta}</div>
+        <div className={`mt-1 flex items-center gap-1.5 text-[11px] text-mute ${fadeMeta}`}>{meta}</div>
       </div>
     </>
   );
   return (
-    <div {...attrs} className={`rounded-xl border border-edge bg-panel transition ${onOpen ? 'hover:border-edge2 hover:bg-panel2' : ''} ${dim ? 'opacity-50 grayscale hover:opacity-80' : ''}`}>
+    <div {...attrs} className={`group rounded-xl border border-edge bg-panel transition ${onOpen ? 'hover:border-edge2 hover:bg-panel2' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full items-center gap-2.5 p-2 text-left">
           {body}
-          {action}
+          <span className={`shrink-0 ${fade}`}>{action}</span>
         </button>
       ) : (
         <div className="flex items-center gap-2.5 p-2">
