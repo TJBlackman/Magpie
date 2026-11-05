@@ -67,8 +67,8 @@ const AUDIO_EMPTY = 'The audio rendition lists no segments, so it is not merged;
 const AUDIO_NO_INIT = 'The stream names fMP4 segments but no init segment, so its separate audio is not merged; video only.';
 const AUDIO_DISCONTINUITY = 'The stream has discontinuities (usually ad breaks), so its separate audio is not merged; video only.';
 const AUDIO_NEW_INIT = 'The stream switches to another init segment partway through, so its separate audio is not merged; video only.';
-const DRM_MPD = 'This video is copy protected (DRM), and Magpie does not save protected streams.';
-const DRM_INIT = 'This video is copy protected (DRM): its first segment is encrypted, and Magpie does not save protected streams.';
+const DRM_MPD = 'The site locks this video with DRM, so Magpie can\'t save it.';
+const DRM_INIT = 'The site locks this video with DRM (its first segment is encrypted), so Magpie can\'t save it.';
 const DASH_NO_AUDIO = 'No audio representation in the MPD can be used (see above), so the download is video only.';
 // Live DASH: what cannot be recorded.
 const LIVE_SEGMENT_BASE = 'This live MPD addresses its media with SegmentBase, which Magpie cannot record.';
@@ -447,7 +447,7 @@ export class Engine {
             variant.label = `${variant.label} + ${name}`;
             variant.audioUri = audio.uri;
             variant.audioLabel = name;
-            return { variant, note: group.length > 1 ? `Audio: ${name} (default). Other languages are not selectable yet.` : undefined };
+            return { variant, note: group.length > 1 ? `Audio: ${name}. Other languages can't be picked yet.` : undefined };
           }),
         );
         variants = found.map((f) => f.variant);
@@ -608,7 +608,7 @@ export class Engine {
     });
     if (!variants.length) throw new Error(notes.join(' ') || 'No representation in the MPD has segments.');
     if (merged && new Set(manifest.audio.map((r) => r.setIndex)).size > 1) {
-      notes.push(`Audio: ${audioName} (default). Other languages are not selectable yet.`);
+      notes.push(`Audio: ${audioName}. Other languages can't be picked yet.`);
     }
     if (live) notes.push(LIVE_NOTE);
     // Fold rules of every representation, used or not: the player may fetch any of them, protected ones included.

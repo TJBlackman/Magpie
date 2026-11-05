@@ -69,6 +69,9 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
   );
 }
 
+/** A meta line's lead value: the quality or size, a step brighter than the rest. */
+const LEAD = 'font-medium text-[#b9c3cf] tabular-nums';
+
 const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
   inspecting: { label: 'STARTING', tone: 'shine' },
   muxing: { label: 'FINISHING', tone: 'shine' },
@@ -101,9 +104,15 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
   );
 }
 
-/** A download in flight or failed: the same row it had on the page, with a progress bar and status underneath. */
+/**
+ * A download in flight, waiting or failed: the same row it had on the page.
+ * A running one adds a progress bar and a status line. A waiting one and a
+ * failed one stay one row tall, with their state on the second line, so the
+ * running downloads keep the room.
+ */
 export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; onRetry?: () => void }) {
   const failed = job.state === 'error';
+  const queued = job.state === 'queued';
   const pct = jobProgress(job);
   const rate = useRate(job.bytes, job.state === 'downloading');
   const recording = !!job.live && job.state === 'downloading';
@@ -116,6 +125,37 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : STATE_CHIP[job.state] ? (
     <Badge tone={STATE_CHIP[job.state]!.tone}>{STATE_CHIP[job.state]!.label}</Badge>
   ) : null;
+  const lead = rendition && <span className={LEAD}>{rendition}</span>;
+  const meta = failed ? (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
+      <IconError size={14} className="shrink-0 text-live" />
+      <span className="min-w-0 truncate text-[#c9d2dd]">{friendlyError(job.error ?? 'The download stopped.')}</span>
+    </span>
+  ) : queued ? (
+    <span className="min-w-0 flex-1 truncate text-dim">
+      {lead}
+      {rendition && ' · '}
+      <span data-testid="job-status">{statusText(job, pct)}</span>
+      {job.bytesTotal ? ` · ${fmtBytes(job.bytesTotal)}` : ''}
+    </span>
+  ) : (
+    <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
+      {lead}
+      {`${rendition ? ' · ' : ''}${hostOf(job.url)}`}
+    </span>
+  );
+  // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
+  const recover = failed ? (
+    onRetry ? (
+      <IconButton label="Try again: pick a quality for this video again" framed onClick={onRetry} className="text-text">
+        <IconRedo size={16} />
+      </IconButton>
+    ) : job.pageUrl ? (
+      <IconButton label="Open the page. Play the video there and it comes back on This page with a fresh link" framed onClick={() => openPage(job.pageUrl!)} className="text-text">
+        <IconExternal size={16} />
+      </IconButton>
+    ) : null
+  ) : null;
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
@@ -125,72 +165,57 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       meta={
         <>
           {job.group && <Badge>{`${job.group.index + 1} OF ${job.group.total}`}</Badge>}
-          <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
-            {rendition && <span className="font-medium text-[#c3ccd7] tabular-nums">{rendition}</span>}
-            {`${rendition ? ' · ' : ''}${failed ? statusText(job, pct) || hostOf(job.url) : hostOf(job.url)}`}
-          </span>
+          {meta}
         </>
       }
       action={
-        <>
-          {failed ? (
-            <IconButton label="Remove" framed onClick={() => api.removeJob(job.id)}>
-              <IconX size={17} />
-            </IconButton>
-          ) : job.live ? (
-            <IconButton label="Discard recording" tone="danger" framed onClick={() => api.cancel(job.id)}>
-              <IconTrash size={16} />
-            </IconButton>
-          ) : (
-            <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
-              <IconX size={17} />
-            </IconButton>
-          )}
-        </>
+        failed ? (
+          <>
+            {/* With a way back on the row, Remove floats over the end of the line on hover, so the title keeps its width. */}
+            <span className={recover ? 'pointer-events-none absolute top-1/2 right-[52px] -translate-y-1/2 bg-gradient-to-r from-transparent via-panel via-40% to-panel py-1 pl-5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100' : ''}>
+              <IconButton label="Remove" framed={!recover} onClick={() => api.removeJob(job.id)}>
+                <IconX size={16} />
+              </IconButton>
+            </span>
+            {recover}
+          </>
+        ) : job.live ? (
+          <IconButton label="Discard recording" tone="danger" framed onClick={() => api.cancel(job.id)}>
+            <IconTrash size={16} />
+          </IconButton>
+        ) : (
+          <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
+            <IconX size={17} />
+          </IconButton>
+        )
       }
     >
-      {!failed && !job.live && job.state !== 'queued' && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
-      {failed ? (
-        <div className="flex items-center gap-3">
-          <p className="flex min-w-0 flex-1 items-center gap-2 text-[12px] text-[#c9d2dd]" title={job.error}>
-            <IconError size={15} className="shrink-0 text-live" />
-            <span className="truncate">{friendlyError(job.error ?? 'The download stopped.')}</span>
-          </p>
-          {onRetry ? (
-            <Button tone="default" size="md" onClick={onRetry} title="Open the quality sheet for this video again">
-              <IconRedo size={13} />
-              Try again
-            </Button>
-          ) : job.pageUrl ? (
-            <Button tone="default" size="md" onClick={() => openPage(job.pageUrl!)} title="Opens the page in a new tab. Play the video there and it comes back on This page with a fresh link">
-              <IconExternal size={13} />
-              Open page
-            </Button>
-          ) : null}
-        </div>
-      ) : (
-        <StatusLine
-          chip={chip}
-          left={statusText(job, pct)}
-          right={
-            recording ? (
-              <>
+      {failed || queued ? null : (
+        <>
+          {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
+          <StatusLine
+            chip={chip}
+            left={statusText(job, pct)}
+            right={
+              recording ? (
+                <>
+                  <SpeedText job={job} rate={rate} />
+                  <Button tone="default" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="-my-1 !text-[#ff9fb1] ring-live/30 hover:bg-live/15">
+                    <IconStop size={12} />
+                    Stop
+                  </Button>
+                </>
+              ) : (
                 <SpeedText job={job} rate={rate} />
-                <Button tone="default" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="-my-1 !text-[#ff9fb1] ring-live/30 hover:bg-live/15">
-                  <IconStop size={12} />
-                  Stop
-                </Button>
-              </>
-            ) : (
-              <SpeedText job={job} rate={rate} />
-            )
-          }
-        />
-      )}
-      {job.note && (
-        <div data-testid="job-note" className="mt-2">
-          <Callout tone="info">{job.note}</Callout>
-        </div>
+              )
+            }
+          />
+          {job.note && (
+            <div data-testid="job-note" className="mt-2">
+              <Callout tone="info">{job.note}</Callout>
+            </div>
+          )}
+        </>
       )}
     </MediaRow>
   );

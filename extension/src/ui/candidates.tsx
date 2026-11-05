@@ -2,9 +2,9 @@ import { memo, useEffect, useState } from 'react';
 import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
-import { describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
+import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconCheckCircle, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
 
 /** "yesterday at 9:19 PM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
 function savedAs(a: Archived): string {
@@ -38,7 +38,7 @@ function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }
   const rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
   return (
     <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-      {lead && <span className="font-medium text-[#c3ccd7] tabular-nums">{lead}</span>}
+      {lead && <span className="font-medium text-[#b9c3cf] tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
@@ -63,7 +63,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
           {candidate.live && !job.queued ? (
             <Badge tone="bad">
               <span className="pulse size-1.5 rounded-full bg-live" />
-              REC <span className="font-medium tracking-normal tabular-nums">{fmtClock(job.elapsed ?? 0)}</span>
+              RECORDING <span className="font-medium tracking-normal tabular-nums">{fmtClock(job.elapsed ?? 0)}</span>
             </Badge>
           ) : (
             <Badge tone="shine">{job.queued ? 'QUEUED' : job.pct === null ? 'DOWNLOADING' : `${Math.floor(job.pct * 100)}%`}</Badge>
@@ -194,8 +194,9 @@ function shortName(v: Variant): string {
  * it, the estimated size on the right. With one rendition there is nothing to
  * pick, so it is a plain line, not an option.
  */
-function VariantRow({ variant, on, single, duration, showAudio, onPick }: { variant: Variant; on: boolean; single: boolean; duration?: number; showAudio: boolean; onPick: () => void }) {
+function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPick }: { variant: Variant; on: boolean; single: boolean; duration?: number; showAudio: boolean; hideCodecs: boolean; onPick: () => void }) {
   const d = describeVariant(variant);
+  if (hideCodecs) d.detail = d.detail.replace(` · ${codecNames(variant.codecs)}`, '');
   const size = fmtEstimate(variant.bandwidth, duration);
   if (single)
     return (
@@ -230,7 +231,7 @@ function ArchivedNote({ archived, onMissing }: { archived: Archived; onMissing: 
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   return (
-    <Callout tone="warn" title={`Downloaded ${when}`} testId="archived-note">
+    <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Downloaded ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
       <Button tone="default" className="mt-2 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
         <IconFolder size={14} />
@@ -266,8 +267,8 @@ function PostFiles({ candidate, variants, thumbs }: { candidate: Candidate; vari
           <div className="truncate text-[11.5px] text-mute">{`${where}, with the post's title, author and date`}</div>
         </div>
       </div>
-      <details className="group/files rounded-[10px] px-1 text-[12px] text-mute">
-        <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-md px-1.5 font-medium hover:text-text [&::-webkit-details-marker]:hidden">
+      <details className="group/files -mx-1 rounded-[10px] text-[12px] text-mute">
+        <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 font-medium transition-colors hover:bg-white/[0.04] hover:text-text [&::-webkit-details-marker]:hidden">
           <span className="transition-transform group-open/files:rotate-90">›</span>
           {`See the ${n} ${fileWord(variants, n)}`}
         </summary>
@@ -334,6 +335,11 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const audios = new Set(variants.map((v) => v.audioLabel ?? ''));
   const sharedAudio = !post && audios.size === 1 ? [...audios][0]! : '';
   const drm = !!error && /DRM|copy protected/i.test(error);
+  // Codecs every quality shares are said once, under the list.
+  const codecSet = new Set(variants.map((v) => codecNames(v.codecs)));
+  const sharedCodecs = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
+  const audioNoted = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
+  const footnote = [sharedCodecs, sharedAudio && !audioNoted ? `${sharedAudio} audio merged in` : ''].filter(Boolean).join(', ');
 
   return (
     <>
@@ -382,16 +388,16 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             </Callout>
           ))}
           {inspection && post && <PostFiles candidate={candidate} variants={variants} thumbs={thumbs} />}
-          {inspection && !post && (
-            <ul className="flex flex-col gap-1.5">
+          {inspection && !post && !(candidate.live && single) && (
+            <ul className="flex flex-col gap-2">
               {variants.map((v) => (
                 <li key={v.id}>
-                  <VariantRow variant={v} on={v.id === variantId} single={single} duration={duration} showAudio={!sharedAudio} onPick={() => setVariantId(v.id)} />
+                  <VariantRow variant={v} on={v.id === variantId} single={single} duration={duration} showAudio={!sharedAudio} hideCodecs={!!sharedCodecs} onPick={() => setVariantId(v.id)} />
                 </li>
               ))}
             </ul>
           )}
-          {sharedAudio && !inspection?.notes.some((n) => n.startsWith('Audio:')) && <p className="px-1 text-[11.5px] text-mute">{`${single ? 'Includes' : 'Every quality includes'} ${sharedAudio} audio, merged into one file.`}</p>}
+          {footnote && <p className="px-1 text-[11.5px] text-mute">{`${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase())}</p>}
         </div>
         {inspection && !error && (!post || files > 0) && (
           <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">

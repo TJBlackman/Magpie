@@ -203,7 +203,7 @@ function seedJobs(): Job[] {
 
 function entry(id: string, title: string, file: string, page: string, src: string, at: number, secs: number): ArchiveEntry {
   const p = Number(/[(d+)p]/.exec(file)?.[1] ?? 1080);
-  return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title), bytes: Math.round(secs * (p >= 2160 ? 1_900_000 : p >= 1080 ? 750_000 : 400_000)) };
+  return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title), bytes: Math.round((secs * (p >= 2160 ? 15_200_000 : p >= 1080 ? 6_000_000 : 3_100_000)) / 8) };
 }
 
 function seedArchive(): ArchiveEntry[] {
@@ -316,11 +316,11 @@ async function inspect(c: Candidate): Promise<Result<Inspection>> {
   const cached = state.inspections.get(c.id);
   if (cached) return ok(cached);
   await delay(550);
-  if (c.id === 'c13') return err('This video is copy protected (DRM), and Magpie does not save protected streams.');
+  if (c.id === 'c13') return err("The site locks this video with DRM, so Magpie can't save it.");
   const notes: string[] = [];
   if (c.live) notes.push(LIVE_NOTE);
-  if (c.id === 'c5') notes.push('Audio: English (default). Other languages are not selectable yet.');
-  const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live, duration: c.live || c.kind === 'post' ? undefined : infoFor(c).duration };
+  if (c.id === 'c5') notes.push("Audio: English. Other languages can't be picked yet.");
+  const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live, duration: c.live || c.kind === 'post' ? undefined : (inHistory(c)?.secs ?? infoFor(c).duration) };
   state.inspections.set(c.id, ins);
   return ok(ins);
 }
@@ -583,5 +583,6 @@ export const browser = {
       return t;
     },
     create: async ({ url }: { url: string }) => note(`Would open ${url} in a new tab`),
+    reload: async (id: number) => note(`Would reload tab ${id}`),
   },
 };

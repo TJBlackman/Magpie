@@ -45,7 +45,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           {facts && (
             <>
               {' · '}
-              <span className="font-medium text-[#c3ccd7] tabular-nums">{facts}</span>
+              <span className="font-medium text-[#b9c3cf] tabular-nums">{facts}</span>
             </>
           )}
         </span>
@@ -53,7 +53,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       action={
         <>
           {/* Hover actions float over the end of the title, so the title has the whole row the rest of the time. */}
-          <span className="pointer-events-none absolute top-1/2 right-[52px] flex -translate-y-1/2 items-center gap-1 bg-gradient-to-r from-transparent via-[#18202b] via-30% to-[#18202b] py-1 pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+          <span className="pointer-events-none absolute top-1/2 right-[52px] flex -translate-y-1/2 items-center gap-1 bg-gradient-to-r from-transparent via-panel via-30% to-panel py-1 pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
             {page && isWebUrl(page) && (
               <a
                 href={page}

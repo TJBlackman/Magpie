@@ -231,6 +231,24 @@ export const IconEyeOff = (p: IconProps) => (
   </Icon>
 );
 
+export const IconSliders = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 7h10" />
+    <path d="M18 7h2" />
+    <circle cx="16" cy="7" r="2" />
+    <path d="M4 17h2" />
+    <path d="M10 17h10" />
+    <circle cx="8" cy="17" r="2" />
+  </Icon>
+);
+
+export const IconCheckCircle = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+  </Icon>
+);
+
 /** The magpie mark used in the header. */
 export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">

@@ -43,7 +43,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-white/[0.07] text-text ring-1 ring-inset ring-white/[0.08] hover:bg-white/[0.11] active:bg-white/[0.05]',
-    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6] focus-visible:!outline-text',
+    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-white/[0.06] hover:text-text active:bg-white/[0.04]',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
     live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
@@ -97,7 +97,7 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
   return (
     <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-60 grayscale' : ''}`} />
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.8] saturate-[.3]' : ''}`} />
       ) : (
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
@@ -172,12 +172,12 @@ export function MediaRow({
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-3.5 mb-1.5 flex h-6 items-center justify-between gap-2 first:mt-1.5">
+    <div className="mt-3.5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-7 [&_button]:bg-white/[0.04] [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:ring-1 [&_button]:ring-white/[0.06] [&_button]:ring-inset">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-7 [&_button]:bg-white/[0.04] [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:hover:bg-white/[0.08]">{children}</div>}
     </div>
   );
 }
@@ -188,7 +188,7 @@ export function Empty({ icon, title, children, action, below }: { icon: ReactNod
     <div className="rise-in flex flex-col items-center px-6 pt-[18%] pb-8 text-center">
       <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
-      {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-mute">{children}</p>}
+      {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-pretty text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
       {below && <div className="mt-5">{below}</div>}
     </div>
@@ -207,7 +207,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   return (
     <div data-testid={testId} className={`flex gap-2.5 rounded-lg px-3 py-2.5 text-[12px] leading-[1.5] ring-1 ring-inset ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
-      <div className="min-w-0">
+      <div className="min-w-0 text-pretty">
         {title && <div className="mb-0.5 font-semibold text-white">{title}</div>}
         {children}
       </div>
@@ -243,7 +243,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/10 !text-[#7ff0ff] !ring-shine/30'}>
+    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] ring-1 ring-shine/40 ring-inset'}>
       {shown ? <IconEyeOff size={14} /> : <IconEye size={14} />}
       {shown ? 'Hide downloaded' : `${count} downloaded`}
     </Button>

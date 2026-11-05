@@ -57,7 +57,7 @@ function Row({ label, htmlFor, control, children }: { label: string; htmlFor: st
     <div className="flex items-center gap-4 px-3.5 py-3">
       <label htmlFor={htmlFor} className="min-w-0 flex-1 cursor-pointer">
         <span className="block text-[13px] leading-5 font-semibold text-text">{label}</span>
-        <span className="mt-0.5 block text-[11.5px] leading-[1.45] text-mute">{children}</span>
+        <span className="mt-0.5 block text-[11.5px] leading-[1.45] text-pretty text-mute">{children}</span>
       </label>
       {control}
     </div>

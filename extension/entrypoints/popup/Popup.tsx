@@ -6,7 +6,7 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconCheck, IconDownload, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconDownload, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -265,6 +265,14 @@ export function Popup() {
                   </div>
                 )
               }
+              action={
+                scope && !scope.all ? (
+                  <Button size="md" onClick={() => void browser.tabs.reload(scope.tabId)} title="Reload the page, then press play">
+                    <IconRedo size={14} />
+                    Reload page
+                  </Button>
+                ) : undefined
+              }
             >
               Press play on a video and the stream shows up here. Already playing? Reload the page.
             </Empty>
@@ -314,21 +322,14 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <Button tone="ghost" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once" className="!text-dim hover:!text-text">
+                    <Button tone="ghost" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once">
+                      <IconSliders size={14} />
                       {`${settings.maxConcurrent} at a time`}
                     </Button>
                   )}
                 </Section>
                 <div className="flex flex-col gap-2">
                   {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
-                </div>
-              </>
-            )}
-            {waiting.length > 0 && (
-              <>
-                <Section title="Queued" count={waiting.length} />
-                <div className="flex flex-col gap-2">
-                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
                 </div>
               </>
             )}
@@ -343,6 +344,14 @@ export function Popup() {
                   {failed.map((j) => (
                     <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
                   ))}
+                </div>
+              </>
+            )}
+            {waiting.length > 0 && (
+              <>
+                <Section title="Queued" count={waiting.length} />
+                <div className="flex flex-col gap-2">
+                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
                 </div>
               </>
             )}
