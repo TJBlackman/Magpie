@@ -396,11 +396,12 @@ function start(c: Candidate, variantId: string): Result<Job> {
     state: willRun ? 'inspecting' : 'queued',
     segmentsTotal: c.kind === 'file' ? 0 : live ? 0 : 90 + Math.round(Math.random() * 300),
     segmentsDone: 0,
-    bytes: 0,
+    bytes: live ? 26 * MB : 0,
     bytesTotal: c.kind === 'file' ? (c.contentLength ?? undefined) : undefined,
     thumb: c.thumb,
     live,
-    duration: live ? 0 : undefined,
+    // The engine saves the playlist's window (about 30 seconds) as soon as it starts.
+    duration: live ? 30 : undefined,
     startedAt: Date.now(),
   };
   state.jobs.unshift(j);

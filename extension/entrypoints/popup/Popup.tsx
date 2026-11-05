@@ -93,7 +93,7 @@ function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
   const fade = edges.top && edges.bottom ? 'fade-both' : edges.top ? 'fade-top' : edges.bottom ? 'fade-bottom' : '';
   return (
     <div hidden={!shown} className={`min-h-0 flex-1 border-t transition-colors ${edges.top ? 'border-edge' : 'border-transparent'}`}>
-      <div ref={scroller} onScroll={measure} className={`h-full overflow-y-auto px-3.5 pb-4 scroll-thin ${fade}`}>
+      <div ref={scroller} onScroll={measure} className={`h-full overflow-y-auto px-3.5 pb-[calc(16px+var(--toast-pad))] scroll-thin ${fade}`}>
         <div className="flex min-h-full flex-col">{children}</div>
       </div>
     </div>
@@ -247,7 +247,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 flex-auto items-center justify-center gap-1.5 rounded-[9px] px-3 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45),0_0_16px_rgba(34,211,238,.12)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -265,13 +265,13 @@ export function Popup() {
   };
 
   return (
-    <div data-popup-root className="relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(420px_220px_at_50%_-90px,rgba(34,211,238,.09),transparent_70%)]">
+    <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(34,211,238,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(99,102,241,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#67e8f9] to-shine text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
           <Logo />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="text-[14px] font-semibold tracking-[0.01em]">Magpie</div>
+          <div className="font-display text-[15.5px] font-bold">Magpie</div>
           <div className="truncate text-[11.5px] text-mute" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
             {scope && (view !== 'page' ? 'All sites' : scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
@@ -295,7 +295,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 flex shrink-0 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.4fr_1fr] gap-0.5 rounded-xl bg-panel/80 p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',

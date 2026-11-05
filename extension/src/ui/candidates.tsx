@@ -175,7 +175,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset group-hover:bg-[#232b36] group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-text ring-1 ring-ctl-edge transition-colors ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:bg-[#232b36] hover:!ring-[#8796a9] active:bg-[#2c3644] ${candidate.live ? '' : 'hover:text-shine'}`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -332,9 +332,9 @@ function SavePath({ path }: { path: string }) {
   const parts = path.split('/');
   const name = parts.pop() ?? '';
   return (
-    <span className="flex min-w-0 items-center">
-      <span className="shrink-0 whitespace-pre">{parts.map((p) => `${p} / `).join('')}</span>
-      <span className="min-w-0 truncate text-fg2">{name}</span>
+    <span className="line-clamp-2 min-w-0 break-words">
+      {parts.map((p) => `${p} / `).join('')}
+      <span className="text-fg2">{name}</span>
     </span>
   );
 }
@@ -469,7 +469,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="line-clamp-2 text-[16px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="font-display line-clamp-2 text-[16.5px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
@@ -538,8 +538,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           )}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
-          <div className="mt-3 flex h-4 items-center gap-2 px-0.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
-            <IconFolder size={14} className="shrink-0" />
+          <div className="mt-3 flex items-start gap-2 px-0.5 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
+            <IconFolder size={14} className="mt-px shrink-0" />
             <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} />
           </div>
         )}

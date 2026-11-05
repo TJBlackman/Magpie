@@ -48,12 +48,12 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#8796a9] active:bg-btn',
-    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
+    shine: 'bg-[linear-gradient(180deg,#4be3f6,#1fc9e4)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_18px_rgba(34,211,238,.24),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(180deg,#67e8f9,#2fd3ec)] active:bg-[linear-gradient(180deg,#22d3ee,#14bdd6)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    destroy: 'bg-[#d6304a] text-white font-semibold hover:bg-[#e13a55] active:bg-[#c02840]',
+    destroy: 'bg-[#c8283f] text-white font-semibold hover:bg-[#d6304a] active:bg-[#b52238]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -74,10 +74,10 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
         : active
           ? 'bg-sel-fill text-shine ring-1 ring-sel-edge ring-inset'
           : framed
-            ? 'text-fg2 hover:text-text'
+            ? 'text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-ctl-edge ring-inset group-hover:bg-[#232b36] group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:!bg-[#2c3644] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? '!rounded-full size-9 ring-1 ring-ctl-edge ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -103,15 +103,15 @@ export function LiveBadge() {
  * captured, else an icon on a quiet gradient. Live streams pulse either way.
  * `corner` is drawn over the bottom right, like a length on a video player.
  */
-export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w-16' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
+export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
   return (
-    <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
+    <div className={`relative ${className} shrink-0 overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
         <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
       ) : (
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
-      {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
+      {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
       {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[10.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
     </div>
   );
@@ -169,14 +169,14 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border bg-panel ${onOpen || hoverable ? 'border-card-edge' : 'border-transparent'} outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:bg-panel3 active:bg-panel2 has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:bg-panel3 has-[.quick:hover]:border-card-edge has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-hover-edge hover:bg-panel3 focus-within:border-hover-edge focus-within:bg-panel3' : ''}`}>
+    <div {...attrs} className={`card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
+        <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-2.5 py-2.5 text-left focus-visible:outline-none">
           {body}
           {action}
         </button>
       ) : (
-        <div className="flex items-center gap-2.5 px-2.5 py-2">
+        <div className="flex items-center gap-3 px-2.5 py-2.5">
           {body}
           <div className="flex shrink-0 items-center gap-1">{action}</div>
         </div>
@@ -204,7 +204,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
+      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(34,211,238,.12),rgba(20,26,34,1)_70%)] text-mute ring-1 ring-edge ring-inset">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -292,7 +292,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, detail, actions = [], live }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
   if (!message) return null;
   return (
-    <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
+    <div role="status" className="absolute inset-x-0 bottom-0 z-[15] px-3.5 pt-1 pb-3">
       <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-[#141a22] py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
           <IconCheck size={12} />
