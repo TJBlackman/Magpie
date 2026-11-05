@@ -230,7 +230,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
     );
   const shell = on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge bg-ink/40 hover:border-edge3 hover:bg-panel2';
   return (
-    <button type="button" data-testid="variant" aria-pressed={on} onClick={onPick} title={variant.uri} className={`flex w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
+    <button type="button" data-testid="variant" aria-pressed={on} onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
         <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-shine' : 'border-[#66768a]'}`}>
           <span className={`size-2 rounded-full bg-shine transition-transform ${on ? 'scale-100' : 'scale-0'}`} />
@@ -241,7 +241,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
           <span className="text-[14px] leading-5 font-semibold tabular-nums">{d.name}</span>
           {d.tag && <Badge>{d.tag.toUpperCase()}</Badge>}
         </span>
-        {(d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
+        {!size && (d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
       </span>
       {size && <span className="shrink-0 text-[12px] font-medium text-mute tabular-nums">{size}</span>}
     </button>
@@ -349,7 +349,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
     else onStarted();
   };
 
-  const title = candidate.pageTitle || sourceLabel(candidate.url);
+  const fullTitle = candidate.pageTitle || sourceLabel(candidate.url);
+  // Reddit's trailing tags ([OC], [4000x6000]) stay in the tooltip and the file name.
+  const title = post ? fullTitle.replace(/(\s*\[[^\]]*\])+\s*$/, '') || fullTitle : fullTitle;
   const chosen = variants.find((v) => v.id === variantId);
   const short = chosen ? shortName(chosen) : '';
   const again = candidate.archived ? ' again' : '';
@@ -380,7 +382,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance">{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
@@ -395,7 +397,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <p className="flex gap-2.5 px-1 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
+              <p className="flex gap-3 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
                 <IconLock size={15} className="mt-0.5 shrink-0 text-mute" />
                 {error}
               </p>

@@ -195,6 +195,9 @@ body {
 .fade-bottom {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }
+.fade-both {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 20px, #000 calc(100% - 20px), transparent);
+}
 
 /* Number inputs inside steppers: no spinner, the buttons do that. */
 input[type='number'].plain::-webkit-outer-spin-button,

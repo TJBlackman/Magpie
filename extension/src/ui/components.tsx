@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode, type Ref } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
 import { IconAlert, IconCheck, IconError, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
@@ -64,7 +64,7 @@ export function Button({
 }
 
 /** A square button holding one icon. `label` is what screen readers, tooltips and tests see. */
-export function IconButton({ label, onClick, children, active, tone = 'default', framed, className = '' }: { label: string; onClick?: () => void; children: ReactNode; active?: boolean; tone?: 'default' | 'live' | 'danger'; framed?: boolean; className?: string }) {
+export function IconButton({ label, onClick, children, active, tone = 'default', framed, className = '', ref }: { label: string; onClick?: () => void; children: ReactNode; active?: boolean; tone?: 'default' | 'live' | 'danger'; framed?: boolean; className?: string; ref?: Ref<HTMLButtonElement> }) {
   const color =
     tone === 'live'
       ? 'text-live hover:bg-live/10'
@@ -74,7 +74,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
           ? 'bg-accent-fill text-shine ring-1 ring-accent-edge ring-inset'
           : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-btn-edge ring-inset hover:!bg-btn-hover' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-btn-edge ring-inset hover:!bg-btn-hover' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -132,6 +132,7 @@ export function MediaRow({
   attrs,
   children,
   hoverable,
+  reserve,
 }: {
   tile: ReactNode;
   title: ReactNode;
@@ -147,11 +148,13 @@ export function MediaRow({
   children?: ReactNode;
   /** Not one button, but it has actions that show on hover: it lifts like a clickable row. */
   hoverable?: boolean;
+  /** Its hover action floats over the end of the text: the text ends 44px early while hovered or focused. */
+  reserve?: boolean;
 }) {
   const body = (
     <>
       {tile}
-      <div className="min-w-0 flex-1">
+      <div className={`min-w-0 flex-1 ${reserve ? 'group-focus-within:pr-11 group-hover:pr-11' : ''}`}>
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>

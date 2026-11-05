@@ -94,7 +94,7 @@ function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live'
 
 function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: ReactNode; left: string; right?: ReactNode; testId?: string }) {
   return (
-    <div className="mt-2 flex min-h-5 items-center gap-2 text-[11.5px] text-mute tabular-nums">
+    <div className="mt-2 flex min-h-5 items-center gap-2 text-[11.5px] text-mute tabular-nums has-[button]:min-h-8">
       {chip}
       <span className="min-w-0 flex-1 truncate" data-testid={testId}>
         {left}
@@ -148,7 +148,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Still on This page. Try again for a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'The page is still open. Try again for a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
         ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
@@ -167,7 +167,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" className="size-9" onClick={() => api.removeJob(job.id)}>
+          <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
             <IconMinusCircle size={17} />
           </IconButton>
         ) : job.live ? (
@@ -198,7 +198,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
           {discarding ? (
             <div
-              className="mt-2 flex items-center gap-2"
+              className="mt-2 flex min-h-8 items-center gap-2"
               onKeyDown={(e) => {
                 if (e.key !== 'Escape') return;
                 e.stopPropagation();
@@ -222,7 +222,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               recording ? (
                 <>
                   <SpeedText job={job} rate={rate} />
-                  <Button tone="stop" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="!h-9">
+                  <Button tone="stop" onClick={() => api.stop(job.id)} title="Stop recording and save the file" >
                     <IconStop size={12} />
                     Stop
                   </Button>

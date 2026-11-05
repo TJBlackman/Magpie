@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
 import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Toast, UpdateBanner } from '../../src/ui/components';
@@ -50,11 +50,33 @@ function Pill({ n }: { n: number }) {
   );
 }
 
+/**
+ * A tab's scrolling list. A list scrolled down gets a hairline and a short
+ * fade under the tab bar; a list with more below fades at the bottom, so a
+ * card cut by the edge reads as "more", not as a rendering fault.
+ */
 function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
-  const [scrolled, setScrolled] = useState(false);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ top: false, bottom: false });
+  const measure = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const next = { top: el.scrollTop > 0, bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 1 };
+    setEdges((e) => (e.top === next.top && e.bottom === next.bottom ? e : next));
+  }, []);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    if (el.firstElementChild) ro.observe(el.firstElementChild);
+    return () => ro.disconnect();
+  }, [measure]);
+  useEffect(measure, [shown, measure]);
+  const fade = edges.top && edges.bottom ? 'fade-both' : edges.top ? 'fade-top' : edges.bottom ? 'fade-bottom' : '';
   return (
-    <div hidden={!shown} className={`min-h-0 flex-1 border-t transition-colors ${scrolled ? 'border-edge' : 'border-transparent'}`}>
-      <div onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)} className={`h-full overflow-y-auto px-3.5 pb-4 scroll-thin ${scrolled ? 'fade-top' : ''}`}>
+    <div hidden={!shown} className={`min-h-0 flex-1 border-t transition-colors ${edges.top ? 'border-edge' : 'border-transparent'}`}>
+      <div ref={scroller} onScroll={measure} className={`h-full overflow-y-auto px-3.5 pb-4 scroll-thin ${fade}`}>
         <div className="flex min-h-full flex-col">{children}</div>
       </div>
     </div>

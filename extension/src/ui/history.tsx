@@ -14,20 +14,34 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const box = useRef<HTMLSpanElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (!open) return;
     const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     document.addEventListener('mousedown', away);
+    // Opened from the keyboard, focus goes to the first item.
+    if (box.current?.contains(document.activeElement) && document.activeElement?.matches(':focus-visible')) box.current.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     return () => document.removeEventListener('mousedown', away);
   }, [open]);
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[54px] z-20 -translate-y-1/2 items-center bg-gradient-to-r from-transparent via-[#18202b] via-45% to-[#18202b] py-1 pl-6 ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[54px] z-20 -translate-y-1/2 items-center ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
-        if (e.key !== 'Escape' || !open) return;
-        e.stopPropagation();
-        setOpen(false);
+        if (!open) return;
+        const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+        const at = list.indexOf(document.activeElement as HTMLElement);
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          close();
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          list[(at + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]?.focus();
+        }
       }}
     >
       <IconButton
@@ -35,6 +49,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         active={open}
         framed={!open}
         className="size-9"
+        ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
           setUp(!!r && r.top > window.innerHeight / 2);
@@ -44,7 +59,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         <IconMore size={18} />
       </IconButton>
       {open && (
-        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-52 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
           {items.map((it) => (
             <button
               key={it.label}
@@ -55,10 +70,10 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
                 setOpen(false);
                 it.run();
               }}
-              className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] text-text transition-colors hover:bg-btn-hover"
+              className="flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap text-text transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px]"
             >
               <span className="text-mute">{it.icon}</span>
-              <span className="min-w-0 flex-1 truncate">{it.label}</span>
+              {it.label}
             </button>
           ))}
         </span>
@@ -113,6 +128,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
         </span>
       }
       hoverable
+      reserve
       action={
         <>
           {/* One "more" button on hover or keyboard focus: 28px, so the title keeps almost all its width. */}
