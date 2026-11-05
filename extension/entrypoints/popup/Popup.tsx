@@ -425,8 +425,8 @@ export function Popup() {
               </div>
             )}
             {scope && !scope.all && (
-              <div className="mt-3 flex justify-end">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="-mr-2.5 inline-flex h-8 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
+              <div className="mt-2 flex">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="-ml-2.5 inline-flex h-8 items-center rounded-lg px-2.5 text-[12px] font-medium text-mute transition-colors hover:bg-white/[0.06] hover:text-text">
                   Clear detected media
                 </button>
               </div>
@@ -457,8 +457,8 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change in Settings" aria-label={`Download limit, ${settings.maxConcurrent} at a time. Change in Settings`} className="-mr-1.5 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
-                      {`Limit ${settings.maxConcurrent}`}
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change in Settings" aria-label={`${settings.maxConcurrent} downloads at a time. Change in Settings`} className="-mr-1.5 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
+                      {`${settings.maxConcurrent} at a time`}
                       <IconChevron size={14} />
                     </button>
                   )}

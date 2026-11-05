@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[7px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40' : 'z-10'} flex`}
+      className={`absolute top-1/2 right-2 -translate-y-1/2 items-center rounded-full ${open ? 'z-40' : 'z-10'} flex`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];

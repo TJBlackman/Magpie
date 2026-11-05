@@ -110,7 +110,7 @@ export function MediaTile({ kind, live, locked, thumb, muted, corner, className 
         {thumb ? (
           <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.8] saturate-[.8]' : ''}`} />
         ) : (
-          <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{locked ? <IconLock size={17} /> : live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
+          <div className={`flex size-full items-center justify-center ${locked ? 'bg-[repeating-linear-gradient(135deg,rgba(255,255,255,.035)_0_6px,transparent_6px_12px)]' : ''} ${muted ? 'opacity-50' : ''}`}>{locked ? <IconLock size={17} /> : live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
         )}
         {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
         {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[3px] px-[3px] text-[10px] leading-[13px] font-medium tabular-nums bg-black/70 text-text`}>{corner}</span>}
@@ -253,7 +253,7 @@ export function MediaRow({
     </>
   );
   const root = inset
-    ? `group relative rounded-[10px] outline-offset-[-2px] outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[[role=menu]]:z-30 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
+    ? `group relative rounded-[10px] outline-offset-2 outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[[role=menu]]:z-30 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
     : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
   const pad = inset ? 'p-2' : 'px-2.5 py-2.5';
   return (

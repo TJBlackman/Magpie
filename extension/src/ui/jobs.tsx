@@ -69,12 +69,12 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
   );
 }
 
-/** "0:03 recorded · 27 MB · 8.5 MB/s": the time in the title's colour, the rest in the line's. */
-function RecordedText({ job, rate }: { job: Job; rate: number }) {
+/** "0:03 recorded · 27 MB": the time in the title's colour, the size in the line's. A live stream's speed is only its bitrate, so it is left out. */
+function RecordedText({ job }: { job: Job }) {
   return (
     <>
       <span className="font-semibold text-text">{`${fmtClock(job.duration ?? 0)} recorded`}</span>
-      {` · ${fmtBytes(job.bytes)}${rate > 0 ? ` · ${fmtRate(rate)}` : ''}`}
+      {` · ${fmtBytes(job.bytes)}`}
     </>
   );
 }
@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-1 h-1 rounded-full bg-[#383b40]">
+    <div className="mt-1 h-1 rounded-full bg-[#46494f]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -184,18 +184,18 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
-            <IconX size={17} />
+          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-8">
+            <IconX size={16} />
           </IconButton>
         ) : job.live ? (
           discarding ? null : (
-            <IconButton label="Discard the recording" tone="danger" className="size-9" onClick={() => setDiscarding(true)}>
+            <IconButton label="Discard the recording" tone="danger" className="size-8" onClick={() => setDiscarding(true)}>
               <IconTrash size={16} />
             </IconButton>
           )
         ) : (
-          <IconButton label={queued ? 'Remove from the queue' : 'Cancel the download'} tone="danger" className="size-9" onClick={() => api.cancel(job.id)}>
-            <IconX size={17} />
+          <IconButton label={queued ? 'Remove from the queue' : 'Cancel the download'} tone="danger" className="size-8" onClick={() => api.cancel(job.id)}>
+            <IconX size={16} />
           </IconButton>
         )
       }
@@ -215,7 +215,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
               }}
             >
               <p className="text-[12.5px] font-medium text-text">Discard this recording?</p>
-              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes the ${fmtClock(job.duration ?? 0)} recorded so far, ${fmtBytes(job.bytes)}. Nothing is saved.`}</p>
+              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`You lose the ${fmtClock(job.duration ?? 0)} recorded so far, ${fmtBytes(job.bytes)}. Nothing is saved.`}</p>
               <div className="mt-2.5 flex justify-end gap-2">
                 <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                   Keep recording
@@ -228,7 +228,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
           ) : (
           <StatusLine
             chip={chip}
-            left={recording ? <RecordedText job={job} rate={rate} /> : statusText(job, pct)}
+            left={recording ? <RecordedText job={job} /> : statusText(job, pct)}
             right={
               recording ? (
                 <>
@@ -288,8 +288,8 @@ export function GroupRow({ jobs, thumbs, inset }: { jobs: Job[]; thumbs: boolean
         </>
       }
       action={
-        <IconButton label="Cancel the download" tone="danger" className="size-9" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
-          <IconX size={17} />
+        <IconButton label="Cancel the download" tone="danger" className="size-8" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
+          <IconX size={16} />
         </IconButton>
       }
     >

@@ -189,8 +189,8 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
   const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
   const look = {
     lead: `bottom-4 right-4 size-11 ${'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
-    tile: 'top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
-    row: 'top-1/2 right-[7px] size-8 -translate-y-1/2 text-mute ring-1 ring-transparent ring-inset group-hover:text-text group-hover:ring-hover-edge hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10',
+    tile: 'top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/25 ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
+    row: 'top-1/2 right-2 size-8 -translate-y-1/2 text-mute ring-1 ring-transparent ring-inset group-hover:text-text group-hover:ring-hover-edge hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10',
   }[variant];
   return (
     <button
@@ -259,7 +259,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         {!job && quickable(candidate) && (
           <span className="hidden min-w-0 flex-1 truncate font-medium text-text group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
             {quickText(candidate).what}
-            {quickText(candidate).size && <span className="quick-size font-normal text-mute">{` · ${quickText(candidate).size}`}</span>}
+            {quickText(candidate).size && <span className="quick-size font-normal">{` · ${quickText(candidate).size}`}</span>}
           </span>
         )}
       </>
@@ -282,6 +282,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         <span className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] ring-1 ring-white/10 transition-shadow ring-inset group-hover:ring-white/30" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative block h-[200px] w-full text-left focus-visible:outline-none">
           <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
+          <span className="absolute inset-0 bg-white/0 transition-colors duration-200 group-hover:bg-white/[0.05] group-has-[.quick:hover]:bg-white/0" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_28%,rgba(11,12,13,.5)_56%,rgba(11,12,13,.93)_100%)]" />
           <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
             <span className="font-display line-clamp-2 block text-[20px] leading-[23px] font-semibold text-pretty text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
@@ -290,7 +291,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             {meta && (
               <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">
                 {/* The length joins the line with the same separator as the rest: "17:17 · 2160p". */}
-                {duration ? <span className="-mr-1.5 shrink-0 tabular-nums">{`${fmtClock(duration)} ·`}&nbsp;</span> : null}
+                {duration ? <span className="-mr-1.5 shrink-0 tabular-nums group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">{`${fmtClock(duration)} ·`}&nbsp;</span> : null}
                 {meta}
               </span>
             )}
@@ -303,12 +304,12 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
     const pct = job && !job.queued && !candidate.live ? job.pct : null;
     return (
       <div {...attrs} className="group relative -m-1.5 min-w-0 rounded-[16px] p-1.5 transition-colors hover:bg-white/[0.045]">
-        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className="row-main block w-full rounded-[12px] text-left outline-offset-[5px] outline-text focus-visible:outline-2">
+        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className="row-main block w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2">
           <span className="relative block aspect-video w-full overflow-hidden rounded-[12px] bg-[linear-gradient(135deg,#202326,#17191c)]">
             {thumbs && candidate.thumb ? (
               <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-[1.045] ${candidate.archived ? 'brightness-[.72] saturate-[.75]' : ''}`} />
             ) : (
-              <span className={`flex size-full items-center justify-center ${candidate.live ? 'text-live' : 'text-dim'}`}>
+              <span className={`flex size-full items-center justify-center ${candidate.info?.drm ? 'bg-[repeating-linear-gradient(135deg,rgba(255,255,255,.035)_0_6px,transparent_6px_12px)]' : ''} ${candidate.live ? 'text-live' : 'text-dim'}`}>
                 {candidate.info?.drm ? <IconLock size={20} /> : candidate.live ? <IconRadio size={20} className="pulse" /> : candidate.kind === 'post' ? <IconImages size={20} /> : <IconFilm size={20} />}
               </span>
             )}
@@ -400,7 +401,7 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   const { folders, name } = splitPath(`Downloads/${archived.file}`);
   return (
-    <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={`Saved ${when}`} testId="archived-note">
+    <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={when.charAt(0).toUpperCase() + when.slice(1)} testId="archived-note">
       <span className="block" title={archived.file}>
         <Destination label={archived.files ? `${archived.files} files in ${folders}` : `In ${folders}`} name={name} folder={!!archived.files} />
       </span>
@@ -415,8 +416,8 @@ function Destination({ label, name, folder }: { label: string; name: string; fol
   const stem = name.slice(0, name.length - suffix.length);
   return (
     <span className="block min-w-0 flex-1">
-      <span className="block truncate">{label}</span>
-      <span className="mt-1 flex gap-1.5">
+      <span className="block truncate text-mute">{label}</span>
+      <span className="mt-1 flex gap-1.5 text-fg2">
         {folder ? <IconFolder size={13} className="mt-[1.5px] shrink-0" /> : <IconFile size={13} className="mt-[1.5px] shrink-0" />}
         <span className="line-clamp-2 min-w-0 break-words">
           {stem}
@@ -435,7 +436,7 @@ function splitPath(path: string): { folders: string; name: string } {
 
 function SavePath({ path, files }: { path: string; files?: number }) {
   const { folders, name } = splitPath(path);
-  return <Destination label={files ? `Saves ${files} files to ${folders}` : `Saves to ${folders}`} name={name} folder={!!files} />;
+  return <Destination label={`Saves to ${folders}`} name={name} folder={!!files} />;
 }
 
 /** "images" when every file of a post is a picture, else "files". */
@@ -556,7 +557,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
