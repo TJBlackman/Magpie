@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
-import { Empty, IconButton, MediaRow, MediaTile } from './components';
+import { Button, Empty, IconButton, MediaRow, MediaTile } from './components';
 import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
 
 /**
@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[54px] flex -translate-y-1/2 items-center ${open ? 'z-40' : 'z-10'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -90,16 +90,16 @@ function highlight(text: string, query: string): ReactNode {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded-[3px] bg-shine/25 px-px text-white">{text.slice(at, at + q.length)}</mark>
+      <mark className="rounded-[3px] bg-shine/25 px-px text-text">{text.slice(at, at + q.length)}</mark>
       {text.slice(at + q.length)}
     </>
   );
 }
 
 /**
- * One finished download: its frame with the length on it, the day, and a
- * link to the page it came from. The folder button shows the file on disk;
- * X forgets it, so the media shows as new again. Memoized: entries only
+ * One finished download: its frame with the length on it, the day, the
+ * quality and size. Clicking the row shows the file on disk; More opens its
+ * page or forgets it, so the media shows as new again. Memoized: entries only
  * change on an archive event, while the popup re-renders with every progress event.
  */
 export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMissing }: { entry: ArchiveEntry; thumbs: boolean; query: string; onMissing: () => void }) {
@@ -122,36 +122,36 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           {facts && (
             <>
               {' · '}
-              <span className="text-[#c3ccd7] tabular-nums">{facts}</span>
+              <span className="text-fg2 tabular-nums">{facts}</span>
             </>
           )}
         </span>
       }
-      hoverable
       reserve
+      onOpen={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}
+      openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <>
-          {/* One "more" button on hover or keyboard focus: 28px, so the title keeps almost all its width. */}
-          <RowMenu
-            items={[
-              ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
-              { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id) },
-            ]}
-          />
-          <IconButton label={folder ? 'Show the folder' : 'Show in folder'} framed onClick={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}>
-            <IconFolder size={16} />
-          </IconButton>
-        </>
+        <span className="flex size-9 shrink-0 items-center justify-center text-mute transition-colors group-hover:text-text group-has-[>button:focus-visible]:text-text" aria-hidden="true">
+          <IconFolder size={16} />
+        </span>
+      }
+      overlay={
+        <RowMenu
+          items={[
+            ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
+            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id) },
+          ]}
+        />
       }
     />
   );
 });
 
 /** History entries, or a line saying there are none. */
-export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void }) {
+export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse: () => void }) {
   if (!total) {
     return (
-      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet">
+      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={<Button size="md" onClick={onBrowse}>Go to This page</Button>}>
         Finished downloads are listed here and marked on the page, so you never grab the same video twice.
       </Empty>
     );

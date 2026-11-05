@@ -137,7 +137,6 @@ export class Sniffer {
     this.notify(tabId);
   }
 
-  /** Keep a captured frame with the candidate, so every popup after this one has it. */
   /** What the thumbnail capture learned about a stream: quality, length, DRM. */
   setInfo(id: string, info: MediaInfo): void {
     const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
@@ -147,6 +146,7 @@ export class Sniffer {
     this.notify(c.tabId);
   }
 
+  /** Keep a captured frame with the candidate, so every popup after this one has it. */
   setThumb(id: string, thumb: string): void {
     const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
     if (!c || c.thumb === thumb) return;

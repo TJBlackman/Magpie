@@ -43,10 +43,10 @@ function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, less
 
 function Switch({ id, testId, checked, onChange }: { id: string; testId: string; checked: boolean; onChange: (on: boolean) => void }) {
   return (
-    <span className="relative inline-flex shrink-0">
+    <span className="relative -m-2 inline-flex shrink-0 p-2">
       <input id={id} data-testid={testId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-      <span className="block h-[18px] w-8 rounded-full bg-[#3d4b5d] ring-1 ring-[#5b6b82] ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
-      <span className="pointer-events-none absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-3.5" />
+      <span className="block h-[18px] w-8 rounded-full bg-[#3d4b5d] ring-1 ring-btn-edge ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
+      <span className="pointer-events-none absolute top-[11px] left-[11px] size-3 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-3.5" />
     </span>
   );
 }
@@ -149,7 +149,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
               Downloads to remember and mark on the page. 0 turns it off.
             </Row>
             <Row label="Remember private windows" htmlFor="archive-private" control={<Switch id="archive-private" testId="archive-private" checked={settings.archivePrivate} onChange={(on) => void update({ archivePrivate: on })} />}>
-              Off: they leave history when the last private window closes.
+              When off, downloads from private windows leave History once the last private window closes.
             </Row>
           </Group>
           <Group title="Updates">

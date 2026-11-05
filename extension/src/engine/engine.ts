@@ -166,6 +166,11 @@ async function mediaLength(uri: string, allow: (url: string) => Promise<void>, s
   }
 }
 
+/** True when an inspection offers one video rendition, so the frame sampled from it shows the quality saved. */
+function single(inspection: Inspection | undefined): boolean {
+  return !!inspection && inspection.variants.filter((v) => !v.audioOnly).length === 1;
+}
+
 /** 1080 from "1920x1080" and from "1080x1920"; 0 when there is no resolution. */
 function shorterSide(resolution: string | undefined): number {
   const [w, h] = (resolution ?? '').split('x').map(Number);
@@ -288,7 +293,9 @@ export class Engine {
     try {
       await this.platform.setHeaderRule(new URL(candidate.url).host, candidate.referer || candidate.pageUrl, originOf(candidate.pageUrl));
       const parts = candidate.kind === 'file' ? [await fetchPrefix(candidate.url, FILE_SAMPLE, signal)] : await this.sample(candidate, signal, info);
-      const frame = await frameFromMp4(parts, candidate.kind !== 'file');
+      const { frame, height } = await frameFromMp4(parts, candidate.kind !== 'file');
+      // A plain file or a stream with one rendition and no stated resolution: the decoded frame says it.
+      if (height && !info.height && (candidate.kind === 'file' || single(this.inspections.get(candidate.id)?.inspection))) info.height = height;
       return frame || Object.keys(info).length ? ok({ frame, info }) : err('No frame could be decoded.');
     } catch (e) {
       const message = describe(e);

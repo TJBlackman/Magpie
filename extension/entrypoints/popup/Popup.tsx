@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
-import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Toast, UpdateBanner } from '../../src/ui/components';
+import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, TextButton, Toast, UpdateBanner } from '../../src/ui/components';
 import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidates';
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconCheck, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconChevron, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { fmtClock, hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -259,7 +259,7 @@ export function Popup() {
             type="button"
             onClick={() => setView('jobs')}
             title="Recording. Open Downloads"
-            className="flex h-7 items-center gap-1.5 rounded-full bg-live/[0.14] pr-2.5 pl-2 text-[11.5px] font-semibold text-[#ffc2ce] ring-1 ring-live/35 transition-colors ring-inset hover:bg-live/25"
+            className="flex h-7 items-center gap-1.5 rounded-full bg-live/[0.12] pr-2.5 pl-2 text-[11.5px] font-semibold text-[#ff9fb1] ring-1 ring-live/45 transition-colors ring-inset hover:bg-live/20"
           >
             <span className="pulse size-2 rounded-full bg-live" />
             REC <span className="font-medium tabular-nums">{fmtClock(recordingJob.duration ?? 0)}</span>
@@ -280,8 +280,8 @@ export function Popup() {
           <>
             <Pill n={active.length} />
             {failed.length > 0 && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-err tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
-                <IconError size={13} />
+              <span className="inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-err/[0.14] pr-1.5 pl-1 text-[10.5px] font-semibold text-err tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
+                <IconError size={12} />
                 {failed.length}
               </span>
             )}
@@ -294,7 +294,11 @@ export function Popup() {
       <Panel shown={view === 'page'}>
         {candidates.length > 0 && (
           <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
-            <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+            {scope && !scope.all && (
+              <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again." label="Clear list">
+                Clear
+              </TextButton>
+            )}
           </Section>
         )}
         {shown.length === 0 ? (
@@ -348,23 +352,7 @@ export function Popup() {
                 ))}
               </div>
             ))}
-            {((scope && !scope.all) || (!showDownloaded && downloaded > 0)) && (
-              <div className="mt-1 flex h-11 items-center gap-2 text-[12px] text-dim">
-                {!showDownloaded && downloaded > 0 && (
-                  <>
-                    {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden`}
-                    <button type="button" onClick={toggleDownloaded} className="h-8 rounded-lg px-2 font-semibold text-shine transition-colors hover:bg-shine/10">
-                      Show
-                    </button>
-                  </>
-                )}
-                {scope && !scope.all && (
-                  <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page" className="ml-auto h-8 rounded-lg px-2 text-[#c3ccd7] transition-colors hover:bg-btn-hover hover:text-text">
-                    Clear list
-                  </button>
-                )}
-              </div>
-            )}
+            <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
           </div>
         )}
       </Panel>
@@ -391,28 +379,15 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <Button tone="ghost" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once">
-                      <IconSliders size={14} />
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once" className="mr-2 inline-flex h-7 items-center gap-1.5 rounded-lg pr-1.5 pl-2 text-[12px] font-medium text-fg2 ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover hover:text-text">
+                      <IconSliders size={13} className="text-mute" />
                       {`${settings.maxConcurrent} at a time`}
-                    </Button>
+                      <IconChevron size={13} className="rotate-90 text-mute" />
+                    </button>
                   )}
                 </Section>
                 <div className="flex flex-col gap-2">
                   {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
-                </div>
-              </>
-            )}
-            {failed.length > 0 && (
-              <>
-                <Section title="Failed" count={failed.length}>
-                  <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                    Clear
-                  </Button>
-                </Section>
-                <div className="flex flex-col gap-2">
-                  {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
-                  ))}
                 </div>
               </>
             )}
@@ -424,6 +399,20 @@ export function Popup() {
                 </div>
               </>
             )}
+            {failed.length > 0 && (
+              <>
+                <Section title="Failed" count={failed.length}>
+                  <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list" label="Clear failed downloads">
+                    Clear
+                  </TextButton>
+                </Section>
+                <div className="flex flex-col gap-2">
+                  {failed.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </Panel>
@@ -431,7 +420,7 @@ export function Popup() {
       <Panel shown={view === 'history'}>
         {archive.length > 0 && (
           <>
-            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-[#566576] ring-inset outline-offset-2 outline-text has-[:focus-visible]:outline-2">
+            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-btn-edge ring-inset outline-offset-2 outline-text has-[:focus-visible]:outline-2">
               <IconSearch size={15} />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search history" aria-label={`Search ${archive.length} downloads`} className="min-w-0 flex-1 bg-transparent text-[12.5px] text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
               {query && (
@@ -442,14 +431,14 @@ export function Popup() {
             </div>
             <Section title={q ? 'Matches' : 'Downloaded'} count={q ? matches.length : undefined}>
               {!q && (
-              <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
-                Clear history
+              <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are." label="Clear history">
+                Clear
               </ConfirmButton>
               )}
             </Section>
           </>
         )}
-        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} />
+        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={() => setView('page')} />
       </Panel>
 
       <Toast message={toast?.text ?? null} action={toast?.view && view !== 'jobs' ? { label: 'View', onClick: () => (setView('jobs'), setToast(null)) } : undefined} />

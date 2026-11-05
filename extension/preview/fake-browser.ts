@@ -281,7 +281,8 @@ function infoFor(c: Candidate): MediaInfo {
   if (c.id === 'c13') return { drm: true };
   if (c.kind === 'file') return {};
   const variants = variantsFor(c);
-  const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0)));
+  // A single playlist states no resolution; the capture reads it from the decoded frame.
+  const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0))) || (c.url.endsWith('playlist.m3u8') ? 1080 : 0);
   const duration = c.live ? undefined : c.url.endsWith('playlist.m3u8') ? 612 : 180 + (hash(c.id) % 2400);
   const bitrate = variants[0]?.bandwidth;
   return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}), ...(bitrate ? { bitrate } : {}) };

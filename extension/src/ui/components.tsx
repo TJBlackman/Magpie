@@ -8,11 +8,11 @@ export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'po
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-white/[0.06] text-[#b4bfcc] ring-white/[0.07]',
+    default: 'bg-white/[0.06] text-fg2 ring-white/[0.08]',
     shine: 'bg-shine/10 text-[#67e8f9] ring-shine/25',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
-    // Already downloaded: the only yellow in the popup, so it reads as a caution without shouting.
-    saved: 'bg-saved/[0.14] text-[#fde68a] ring-saved/40',
+    // Already downloaded: the only yellow in the popup, a hairline and a faint wash, so it marks the card without being its loudest part.
+    saved: 'bg-saved/[0.06] text-[#e5d49a] ring-saved/35',
     bad: 'bg-live/[0.13] text-[#ff9fb1] ring-live/30',
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
     post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
@@ -50,10 +50,10 @@ export function Button({
     default: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover active:bg-btn',
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
-    danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
+    danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover [&_svg]:text-live',
-    destroy: 'bg-err-solid text-white font-semibold hover:bg-[#ef3b3b] active:bg-[#b91c1c]',
+    stop: 'bg-live/[0.12] text-[#ff9fb1] ring-1 ring-inset ring-live/45 hover:bg-live/20 [&_svg]:text-live',
+    destroy: 'bg-err text-[#1a090e] font-semibold hover:bg-[#fa8787] active:bg-[#ef6363]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -70,7 +70,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
     tone === 'live'
       ? 'text-live hover:bg-live/10'
       : tone === 'danger'
-        ? 'text-mute hover:bg-live/10 hover:text-[#ff9fb1]'
+        ? 'text-mute hover:bg-err/10 hover:text-err'
         : active
           ? 'bg-accent-fill text-shine ring-1 ring-accent-edge ring-inset'
           : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
@@ -110,7 +110,7 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
       {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
-      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[9.5px] leading-[13px] font-semibold tabular-nums ${muted ? 'bg-black/60 text-[#c3ccd7]' : 'bg-black/75 text-white'}`}>{corner}</span>}
+      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[9.5px] leading-[13px] font-semibold tabular-nums ${muted ? 'bg-black/60 text-fg2' : 'bg-black/75 text-text'}`}>{corner}</span>}
     </div>
   );
 }
@@ -134,6 +134,7 @@ export function MediaRow({
   children,
   hoverable,
   reserve,
+  overlay,
 }: {
   tile: ReactNode;
   title: ReactNode;
@@ -149,14 +150,16 @@ export function MediaRow({
   children?: ReactNode;
   /** Not one button, but it has actions that show on hover: it lifts like a clickable row. */
   hoverable?: boolean;
-  /** Room for an action that floats over the end of the text: while hovered or focused, the text ends 44px early with an ellipsis. */
+  /** Room for a control drawn over the row, left of its action: the text always ends 44px early, so nothing moves on hover. */
   reserve?: boolean;
+  /** A control drawn over the row, outside its button. */
+  overlay?: ReactNode;
 }) {
   const body = (
     <>
       {tile}
-      <div className={`min-w-0 flex-1 ${reserve ? 'group-focus-within:pr-11 group-hover:pr-11' : ''}`}>
-        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
+      <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : ''}`}>
+        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
         {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
@@ -176,6 +179,7 @@ export function MediaRow({
           <div className="flex shrink-0 items-center gap-1">{action}</div>
         </div>
       )}
+      {overlay}
       {children && <div className="px-2.5 pb-2.5">{children}</div>}
     </div>
   );
@@ -189,7 +193,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="-mr-2 flex shrink-0 items-center gap-1 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[12px] [&_button]:text-[#c3ccd7] [&_button]:hover:bg-btn-hover">{children}</div>}
+      {children && <div className="-mr-2 flex shrink-0 items-center gap-1">{children}</div>}
     </div>
   );
 }
@@ -197,7 +201,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 /** The one empty state: centered in what is left of the panel, an icon in a soft disc, a title, a line, an optional action. */
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
-    <div className="rise-in flex flex-col items-center px-6 pt-16 pb-8 text-center">
+    <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
       <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
@@ -207,28 +211,37 @@ export function Empty({ icon, title, children, action, below }: { icon: ReactNod
   );
 }
 
-/** A boxed note with an icon: info (blue), warn (amber), error (rose). */
+/** A boxed note with an icon and a hairline in its tone: info (accent), warn (amber), error (red), neutral (grey). */
 export function Callout({ tone, title, children, testId, icon }: { tone: 'info' | 'warn' | 'error' | 'neutral'; title?: string; children: ReactNode; testId?: string; icon?: ReactNode }) {
   const cls = {
-    info: 'bg-sky-400/[0.07] ring-sky-300/20 text-sky-100/90 [&_svg]:text-sky-300',
-    warn: 'bg-amber-400/[0.09] ring-amber-300/30 text-amber-100/90 [&_svg]:text-amber-300',
-    error: 'bg-rose-500/[0.09] ring-rose-300/25 text-rose-100/90 [&_svg]:text-rose-300',
-    neutral: 'bg-white/[0.04] ring-transparent text-[#c9d2dd] [&_svg]:text-mute',
+    info: 'bg-shine/[0.06] ring-shine/30 text-fg2 [&_svg]:text-shine',
+    warn: 'bg-saved/[0.06] ring-saved/35 text-fg2 [&_svg]:text-saved',
+    error: 'bg-err/[0.07] ring-err/35 text-fg2 [&_svg]:text-err',
+    neutral: 'bg-white/[0.03] ring-btn-edge/60 text-fg2 [&_svg]:text-mute',
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
-    <div data-testid={testId} className={`flex gap-3 rounded-lg px-3 py-2.5 text-[12px] leading-[1.5] ring-1 ring-inset ${cls}`}>
+    <div data-testid={testId} className={`flex gap-3 rounded-xl px-3.5 py-3 text-[12px] leading-[1.5] ring-1 ring-inset ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
       <div className="min-w-0 text-pretty">
-        {title && <div className="mb-0.5 font-semibold text-white">{title}</div>}
+        {title && <div className="mb-0.5 font-semibold text-text">{title}</div>}
         {children}
       </div>
     </div>
   );
 }
 
-/** A ghost button that asks for a second click within 3 seconds, for clears that cannot be undone. */
-export function ConfirmButton({ children, confirm, onConfirm, title }: { children: ReactNode; confirm: string; onConfirm: () => void; title?: string }) {
+/** The one text action in a section header: grey until hovered, 32px tall. `label` names what it acts on for screen readers. */
+export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-medium transition-colors ${armed ? 'bg-err/10 text-err' : 'text-mute hover:bg-white/[0.06] hover:text-text'}`}>
+      {children}
+    </button>
+  );
+}
+
+/** A text action that asks for a second click within 3 seconds, for clears that cannot be undone. */
+export function ConfirmButton({ children, confirm, onConfirm, title, label }: { children: ReactNode; confirm: string; onConfirm: () => void; title?: string; label?: string }) {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     if (!armed) return;
@@ -236,10 +249,10 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
     return () => clearTimeout(t);
   }, [armed]);
   return (
-    <Button
-      tone={armed ? 'danger' : 'ghost'}
+    <TextButton
+      armed={armed}
       title={title}
-      className={armed ? 'bg-live/10' : ''}
+      label={armed ? undefined : label}
       onClick={() => {
         if (!armed) return setArmed(true);
         setArmed(false);
@@ -247,26 +260,27 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
       }}
     >
       {armed ? confirm : children}
-    </Button>
+    </TextButton>
   );
 }
 
 /** The one switch look, 32 by 18: the list filter and every setting. */
 export function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#3d4b5d] ring-1 ring-[#5b6b82] ring-inset'}`}>
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#3d4b5d] ring-1 ring-btn-edge ring-inset'}`}>
       <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
 }
 
-/** Shows or hides media the history already has. Nothing when there is none. */
+/** Shows or hides media the history already has: the last row of the list, a switch like a setting. Nothing when there is none. */
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="!h-8 inline-flex shrink-0 items-center gap-2 rounded-lg !px-2 !text-[12px] !text-dim transition-colors hover:bg-btn-hover hover:!text-text" aria-label={shown ? 'Show downloaded' : `Show downloaded (${count} hidden)`}>
+    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="mt-1 flex h-11 w-full shrink-0 items-center gap-3 rounded-xl px-3 text-left text-[12.5px] text-fg2 ring-1 ring-edge transition-colors ring-inset hover:bg-white/[0.03] hover:text-text">
+      <span className="flex-1">Show downloaded</span>
+      {!shown && <span className="text-dim tabular-nums">{`${count} hidden`}</span>}
       <Toggle on={shown} />
-      Show downloaded
     </button>
   );
 }
@@ -291,7 +305,7 @@ export function Toast({ message, action }: { message: string | null; action?: { 
   );
 }
 
-/** A line under the header when the website has a newer Magpie. Get it opens the download page; X hides it until the next version. */
+/** A line under the header when the website has a newer Magpie. Update opens the download page; X hides it until the next version. */
 export function UpdateBanner({ version, onGet, onDismiss }: { version: string; onGet: () => void; onDismiss: () => void }) {
   return (
     <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-gradient-to-r from-shine/[0.13] to-indigo-400/[0.08] pr-1.5 pl-3 text-[12.5px] ring-1 ring-shine/25 ring-inset">
@@ -300,7 +314,7 @@ export function UpdateBanner({ version, onGet, onDismiss }: { version: string; o
         <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
       <Button tone="accent" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
-        Get it
+        Update
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>
         <IconX size={15} />

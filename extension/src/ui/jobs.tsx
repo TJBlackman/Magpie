@@ -70,7 +70,7 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
 }
 
 /** A meta line's lead value: the quality or size, a step brighter than the rest. */
-const LEAD = 'text-[#c3ccd7] tabular-nums';
+const LEAD = 'text-fg2 tabular-nums';
 
 const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
   inspecting: { label: 'STARTING', tone: 'shine' },
@@ -80,7 +80,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 
 /** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
-  const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-rose-400/80', idle: 'bg-edge3' }[tone];
+  const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-err/80', idle: 'bg-edge3' }[tone];
   return (
     <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
       {pct === null ? (
@@ -127,14 +127,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     <Badge tone={STATE_CHIP[job.state]!.tone}>{STATE_CHIP[job.state]!.label}</Badge>
   ) : null;
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
-  const meta = failed ? (
-    <span className="flex min-w-0 flex-1 items-center gap-2" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
-      <IconError size={14} className="shrink-0 text-err" />
-      <span className="min-w-0 truncate text-[#c9d2dd]">{friendlyError(job.error ?? 'The download stopped.')}</span>
-    </span>
-  ) : queued ? (
+  const meta = queued ? (
     <span className="min-w-0 flex-1 truncate text-dim">
-      <span data-testid="job-status" className="text-[#c3ccd7]">{statusText(job, pct)}</span>
+      <span data-testid="job-status" className="text-fg2">{statusText(job, pct)}</span>
       {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
@@ -146,9 +141,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'The page is open, so trying again gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'A retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it there, then try again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -165,17 +160,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <>
-            {recover && (
-              <Button tone="accent" size="md" onClick={recover.run} title={`${recover.hint} ${recover.tip}`}>
-                {recover.icon}
-                {recover.label}
-              </Button>
-            )}
-            <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
-              <IconX size={17} />
-            </IconButton>
-          </>
+          <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
+            <IconX size={17} />
+          </IconButton>
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
@@ -190,7 +177,21 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
     >
       {failed ? (
-        null
+        <div className="mt-1 flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 gap-2 text-[12px] leading-[17px]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
+            <IconError size={15} className="mt-px shrink-0 text-err" />
+            <div className="min-w-0" data-testid="job-error">
+              <div className="line-clamp-2 text-fg2">{friendlyError(job.error ?? 'The download stopped.')}</div>
+              {recover && <div className="text-dim">{recover.hint}</div>}
+            </div>
+          </div>
+          {recover && (
+            <Button tone="accent" size="md" onClick={recover.run} title={recover.tip}>
+              {recover.icon}
+              {recover.label}
+            </Button>
+          )}
+        </div>
       ) : queued ? null : (
         <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
@@ -215,11 +216,10 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
           ) : (
           <StatusLine
             chip={chip}
-            left={statusText(job, pct)}
+            left={recording && rate > 0 ? `${statusText(job, pct)} · ${fmtRate(rate)}` : statusText(job, pct)}
             right={
               recording ? (
                 <>
-                  <SpeedText job={job} rate={rate} />
                   <Button tone="stop" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
                     <IconStop size={12} />
                     Stop and save

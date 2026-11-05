@@ -47,12 +47,13 @@ export async function fetchPrefix(url: string, max: number, signal: AbortSignal)
 
 /**
  * Decode `parts` (an MP4, or the start of one) in a hidden <video> and return
- * one frame as a JPEG data URL, or null when nothing decodes. `seek` picks a
+ * one frame as a JPEG data URL, or null when nothing decodes, with the
+ * video's shorter side in pixels (0 when nothing decodes). `seek` picks a
  * frame about a second in, past any fade from black; off for a cut file,
  * where only the first frames have all their bytes.
  */
-export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<string | null> {
-  if (typeof document === 'undefined') return Promise.resolve(null);
+export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<{ frame: string | null; height: number }> {
+  if (typeof document === 'undefined') return Promise.resolve({ frame: null, height: 0 });
   return new Promise((resolve) => {
     const url = URL.createObjectURL(new Blob(parts as BlobPart[], { type: 'video/mp4' }));
     const video = document.createElement('video');
@@ -60,14 +61,14 @@ export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<string
     video.preload = 'auto';
     let done = false;
     let seeking = false;
-    const finish = (out: string | null) => {
+    const finish = (out: string | null, height = 0) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       video.removeAttribute('src');
       video.load();
       URL.revokeObjectURL(url);
-      resolve(out);
+      resolve({ frame: out, height });
     };
     /** Draw the current frame. When nothing is decoded yet, give up only on the final try; earlier triggers just pass. */
     const draw = (final: boolean) => {
@@ -88,7 +89,7 @@ export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<string
       ctx.drawImage(video, (THUMB_W - w) / 2, (THUMB_H - h) / 2, w, h);
       try {
         const out = canvas.toDataURL('image/jpeg', 0.6);
-        finish(out.length <= THUMB_MAX_CHARS ? out : null);
+        finish(out.length <= THUMB_MAX_CHARS ? out : null, Math.min(video.videoWidth, video.videoHeight));
       } catch {
         finish(null);
       }

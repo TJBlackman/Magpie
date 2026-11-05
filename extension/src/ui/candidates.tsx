@@ -6,6 +6,13 @@ import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, f
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
 import { IconCheck, IconCheckCircle, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
+import { buildFilename, withTimestamp } from '../core/filename';
+
+/** The name the engine will give this download: the title, the quality when there is a choice, a time for a recording. */
+function fileFor(candidate: Candidate, variant: Variant | undefined): string {
+  const name = buildFilename(candidate.pageTitle, candidate.kind, variant?.audioOnly ? 'audio' : undefined, candidate.mime, candidate.url, variant?.label);
+  return candidate.live ? withTimestamp(name, new Date()) : name;
+}
 
 /** "yesterday at 9:19 PM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
 function savedAs(a: Archived): string {
@@ -33,7 +40,8 @@ function postLabel(candidate: Candidate): string {
 function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; rest: string } {
   const file = sourceLabel(candidate.url).split(' · ')[1];
   const est = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
-  const lead = [fmtHeight(candidate.info?.height), est].filter(Boolean).join(' · ') || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
+  const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
+  const lead = [fmtHeight(candidate.info?.height), size].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says
@@ -48,7 +56,7 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
 function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string; rest: string }) {
   return (
     <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-      {lead && <span className="text-[#c3ccd7] tabular-nums">{lead}</span>}
+      {lead && <span className="text-fg2 tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
@@ -137,7 +145,7 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
   );
 }
 
-/** The square at the right of a card. It says what opening the card leads to; a running job shows its progress instead. */
+/** The glyph at the right of a card. It says what opening the card leads to; a running job shows its progress instead. */
 function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
   const box = 'flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150';
   if (job) {
@@ -162,8 +170,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
     : candidate.archived
       ? 'text-dim ring-transparent group-hover:text-text group-has-[:focus-visible]:text-text'
       : candidate.live
-        ? 'text-live/80 ring-transparent group-hover:text-live group-has-[:focus-visible]:text-live'
-        : 'text-mute ring-transparent group-hover:text-shine group-has-[:focus-visible]:text-shine';
+        ? 'text-live ring-transparent'
+        : 'text-mute ring-transparent group-hover:text-text group-has-[:focus-visible]:text-text';
   return (
     <span className={`${box} ${cls}`} aria-hidden="true">
       {blocked ? <IconLock size={16} /> : candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
@@ -276,23 +284,12 @@ function fileWord(variants: Variant[], n: number): string {
 }
 
 /**
- * What a post saves: its preview with a count, where the files land, and the
- * list of files folded away under a disclosure.
+ * What a post saves: the list of its files, folded away under a disclosure.
  */
-function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Variant[] }) {
+function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
-  const where = candidate.post?.subreddit ? `Reddit/${candidate.post.subreddit}` : 'Reddit';
-  const folder = candidate.post?.assets.length ? postPath(candidate.post) : where;
   return (
-    <div className="divide-y divide-edge overflow-hidden rounded-[10px] ring-1 ring-edge ring-inset">
-      {/* Where it goes: the folder this post gets, and under it the place that folder lives. */}
-      <div className="flex items-center gap-3 px-3 py-2 text-[12.5px]" title={folder}>
-        <IconFolder size={16} className="shrink-0 text-mute" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-text/90">{`Saves to ${folder.slice(0, folder.lastIndexOf('/'))}`}</span>
-          <span className="block truncate text-[11.5px] text-dim">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
-        </span>
-      </div>
+    <div className="overflow-hidden rounded-[10px] ring-1 ring-edge ring-inset">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-11 cursor-pointer list-none items-center gap-3 px-3 text-[12.5px] text-text transition-colors hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
@@ -304,7 +301,7 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
           {variants.map((v, i) => (
             <li key={v.id} className="flex h-7 items-center gap-2.5 rounded-md px-1.5 hover:bg-white/[0.03]" title={v.uri}>
               <span className="w-5 shrink-0 text-right text-dim tabular-nums">{i + 1}</span>
-              <span className="min-w-0 flex-1 truncate text-text/90">{v.label.replace(/^\d+ of \d+ · /, '')}</span>
+              <span className="min-w-0 flex-1 truncate text-fg2">{v.label.replace(/^\d+ of \d+ · /, '')}</span>
               <span className="shrink-0 truncate text-[11px] text-dim">{sourceLabel(v.uri).split(' · ')[1] ?? ''}</span>
             </li>
           ))}
@@ -370,7 +367,13 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const shared = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
   const sharedCodecs = shared && !/^H\.264( · AAC)?$/.test(shared) ? shared : '';
   const otherLanguages = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
-  const footnote = [sharedCodecs, sharedAudio ? `${sharedAudio} audio${otherLanguages ? ' only' : ''}` : ''].filter(Boolean).join(' · ');
+  const footnote = [
+    sharedCodecs ? `${single ? '' : 'Every quality: '}${sharedCodecs}.` : '',
+    sharedAudio ? `Includes ${sharedAudio} audio${otherLanguages ? '. Other languages can’t be picked yet' : ''}.` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const saveAs = post ? (candidate.post?.assets.length ? postPath(candidate.post) : '') : chosen || candidate.live ? fileFor(candidate, chosen) : '';
 
   return (
     <>
@@ -423,7 +426,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               {n}
             </Callout>
           ))}
-          {inspection && post && files > 0 && <PostFiles candidate={candidate} variants={variants} />}
+          {inspection && post && files > 0 && <PostFiles variants={variants} />}
           {inspection && !post && !(candidate.live && single) && (
             <ul
               role="radiogroup"
@@ -448,15 +451,26 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {!post && inspection && <p className="text-[11.5px] text-pretty text-mute">{[footnote ? `${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase()) : '', 'Saves to your downloads folder.'].filter(Boolean).join(' ')}</p>}
+          {!post && inspection && footnote && <p className="text-[11.5px] text-pretty text-mute">{footnote}</p>}
         </div>
+        {inspection && !error && saveAs && (
+          <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-dim" title={`Downloads/${saveAs}`} data-testid="save-as">
+            <IconFolder size={13} className="shrink-0" />
+            <span className="shrink-0">Downloads /</span>
+            <span className="min-w-0 truncate text-mute">{saveAs.replace(/\//g, ' / ')}</span>
+          </div>
+        )}
         {inspection && !error && (!post || files > 0) && (
-          <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">
+          <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}
-
+        {error && (
+          <Button size="lg" onClick={onClose} className="mt-3 w-full">
+            Close
+          </Button>
+        )}
       </div>
     </>
   );
