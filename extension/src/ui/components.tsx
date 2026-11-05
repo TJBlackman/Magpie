@@ -354,11 +354,11 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 }
 
 /** A short message at the bottom of the popup that fades after a few seconds, with up to two actions; the last is the main one. */
-export function Toast({ message, detail, actions = [], live }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
+export function Toast({ message, detail, actions = [], live, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
   if (!message) return null;
   return (
-    <div role="status" className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),#090c11_22px)] px-3.5 pt-6 pb-3">
-      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
+    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),#090c11_22px)] px-3.5 pt-6 pb-3">
+      <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#123e4a] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>
@@ -371,6 +371,8 @@ export function Toast({ message, detail, actions = [], live }: { message: string
             {a.label}
           </button>
         ))}
+        {/* How long the toast stays: a line that drains, and waits while the pointer or focus is on the toast. */}
+        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#22d3ee,#818cf8)] opacity-70" style={{ animationDuration: `${duration}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
       </div>
     </div>
   );

@@ -226,10 +226,16 @@ export function Popup() {
   // A toast belongs to the moment: switching views clears it.
   useEffect(() => setToast(null), [view]);
   const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
+  // A toast with an action stays 6 seconds, others 3.5; pointer or focus on it holds it.
+  const [toastHeld, setToastHeld] = useState(false);
+  const toastFor = toast?.undo || toast?.view ? 6000 : 3500;
   useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3500);
+    if (!toast || toastHeld) return;
+    const t = setTimeout(() => setToast(null), toastFor);
     return () => clearTimeout(t);
+  }, [toast, toastHeld, toastFor]);
+  useEffect(() => {
+    if (!toast) setToastHeld(false);
   }, [toast]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -309,7 +315,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.4fr_1fr] gap-0.5 rounded-xl bg-panel/80 p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 ${shown.length || active.length || failed.length || archive.length ? 'grid-cols-[1fr_1.4fr_1fr]' : 'grid-cols-3'} gap-0.5 rounded-xl bg-panel/80 p-[3px] ring-1 ring-edge ring-inset`}>
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -494,6 +500,9 @@ export function Popup() {
         message={toast?.text ?? null}
         detail={toast?.detail}
         live={toast?.live}
+        duration={toastFor}
+        held={toastHeld}
+        onHold={setToastHeld}
         actions={[
           ...(toast?.undo ? [{ label: 'Undo', onClick: () => (void api.cancel(toast.undo!), setToast({ text: toast.live ? 'Recording discarded' : 'Download canceled' })) }] : []),
           ...(toast?.view && view !== 'jobs' ? [{ label: 'View', onClick: () => (setView('jobs'), setToast(null)) }] : []),

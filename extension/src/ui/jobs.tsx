@@ -44,7 +44,7 @@ function statusText(job: Job, pct: number | null): string {
       if (job.live) return `${fmtClock(job.duration ?? 0)} recorded · ${fmtBytes(job.bytes)}`;
       const total = job.bytesTotal ?? (job.segmentsDone && job.segmentsTotal ? (job.bytes / job.segmentsDone) * job.segmentsTotal : 0);
       const of = total ? `${fmtBytes(job.bytes)} of ${job.bytesTotal ? fmtBytes(total) : fmtApprox(total)}` : fmtBytes(job.bytes);
-      return pct === null ? of : `${of} · ${Math.floor(pct * 100)}%`;
+      return pct === null || (total && !job.bytesTotal) ? of : `${of} · ${Math.floor(pct * 100)}%`;
     }
     default:
       return job.bytes ? `Stopped at ${fmtBytes(job.bytes)}` : '';

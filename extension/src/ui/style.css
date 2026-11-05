@@ -208,6 +208,21 @@ body {
   scrollbar-color: var(--color-edge2) transparent;
 }
 
+/* The toast's time left: a line that drains from the right. */
+@keyframes drain {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+.toast-drain {
+  transform-origin: left;
+  animation-name: drain;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-drain { display: none; }
+}
+
 /* A list that scrolls under a footer fades out instead of being cut mid line. */
 .fade-top {
   mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, #000 16px);

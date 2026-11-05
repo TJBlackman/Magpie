@@ -180,7 +180,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#7ff0ff] ring-accent-edge hover:bg-[#163845] hover:!ring-shine/80 active:bg-shine/20' : `text-mute ring-ctl-edge group-hover:text-text group-hover:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#7ff0ff] ring-accent-edge hover:bg-[#164b58] hover:!ring-shine active:bg-shine/20' : `text-fg2 ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
         <span className="size-3 rounded-full bg-live" />
@@ -259,9 +259,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
   if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45)] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
-        <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute -inset-10 size-[calc(100%+80px)] max-w-none object-cover opacity-45 mix-blend-screen blur-[44px] saturate-[1.25] [mask-image:linear-gradient(90deg,#000_20%,rgba(0,0,0,.45)_65%,transparent)]" />
-        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(18,26,38,.28),rgba(18,26,38,.5))] mix-blend-color" />
+      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#1b2433,#141a24)_padding-box,linear-gradient(125deg,rgba(34,211,238,.6),rgba(96,165,250,.22)_45%,rgba(129,140,248,.5))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45)] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(34,211,238,.16),transparent_52%),radial-gradient(110%_130%_at_100%_100%,rgba(129,140,248,.15),transparent_55%)]" />
         <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(148,163,184,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
@@ -322,7 +321,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
     );
   const shell = on ? 'bg-sel-fill shadow-[inset_0_0_0_1px_var(--color-sel-edge)]' : 'hover:bg-panel2';
   return (
-    <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-11 w-full items-center gap-3 rounded-[8px] px-2.5 py-1.5 text-left transition-colors ${shell}`}>
+    <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-10 w-full items-center gap-3 rounded-[7px] px-2 py-1 text-left transition-colors ${shell}`}>
       {!single && (
         <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-shine' : 'border-[#66768a]'}`}>
           <span className={`size-2 rounded-full bg-shine transition-transform ${on ? 'scale-100' : 'scale-0'}`} />
@@ -536,7 +535,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <ul
               role="radiogroup"
               aria-label="Quality"
-              className="flex flex-col gap-0.5 rounded-[12px] bg-[#141a22] p-1 ring-1 ring-ctl-edge ring-inset"
+              className="flex flex-col gap-0.5 rounded-[12px] bg-[#141a22] p-1.5 ring-1 ring-ctl-edge ring-inset"
               onKeyDown={(e) => {
                 // Arrow keys move the choice and the focus together, like any radio group.
                 if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
