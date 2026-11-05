@@ -458,7 +458,7 @@ export class Engine {
             variant.label = `${variant.label} + ${name}`;
             variant.audioUri = audio.uri;
             variant.audioLabel = name;
-            return { variant, note: group.length > 1 ? `Audio: ${name}. Other languages can't be picked yet.` : undefined };
+            return { variant, note: group.length > 1 ? `Audio: ${name}, the stream's default track.` : undefined };
           }),
         );
         variants = found.map((f) => f.variant);
@@ -619,7 +619,7 @@ export class Engine {
     });
     if (!variants.length) throw new Error(notes.join(' ') || 'No representation in the MPD has segments.');
     if (merged && new Set(manifest.audio.map((r) => r.setIndex)).size > 1) {
-      notes.push(`Audio: ${audioName}. Other languages can't be picked yet.`);
+      notes.push(`Audio: ${audioName}, the stream's default track.`);
     }
     if (live) notes.push(LIVE_NOTE);
     // Fold rules of every representation, used or not: the player may fetch any of them, protected ones included.

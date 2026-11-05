@@ -314,7 +314,7 @@ export function RowList({ children, testId }: { children: ReactNode; testId?: st
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
     <div className="mt-4 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
-      <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
+      <h2 className="min-w-0 translate-y-px truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>

@@ -360,8 +360,8 @@ function SavePath({ path }: { path: string }) {
   const name = parts.pop() ?? '';
   return (
     <span className="min-w-0 truncate">
-      {parts.map((p) => `${p} / `).join('')}
-      <span className="text-fg2">{fitName(name, Math.max(26, 54 - parts.join(' / ').length))}</span>
+      {(parts.length > 2 ? [parts[0], '…'] : parts).map((p) => `${p} / `).join('')}
+      <span className="text-fg2">{fitName(name, Math.max(26, 54 - (parts.length > 2 ? 4 + parts[0]!.length : parts.join(' / ').length)))}</span>
     </span>
   );
 }
@@ -370,6 +370,14 @@ function SavePath({ path }: { path: string }) {
 function fitName(name: string, max: number): string {
   if (name.length <= max) return name;
   const suffix = /(?: \d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*\.\w+$/.exec(name)?.[0] ?? '';
+  if (!suffix) {
+    // A folder: its start (date and poster) and its end both say which post it is.
+    let head = name.slice(0, Math.ceil(max * 0.55));
+    if (head.includes(' ')) head = head.slice(0, head.lastIndexOf(' '));
+    let tail = name.slice(name.length - (max - head.length - 3));
+    if (tail.includes(' ')) tail = tail.slice(tail.indexOf(' ') + 1);
+    return `${head.replace(/[\s,·:;–—-]+$/, '')} … ${tail}`;
+  }
   let stem = name.slice(0, name.length - suffix.length).slice(0, Math.max(8, max - suffix.length - 2));
   if (stem.includes(' ')) stem = stem.slice(0, stem.lastIndexOf(' '));
   return `${stem.replace(/[\s,·:;–—-]+$/, '')} …${suffix.startsWith(' ') ? '' : ' '}${suffix}`;
@@ -473,7 +481,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const otherLanguages = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
   const footnote = [
     sharedCodecs ? `${single ? '' : 'Every quality: '}${sharedCodecs}.` : '',
-    sharedAudio ? `Includes ${sharedAudio} audio${otherLanguages ? ". Other languages can't be picked yet" : ''}.` : '',
+    sharedAudio ? `Includes ${sharedAudio} audio${otherLanguages ? ', the stream\'s default track' : ''}.` : '',
   ]
     .filter(Boolean)
     .join(' ');

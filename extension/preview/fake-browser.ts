@@ -277,7 +277,7 @@ async function inspect(c: Candidate): Promise<Result<Inspection>> {
   if (c.id === 'c13') return err("The site locks this video with DRM, so Magpie can't save it.");
   const notes: string[] = [];
   if (c.live) notes.push(LIVE_NOTE);
-  if (c.id === 'c5') notes.push("Audio: English. Other languages can't be picked yet.");
+  if (c.id === 'c5') notes.push("Audio: English, the stream's default track.");
   const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live, duration: c.live || c.kind === 'post' ? undefined : (inHistory(c)?.secs ?? infoFor(c).duration) };
   state.inspections.set(c.id, ins);
   return ok(ins);

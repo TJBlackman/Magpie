@@ -19,10 +19,10 @@ type Scope = { all: true; label: string; url?: undefined; tabId?: undefined } | 
 
 const ALL_TABS: Scope = { all: true, label: 'All open tabs' };
 
-/** "9 found in 3 tabs", for the header when the popup lists every tab. */
+/** "Across 3 tabs", for the header when the popup lists every tab. */
 function tabsWithMedia(list: Candidate[]): string {
   const n = new Set(list.map((c) => c.tabId)).size;
-  return n ? `${list.length} found in ${n} ${n === 1 ? 'tab' : 'tabs'}` : 'All open tabs';
+  return n ? `Across ${n} ${n === 1 ? 'tab' : 'tabs'}` : 'All open tabs';
 }
 
 function scopeFor(tab: { id?: number; title?: string; url?: string } | null | undefined): Scope {
@@ -65,7 +65,7 @@ function foundLabel(n: number): string {
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   if (n <= 0 && failed <= 0) return null;
   return (
-    <span className="inline-flex h-5 items-center gap-1">
+    <span className="inline-flex h-5 translate-y-px items-center gap-1">
       {n > 0 && (
         <span className="pill relative inline-flex h-5 min-w-[22px] shrink-0 items-center justify-center rounded-full px-1.5 text-[11.5px] leading-5 font-semibold tabular-nums transition-colors">
           {n}
