@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 
 interface IconProps {
   size?: number;
@@ -264,10 +264,28 @@ export const IconMore = (p: IconProps) => (
   </Icon>
 );
 
-/** The magpie mark used in the header. */
-export const Logo = ({ size = 22 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
-    <path d="M4 18c2-6 5-10 9-12 1.5-.8 3.5-.6 4.6.8L21 10l-3.4.4c-1.6.2-2.8 1.2-3.6 2.6L11 20l-2-3-5 1z" fill="currentColor" />
-    <circle cx="16.4" cy="8.4" r=".9" fill="#0e0f10" />
-  </svg>
-);
+/** The magpie mark: a pied bird, its dark coat, wing and long tail in the sheen. */
+export const Logo = ({ size = 22 }: { size?: number }) => {
+  const id = useId();
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${id}s`} x1="2" y1="22" x2="14" y2="10" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#8b7bff" />
+          <stop offset=".55" stopColor="#38bdf8" />
+          <stop offset="1" stopColor="#52e7d7" />
+        </linearGradient>
+        <linearGradient id={`${id}c`} x1="20" y1="5" x2="9" y2="15" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#2a7f8c" />
+          <stop offset="1" stopColor="#4b43a6" />
+        </linearGradient>
+      </defs>
+      <path d="M10.4 14.6 L2.2 21.4 Q1.9 21.9 2.6 21.8 L4.2 21.2 L11.9 15.9 Z" fill={`url(#${id}s)`} />
+      <path d="M8.9 15.2 C8.6 11.6 10.9 8.5 14.3 7.3 C14.9 5.5 16.4 4.4 18.1 4.6 C19.3 4.8 20.1 5.6 20.4 6.6 L22.3 7.3 L20.3 7.9 C20 9.9 18.9 11.7 17.1 13.1 C15 14.8 12 15.7 8.9 15.2 Z" fill="#eceeef" />
+      <path d="M14.3 7.3 C14.9 5.5 16.4 4.4 18.1 4.6 C19.3 4.8 20.1 5.6 20.4 6.6 L22.3 7.3 L20.3 7.9 C19.6 8.3 18.6 8.5 17.6 8.4 C15.6 8.3 13.6 9.4 12.4 11.2 C11.4 12.7 10.4 13.9 8.9 15.2 C8.6 11.6 10.9 8.5 14.3 7.3 Z" fill={`url(#${id}c)`} />
+      <path d="M12.6 11.4 C13.6 9.9 15.3 9 17 9.1 C16 10.8 14.4 12.3 12.3 13.3 C11.6 13.6 11 13.8 10.4 13.9 C11.2 13.2 11.9 12.4 12.6 11.4 Z" fill={`url(#${id}s)`} />
+      <circle cx="18.3" cy="6.3" r=".6" fill="#0b0c0d" />
+      <path d="M13.2 15.3 L13.5 17.4 M15.2 14.6 L15.6 17" stroke="#c9cbcf" strokeWidth=".9" strokeLinecap="round" />
+    </svg>
+  );
+};

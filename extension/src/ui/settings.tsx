@@ -81,7 +81,7 @@ function Row({ label, htmlFor, control, children, whole }: { label: string; html
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">{title}</h2>
+      <h2 className="mb-2 px-0.5 text-[12.5px] font-semibold text-mute">{title}</h2>
       <div className="card-surface divide-y divide-edge overflow-hidden rounded-[14px]">{children}</div>
     </section>
   );
@@ -119,14 +119,14 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
         <IconButton label="Back" onClick={onClose}>
           <IconBack size={18} />
         </IconButton>
-        <h1 className="flex-1 text-[14px] font-semibold">Settings</h1>
+        <h1 className="font-display flex-1 text-[17px] font-semibold">Settings</h1>
         <span className={`mr-1.5 flex items-center gap-1 text-[12px] font-medium text-emerald-300 transition-opacity ${saved ? 'opacity-100' : 'opacity-0'}`} data-testid="saved">
           <IconCheck size={13} />
           Saved
         </span>
       </header>
       {settings && (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3.5 pt-3.5 pb-8 scroll-thin [mask-image:linear-gradient(to_bottom,#000_calc(100%-28px),rgb(0_0_0/0.08))]">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3.5 pt-3.5 pb-8 scroll-thin [mask-image:linear-gradient(to_bottom,#000_calc(100%-14px),rgb(0_0_0/0.15))]">
           <Group title="Downloads">
             <Row
               label="Downloads at a time"

@@ -10,14 +10,14 @@ export function Badge({ children, tone = 'default', className = '' }: { children
   const cls = {
     default: 'bg-[#2a2d31] text-mute ring-white/[0.06]',
     shine: 'bg-shine/10 text-[#83f3e5] ring-shine/25',
-    // Already downloaded: the one yellow, tinted like LIVE is tinted red.
-    saved: 'bg-[#2a2618] text-[#f2cc60]',
+    // Already saved: a neutral tag with a teal check. It is done, not a warning.
+    saved: 'bg-[#2a2d31] text-fg2 [&>svg]:text-shine',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
     bad: 'bg-live/[0.13] text-live-soft ring-live/30',
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
     post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
   }[tone];
-  return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] leading-none font-semibold tracking-[0.04em] ${cls} ${className}`}>{children}</span>;
+  return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11.5px] leading-none font-semibold ${cls} ${className}`}>{children}</span>;
 }
 
 export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop' | 'destroy';
@@ -93,64 +93,9 @@ export function LiveBadge() {
   return (
     <Badge tone="bad">
       <span className="pulse size-1.5 rounded-full bg-live" />
-      LIVE
+      Live
     </Badge>
   );
-}
-
-const glowCache = new Map<string, string | null>();
-
-/**
- * A frame's strongest colour, for the light it casts: the average of its most
- * saturated quarter, brought to one brightness so every frame glows alike, and
- * as strong as that colour is vivid. A frame with no colour to speak of (fog,
- * snow, overcast) casts none, since a grey glow only reads as haze.
- */
-function glowOf(img: HTMLImageElement): string | null {
-  const c = document.createElement('canvas');
-  c.width = 32;
-  c.height = 18;
-  const ctx = c.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return null;
-  ctx.drawImage(img, 0, 0, 32, 18);
-  const d = ctx.getImageData(0, 0, 32, 18).data;
-  const px: number[][] = [];
-  for (let i = 0; i < d.length; i += 4) {
-    const [r, g, b] = [d[i]!, d[i + 1]!, d[i + 2]!];
-    px.push([Math.max(r, g, b) - Math.min(r, g, b), r, g, b]);
-  }
-  px.sort((a, b) => b[0]! - a[0]!);
-  const top = px.slice(0, px.length >> 2);
-  const avg = (k: number) => top.reduce((s, p) => s + p[k]!, 0) / top.length;
-  const rgb = [avg(1), avg(2), avg(3)];
-  const top3 = Math.max(...rgb);
-  const vivid = top3 ? (top3 - Math.min(...rgb)) / top3 : 0;
-  if (vivid < 0.22) return null;
-  const scale = 200 / top3;
-  const strength = Math.min(1, 0.35 + vivid);
-  return `rgb(${rgb.map((v) => Math.round(v * scale)).join(' ')} / ${strength.toFixed(2)})`;
-}
-
-/** The light a frame casts on its row, like a video player's ambient mode: one colour, softly blurred, held inside the row. */
-export function Glow({ thumb, className }: { thumb?: string; className: string }) {
-  const [color, setColor] = useState(() => (thumb ? (glowCache.get(thumb) ?? null) : null));
-  useEffect(() => {
-    if (!thumb) return setColor(null);
-    if (glowCache.has(thumb)) return setColor(glowCache.get(thumb) ?? null);
-    let live = true;
-    const img = new Image();
-    img.onload = () => {
-      const c = glowOf(img);
-      glowCache.set(thumb, c);
-      if (live) setColor(c);
-    };
-    img.src = thumb;
-    return () => {
-      live = false;
-    };
-  }, [thumb]);
-  if (!color) return null;
-  return <span aria-hidden="true" className={`ambient pointer-events-none absolute rounded-xl ${className}`} style={{ background: color }} />;
 }
 
 /**
@@ -158,13 +103,12 @@ export function Glow({ thumb, className }: { thumb?: string; className: string }
  * captured, else an icon on a quiet gradient. Live streams pulse either way.
  * `corner` is drawn over the bottom right, like a length on a video player.
  */
-export function MediaTile({ kind, live, thumb, muted, corner, glow = true, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; glow?: boolean | 'hover'; className?: string }) {
+export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
   return (
     <div className={`relative ${className} shrink-0`}>
-      {glow && !muted && <Glow thumb={thumb} className={`inset-0 blur-[9px] transition-opacity duration-200 ${glow === 'hover' ? 'opacity-0 group-hover:opacity-50 group-has-[:focus-visible]:opacity-50' : 'opacity-50'}`} />}
       <div className={`relative size-full overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
         {thumb ? (
-          <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
+          <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.8] saturate-[.8]' : ''}`} />
         ) : (
           <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
         )}
@@ -279,7 +223,7 @@ export function MediaRow({
     </>
   );
   const root = inset
-    ? `group relative rounded-[12px] outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
+    ? `group relative rounded-[12px] outline-offset-2 outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
     : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
   const pad = inset ? 'px-[5px] py-2' : 'px-2.5 py-2.5';
   return (
@@ -314,7 +258,7 @@ export function RowList({ children, testId }: { children: ReactNode; testId?: st
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
     <div className="mt-4 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
-      <h2 className="min-w-0 translate-y-px truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
+      <h2 className="min-w-0 translate-y-px truncate text-[12.5px] font-semibold text-mute">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
@@ -327,7 +271,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] border border-transparent text-[#83f3e5] [background:linear-gradient(140deg,#152728,#1e1c29)_padding-box,linear-gradient(125deg,rgba(31,216,207,.6),rgba(96,165,250,.22)_45%,rgba(157,130,240,.5))_border-box]" aria-hidden="true">{icon}</div>
+      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[#1b1e21] text-[#83f3e5] ring-1 ring-white/[0.06] ring-inset" aria-hidden="true">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -403,8 +347,8 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   if (!count) return null;
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
-      <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} downloaded ${count === 1 ? 'item' : 'items'} hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
+      <span className="min-w-0 truncate">{`${count} already downloaded`}</span>
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -430,7 +374,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
           </button>
         ))}
         {/* How long the toast stays: a line that drains, and waits while the pointer or focus is on the toast. */}
-        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#1fd8cf,#8b7bff)] opacity-70" style={{ animationDuration: `${duration + 250}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
+        {/* The toast waits while pointed at or focused; no timer line. */}
       </div>
     </div>
   );

@@ -83,14 +83,14 @@ function RecordedText({ job, rate }: { job: Job; rate: number }) {
 const LEAD = 'tabular-nums';
 
 const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
-  inspecting: { label: 'STARTING', tone: 'shine' },
-  muxing: { label: 'FINISHING', tone: 'shine' },
-  saving: { label: 'SAVING', tone: 'shine' },
+  inspecting: { label: 'Starting', tone: 'shine' },
+  muxing: { label: 'Finishing', tone: 'shine' },
+  saving: { label: 'Saving', tone: 'shine' },
 };
 
 /** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
-  const color = { shine: 'bg-[linear-gradient(90deg,#1fd8cf,#4aa3f8_60%,#8b7bff)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
+  const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
     <div className="mt-0.5 h-1.5 rounded-full bg-[#3a3e44]">
       {pct === null ? (
@@ -166,7 +166,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
-      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} glow={job.state === 'downloading' || job.state === 'muxing' || job.state === 'saving'} />}
+      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
       title={job.title || job.filename}
       titleTip={job.filename}
       meta={
@@ -183,7 +183,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" className="size-9" onClick={() => setDiscarding(true)}>
-              <IconX size={17} />
+              <IconTrash size={16} />
             </IconButton>
           )
         ) : (
@@ -299,7 +299,7 @@ export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
     >
       <Bar pct={active ? pct : 0} tone={active ? 'shine' : 'idle'} moving={active} />
       <StatusLine
-        chip={active ? running > 1 ? <Badge tone="shine">{`${running} AT ONCE`}</Badge> : null : <Badge>{first.queuePosition ? `QUEUED #${first.queuePosition}` : 'QUEUED'}</Badge>}
+        chip={active ? running > 1 ? <Badge tone="shine">{`${running} at once`}</Badge> : null : <Badge>{first.queuePosition ? `Queued, #${first.queuePosition}` : 'Queued'}</Badge>}
         left={parts.join(' · ')}
         right={rate > 0 ? <span className="shrink-0">{fmtRate(rate)}</span> : null}
       />

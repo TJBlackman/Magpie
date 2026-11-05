@@ -227,10 +227,10 @@ body {
   mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px);
 }
 .fade-bottom {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), rgb(0 0 0 / 0.08));
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 14px), rgb(0 0 0 / 0.15));
 }
 .fade-both {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px, #000 calc(100% - 32px), rgb(0 0 0 / 0.08));
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px, #000 calc(100% - 14px), rgb(0 0 0 / 0.15));
 }
 
 /* Component classes live in a layer, so hover and focus utilities can still change them. */

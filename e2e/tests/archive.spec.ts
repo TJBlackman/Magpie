@@ -36,7 +36,7 @@ test('a finished download moves to history and its media is marked as downloaded
   const row = candidate(popup, '/media/hls-ts/index.m3u8');
   await expect(row).toHaveAttribute('data-state', 'archived');
   const badge = row.getByTestId('archived-badge');
-  await expect(badge).toHaveText('DOWNLOADED');
+  await expect(badge).toHaveText('Saved');
   await expect(row).toContainText(/just now|\dm ago/i);
   await expect(badge).toHaveAttribute('title', /^Downloaded .+ as Harbor at Dusk\.mp4$/);
   const sheet = await openCandidate(popup, '/media/hls-ts/index.m3u8');

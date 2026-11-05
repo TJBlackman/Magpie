@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[7px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[43px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -114,7 +114,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
   return (
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
-      tile={<MediaTile kind={kind} glow="hover" thumb={thumbs ? entry.thumb : undefined} corner={entry.secs ? fmtClock(entry.secs) : entry.files ? `${entry.files} files` : undefined} />}
+      tile={<MediaTile kind={kind} thumb={thumbs ? entry.thumb : undefined} corner={entry.secs ? fmtClock(entry.secs) : entry.files ? `${entry.files} files` : undefined} />}
       title={highlight(title, query)}
       titleTip={entry.file}
       titleTestId="archive-title"
@@ -132,11 +132,12 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-dim group-focus-within:opacity-0 group-hover:opacity-0" aria-hidden="true">
+        <span className="flex size-9 shrink-0 items-center justify-center text-dim transition-colors group-hover:text-fg2" aria-hidden="true">
           <IconFolder size={16} />
         </span>
       }
       inset
+      reserve
       overlay={
         <RowMenu
           items={[

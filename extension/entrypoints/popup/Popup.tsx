@@ -73,7 +73,7 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
       )}
 
       {failed > 0 && (
-        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[11.5px] leading-5 font-semibold text-live-soft tabular-nums">
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[11.5px] leading-5 font-semibold text-live-soft tabular-nums">
           <IconError size={11} />
           {failed}
         </span>
@@ -268,7 +268,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] [background:linear-gradient(180deg,#14292b,#121e25)_padding-box,linear-gradient(120deg,rgba(31,216,207,.85),rgba(74,163,248,.75)_50%,rgba(139,123,255,.8))_border-box] [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:bg-transparent [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#2a2d31] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:bg-transparent [&_.pill]:text-dim [&_[data-chip]]:bg-transparent'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
@@ -290,8 +290,8 @@ export function Popup() {
   return (
     <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(31,216,207,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(133,90,231,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(135deg,#52e7d7,#38bdf8_55%,#8b7bff)] text-[#0e1113] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)]">
-          <Logo />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#1b1e21] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08),0_1px_2px_rgba(0,0,0,.5)]">
+          <Logo size={26} />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-[15.5px] font-bold">Magpie</div>
@@ -407,7 +407,8 @@ export function Popup() {
               </div>
             )}
             {scope && !scope.all && (
-              <div className="mt-1 flex justify-end border-t border-edge pt-2">
+              <div className="mt-2 flex items-center justify-between gap-3 pt-1">
+                <span className="min-w-0 text-[11.5px] text-dim">Saved files and History stay.</span>
                 <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
                   Clear this list
                 </button>
@@ -439,10 +440,9 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <span className="flex items-center gap-2 text-[12px] text-dim">
-                      <label htmlFor="at-a-time">At a time</label>
-                      <Stepper compact id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
-                    </span>
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="inline-flex h-7 items-center rounded-md px-1.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.05] hover:text-text">
+                      {`${settings.maxConcurrent} at a time`}
+                    </button>
                   )}
                 </Section>
                 <div className="flex flex-col gap-2">

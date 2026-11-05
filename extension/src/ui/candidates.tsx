@@ -3,7 +3,7 @@ import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
-import { Badge, Button, Callout, Glow, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
+import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
 import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
@@ -94,12 +94,15 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       {job && !candidate.archived && (
         <span data-testid="queued-badge" title="On the Downloads tab" className="shrink-0">
           {candidate.live && !job.queued ? (
-            <Badge tone="bad">
-              <span className="pulse size-1.5 rounded-full bg-live" />
-              RECORDING
-            </Badge>
+            <>
+              <Badge tone="bad">
+                <span className="pulse size-1.5 rounded-full bg-live" />
+                Recording
+              </Badge>
+              <span className="ml-1.5 font-semibold text-live-soft tabular-nums">{fmtClock(job.elapsed ?? 0)}</span>
+            </>
           ) : (
-            <Badge tone="shine">{job.queued ? 'QUEUED' : job.pct === null ? 'DOWNLOADING' : `${Math.floor(job.pct * 100)}%`}</Badge>
+            <Badge tone="shine">{job.queued ? 'Queued' : job.pct === null ? 'Downloading' : `${Math.floor(job.pct * 100)}%`}</Badge>
           )}
         </span>
       )}
@@ -112,7 +115,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
           <Badge>
             <IconLock size={10} />
-            PROTECTED
+            Protected
           </Badge>
         </span>
       )}
@@ -120,7 +123,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
           <Badge tone="saved">
             <IconCheck size={11} className="-ml-px" />
-            DOWNLOADED
+            Saved
           </Badge>
         </span>
       )}
@@ -192,6 +195,15 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
   );
 }
 
+/** A running recording's own Stop button on This page: stops it and saves the file. */
+function StopAction({ job }: { job: CardJob }) {
+  return (
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-1/2 right-[7px] flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-live-soft ring-1 ring-live/50 transition-colors ring-inset hover:bg-live/10 hover:ring-live-soft active:bg-live/20">
+      <span className="size-2.5 rounded-[2px] bg-current" />
+    </button>
+  );
+}
+
 function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
   const box = 'flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150';
   if (job) {
@@ -201,12 +213,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
           <IconClock size={17} />
         </span>
       );
-    if (candidate.live)
-      return (
-        <span className="flex h-9 min-w-9 shrink-0 items-center justify-center text-[11px] font-semibold text-live-soft tabular-nums" aria-hidden="true">
-          {fmtClock(job.elapsed ?? 0)}
-        </span>
-      );
+    // A running recording draws its Stop button over this slot (StopAction).
+    if (candidate.live) return <span className="size-9 shrink-0" aria-hidden="true" />;
     return <ProgressRing pct={job.pct} />;
   }
   // A card that can be saved in one click draws its own button over this slot (QuickAction); the slot keeps the room.
@@ -214,7 +222,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
   const blocked = candidate.info?.drm && !candidate.archived;
   return (
     <span className={`${box} text-dim ring-transparent`} aria-hidden="true">
-      {blocked ? <IconLock size={16} /> : <IconChevron size={16} />}
+      {blocked ? null : <IconChevron size={16} />}
     </span>
   );
 }
@@ -264,7 +272,6 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(157,130,240,.2),transparent_60%)]" />
         <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.16)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
-          <Glow thumb={candidate.thumb} className="top-[calc(50%-38px)] left-1.5 h-[76px] w-[134px] opacity-50 blur-[16px]" />
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
             <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
             {(duration || files > 1) && (
@@ -293,7 +300,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       openTip={openTip}
       dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
-      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
+      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : undefined}
       inset
     />
   );
@@ -331,7 +338,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
       )}
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={`text-[14px] leading-5 tabular-nums ${on ? 'font-semibold text-text' : 'font-medium text-fg2'}`}>{d.name}</span>
+          <span className={`text-[14px] leading-5 tabular-nums ${on ? 'font-medium text-text' : 'font-medium text-fg2'}`}>{d.name}</span>
           {d.tag && <Badge>{d.tag.toUpperCase()}</Badge>}
         </span>
         {!size && (d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
@@ -347,7 +354,7 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   return (
-    <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Saved ${when}`} testId="archived-note">
+    <Callout tone="info" icon={<IconCheckCircle size={15} className="text-shine" />} title={`Saved ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
       <span className="block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
@@ -358,29 +365,13 @@ function ArchivedNote({ archived }: { archived: Archived }) {
 function SavePath({ path }: { path: string }) {
   const parts = path.split('/');
   const name = parts.pop() ?? '';
+  // The whole path, on up to two lines that break between words: nothing is cut out of it.
   return (
-    <span className="min-w-0 truncate">
-      {(parts.length > 2 ? [parts[0], '…'] : parts).map((p) => `${p} / `).join('')}
-      <span className="text-fg2">{fitName(name, Math.max(26, 54 - (parts.length > 2 ? 4 + parts[0]!.length : parts.join(' / ').length)))}</span>
+    <span className="line-clamp-2 min-w-0 break-words [text-wrap:pretty]">
+      {parts.map((p) => `${p} / `).join('')}
+      <span className="text-fg2">{name}</span>
     </span>
   );
-}
-
-/** A file name cut to `max` characters inside its title, keeping its stamp, quality and extension whole: "Old Faithful … 2026-11-05 10.52.mp4". */
-function fitName(name: string, max: number): string {
-  if (name.length <= max) return name;
-  const suffix = /(?: \d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*\.\w+$/.exec(name)?.[0] ?? '';
-  if (!suffix) {
-    // A folder: its start (date and poster) and its end both say which post it is.
-    let head = name.slice(0, Math.ceil(max * 0.55));
-    if (head.includes(' ')) head = head.slice(0, head.lastIndexOf(' '));
-    let tail = name.slice(name.length - (max - head.length - 3));
-    if (tail.includes(' ')) tail = tail.slice(tail.indexOf(' ') + 1);
-    return `${head.replace(/[\s,·:;–—-]+$/, '')} … ${tail}`;
-  }
-  let stem = name.slice(0, name.length - suffix.length).slice(0, Math.max(8, max - suffix.length - 2));
-  if (stem.includes(' ')) stem = stem.slice(0, stem.lastIndexOf(' '));
-  return `${stem.replace(/[\s,·:;–—-]+$/, '')} …${suffix.startsWith(' ') ? '' : ' '}${suffix}`;
 }
 
 /** "images" when every file of a post is a picture, else "files". */
