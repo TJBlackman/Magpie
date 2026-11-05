@@ -195,7 +195,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
   const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
   const look = {
     lead: `bottom-4 right-4 size-11 ${'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
-    tile: 'top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/25 ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
+    tile: 'disc top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/25 ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
     row: 'top-1/2 right-2 size-8 -translate-y-1/2 text-mute ring-1 ring-transparent ring-inset group-hover:text-text group-hover:ring-hover-edge hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10',
   }[variant];
   return (
@@ -211,10 +211,32 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
   );
 }
 
+/** A download started from a card keeps a control on its frame: a clock while it waits, its progress ring while it runs. Hovered or focused it shows an X, and a click cancels it. */
+function JobAction({ job }: { job: CardJob }) {
+  const r = 11;
+  const c = 2 * Math.PI * r;
+  const label = job.queued ? 'Remove from the queue' : 'Cancel the download';
+  return (
+    <button type="button" onClick={() => void api.cancel(job.id)} aria-label={label} title={label} data-testid="card-job" className="disc group/job absolute top-3.5 right-3.5 z-10 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-[#83f3e5] shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/25 ring-inset transition-colors hover:bg-[#16181b] hover:text-text focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
+      <span className="flex group-hover/job:hidden group-focus-visible/job:hidden" aria-hidden="true">
+        {job.queued ? (
+          <IconClock size={15} />
+        ) : (
+          <svg viewBox="0 0 32 32" className={`size-8 ${job.pct === null ? 'animate-spin [animation-duration:1.4s]' : ''}`}>
+            <circle cx="16" cy="16" r={r} fill="none" stroke="rgba(255,255,255,.16)" strokeWidth="2.5" />
+            <circle cx="16" cy="16" r={r} fill="none" stroke="var(--color-shine)" strokeWidth="2.5" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={job.pct === null ? c * 0.72 : c * (1 - job.pct)} transform="rotate(-90 16 16)" className="transition-[stroke-dashoffset] duration-300" />
+          </svg>
+        )}
+      </span>
+      <IconX size={15} className="hidden group-hover/job:block group-focus-visible/job:block" aria-hidden="true" />
+    </button>
+  );
+}
+
 /** A running recording's own Stop button on This page: stops it and saves the file. */
 function StopAction({ job }: { job: CardJob }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-3.5 right-3.5 z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="disc absolute top-3.5 right-3.5 z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -250,7 +272,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile, wide }: { wide?: boolean; candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -307,11 +329,10 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       </div>
     );
   if (tile) {
-    const pct = job && !job.queued && !candidate.live ? job.pct : null;
     return (
-      <div {...attrs} className="group relative -m-1.5 min-w-0 rounded-[16px] p-1.5 transition-colors hover:bg-white/[0.045]">
-        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className="row-main block w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2">
-          <span className="relative block aspect-video w-full overflow-hidden rounded-[12px] bg-[linear-gradient(135deg,#202326,#17191c)]">
+      <div {...attrs} className={`group relative -m-1.5 min-w-0 rounded-[16px] p-1.5 transition-colors hover:bg-white/[0.045] ${wide ? 'col-span-2 [&>.disc]:right-[calc(50%+13px)]' : ''}`}>
+        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className={`row-main w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2 ${wide ? 'flex items-start gap-2.5' : 'block'}`}>
+          <span className={`relative block aspect-video overflow-hidden rounded-[12px] bg-[linear-gradient(135deg,#202326,#17191c)] ${wide ? 'w-[calc(50%-5px)] shrink-0' : 'w-full'}`}>
             {thumbs && candidate.thumb ? (
               <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-[1.045] ${candidate.archived ? 'brightness-[.72] saturate-[.75]' : ''}`} />
             ) : (
@@ -323,20 +344,15 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             {(duration || files > 1) && (
               <span className="absolute right-2 bottom-2 rounded-[5px] bg-[#0b0c0d]/60 px-1 text-[10.5px] leading-[15px] font-medium text-white tabular-nums backdrop-blur-sm">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
             )}
-            {pct !== null && (
-              <span className="absolute inset-x-2 bottom-2 h-1 overflow-hidden rounded-full bg-[#0b0c0d]/60">
-                <span className="block h-full rounded-full bg-shine transition-[width] duration-300" style={{ width: `${Math.max(pct * 100, 3)}%` }} />
-              </span>
-            )}
           </span>
-          <span className="mt-2 block">
-            <span className={`line-clamp-2 block min-h-8 text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
+          <span className={wide ? 'block min-w-0 flex-1 pt-0.5' : 'mt-2 block'}>
+            <span className={`line-clamp-2 block ${wide ? '' : 'min-h-8'} text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
               {bind(title)}
             </span>
             {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</span>}
           </span>
         </button>
-        {!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} variant="tile" /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : null}
+        {!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} variant="tile" /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : job && !candidate.live ? <JobAction job={job} /> : null}
       </div>
     );
   }
@@ -644,9 +660,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </div>
         )}
         {inspection && !error && (!post || files > 0) && !folded && (
-          <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
+          <Button tone={candidate.archived || candidate.live ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="size-2.5 rounded-full bg-shine-ink" aria-hidden="true" />
+              <span className="size-2.5 rounded-full bg-live" aria-hidden="true" />
             ) : (
               <IconDownload size={17} />
             )}

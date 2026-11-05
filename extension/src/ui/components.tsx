@@ -48,7 +48,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
-    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4ee2da] active:bg-[#19bfb7]',
+    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),inset_0_-1px_0_rgba(0,0,0,.18),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4ee2da] active:bg-[#19bfb7]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
@@ -128,6 +128,7 @@ export function textWidth(text: string, style: CSSStyleDeclaration): number {
   measure.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing;
   return measure.measureText(text).width;
 }
+const SMALL = new Set(['a', 'an', 'and', 'at', 'by', 'for', 'from', 'in', 'of', 'off', 'on', 'or', 'the', 'to', 'with']);
 /** How much of `text` fits `width` with an ellipsis after it, cut back past spaces and joining punctuation. */
 function fitLength(text: string, width: number, style: CSSStyleDeclaration): number {
   measure ??= document.createElement('canvas').getContext('2d');
@@ -135,7 +136,7 @@ function fitLength(text: string, width: number, style: CSSStyleDeclaration): num
   measure.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   measure.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing;
   if (measure.measureText(text).width <= width) return text.length;
-  const trim = (s: string) => s.replace(/[\s,·:;–—-]+$/, '');
+  const trim = (s: string) => s.replace(/[\s,.·:;–—-]+$/, '');
   let lo = 0;
   let hi = text.length;
   while (lo < hi) {
@@ -146,7 +147,11 @@ function fitLength(text: string, width: number, style: CSSStyleDeclaration): num
   // A cut inside a word ("Platt…") steps back to the end of the word before. Only a word longer than the line is cut in the middle.
   const inWord = /[\p{L}\p{N}]/u.test(text[lo] ?? '') && /[\p{L}\p{N}]/u.test(text[lo - 1] ?? '');
   const space = inWord ? text.lastIndexOf(' ', lo) : -1;
-  return trim(text.slice(0, space > 0 && lo - space <= 16 ? space : lo)).length;
+  let out = trim(text.slice(0, space > 0 && lo - space <= 16 ? space : lo));
+  // Nor does it end on a small joining word ("Breaching off…").
+  const last = /\s(\p{L}+)$/u.exec(out);
+  if (last && SMALL.has(last[1]!.toLowerCase())) out = trim(out.slice(0, last.index));
+  return out.length;
 }
 
 /**

@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
 import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtHeight, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
-import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
+import { Badge, Button, Callout, FitText, IconButton, MediaRow, MediaTile } from './components';
 import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
@@ -140,7 +140,9 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   const meta = failed ? (
     <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[#f5c76a]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`} data-testid="job-error">
       <IconError size={13} className="shrink-0" />
-      <span className="min-w-0 truncate">{friendlyError(job.error ?? 'The download stopped.')}</span>
+      <span className="min-w-0 flex-1 truncate">
+        <FitText text={friendlyError(job.error ?? 'The download stopped.')} />
+      </span>
     </span>
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
@@ -157,7 +159,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
-    ? onRetry && !/no longer has it|404|410/i.test(friendlyError(job.error ?? '') + (job.error ?? ''))
+    ? onRetry && !/file is gone|404|410/i.test(friendlyError(job.error ?? '') + (job.error ?? ''))
       ? { hint: 'Its page is still open, so a retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
         ? { hint: 'Play it on its page so Magpie catches a fresh link, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
@@ -215,7 +217,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
               }}
             >
               <p className="text-[12.5px] font-medium text-text">Discard this recording?</p>
-              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`You lose the ${fmtClock(job.duration ?? 0)} recorded so far, ${fmtBytes(job.bytes)}. Nothing is saved.`}</p>
+              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes the ${fmtClock(job.duration ?? 0)} recorded so far, ${fmtBytes(job.bytes)}, without saving a file.`}</p>
               <div className="mt-2.5 flex justify-end gap-2">
                 <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                   Keep recording

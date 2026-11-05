@@ -115,10 +115,12 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       titleTestId="archive-title"
       meta={
         <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
-          {fmtDay(entry.at)}
-          {' · '}
-          <span className="hidden font-medium text-text group-hover:inline group-has-[.row-main:focus-visible]:inline">{folder ? 'Show the folder' : 'Show in folder'}</span>
-          {facts && <span className="tabular-nums group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{facts}</span>}
+          <span className="group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{fmtDay(entry.at)}</span>
+          <span className="hidden font-medium text-text group-hover:inline group-has-[.row-main:focus-visible]:inline">
+            <IconFolder size={12} className="-mt-0.5 mr-1 inline" />
+            {folder ? 'Show the folder' : 'Show in folder'}
+          </span>
+          {facts && <span className="tabular-nums">{` · ${facts}`}</span>}
         </span>
       }
       onOpen={show}

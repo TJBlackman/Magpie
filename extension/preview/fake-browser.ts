@@ -148,7 +148,7 @@ function seedJobs(): Job[] {
       2,
       0,
       job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'queued', { sizeEstimate: 290 * MB, segmentsTotal: 65, queuePosition: 1, startedAt: now - 15_000 }),
-      job('j8', 'Humpback Whales Breaching off Maui', 'hls', '1280x720 · 3100 kbps', 'error', { candidateId: 'c2', segmentsTotal: 102, segmentsDone: 40, bytes: 92 * MB, error: 'HTTP 404 for https://stream.wildframe.tv/v/humpback-maui/seg-41.ts', startedAt: now - 600_000, finishedAt: now - 590_000 }),
+      job('j8', 'Humpback Whales Breaching off Maui', 'hls', '1280x720 · 3100 kbps', 'error', { candidateId: 'c2', segmentsTotal: 102, segmentsDone: 40, bytes: 92 * MB, error: 'HTTP 404 for https://stream.wildframe.tv/v/humpback-maui/seg-41.ts', pageUrl: 'https://wildframe.tv/watch/humpback-maui', startedAt: now - 600_000, finishedAt: now - 590_000 }),
       job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { height: 2160, bytesTotal: 640 * MB, queuePosition: 3, startedAt: now - 10_000 }),
     );
   }
