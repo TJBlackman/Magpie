@@ -73,8 +73,9 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
       )}
 
       {failed > 0 && (
-        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex size-4 shrink-0 items-center justify-center">
-          <span className="size-[7px] rounded-full bg-[#f2b84b]" />
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-[#f2b84b]/15 px-1.5 text-[11px] leading-[18px] font-semibold text-[#f5c76a] tabular-nums">
+          <IconError size={11} />
+          {failed}
         </span>
       )}
     </span>
@@ -217,13 +218,19 @@ export function Popup() {
   // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
     const r = await api.start(c.id, 'best');
-    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Download started', detail: c.pageTitle, view: true, undo: r.value.id, live: c.live });
+    if (r.ok) setToast({ text: c.live ? 'Recording started' : r.value.state === 'queued' ? `Added to the queue${r.value.queuePosition ? `, #${r.value.queuePosition} in line` : ''}` : 'Download started', detail: c.pageTitle, view: true, undo: r.value.id, live: c.live });
     else setSheetId(c.id);
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; detail?: string; view?: boolean; undo?: string; live?: boolean; show?: { file: string; folder: boolean } } | null>(null);
   const lastSaved = useRef<string | undefined>(undefined);
+  // Failures stay flagged on the tab until Downloads has been opened once since they happened.
+  const [seenFailed, setSeenFailed] = useState<Set<string>>(() => new Set());
+  const unseenFailed = failed.filter((j) => !seenFailed.has(j.id)).length;
+  useEffect(() => {
+    if (view === 'jobs' && failed.some((j) => !seenFailed.has(j.id))) setSeenFailed(new Set(failed.map((j) => j.id)));
+  }, [view, failed, seenFailed]);
   useEffect(() => {
     const head = archive[0];
     if (lastSaved.current === undefined) {
@@ -278,7 +285,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#2a2d31] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-shine/55 bg-[#2a2d31] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
@@ -333,7 +340,7 @@ export function Popup() {
         {tab(
           'jobs',
           'Downloads',
-          <Pill n={active.length} failed={failed.length} />,
+          <Pill n={active.length + failed.length} failed={view === 'jobs' ? 0 : unseenFailed} />,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
         )}
         {tab('history', 'History', null)}
@@ -383,7 +390,6 @@ export function Popup() {
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
                   <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
-                    <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase">{hostOf(g.page).slice(0, 1)}</span>
                     <span className="min-w-0 truncate">
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
@@ -391,7 +397,7 @@ export function Popup() {
                     <span className="-ml-1 shrink-0 text-[12px] text-dim tabular-nums">{`· ${g.list.length}`}</span>
                   </div>
                 )}
-                {listRuns(g.list, gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
+                {listRuns(g.list, !scope?.all && gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
                   run.lead ? (
                     <CandidateCard key={run.lead.id} candidate={run.lead} thumbs={thumbs} onOpen={openCard} onQuick={quickStart} hero />
                   ) : (
@@ -417,9 +423,9 @@ export function Popup() {
               </div>
             )}
             {scope && !scope.all && (
-              <div className="mt-3 flex justify-center">
+              <div className="mt-3 flex justify-end">
                 <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg px-3 text-[12px] font-medium text-mute transition-colors hover:bg-white/[0.05] hover:text-text">
-                  Clear list
+                  Clear detected media
                 </button>
               </div>
             )}
@@ -435,39 +441,6 @@ export function Popup() {
         ) : (
           <>
             {active.length === 0 && <p className="mt-3 px-0.5 text-[12px] text-mute">Nothing downloading</p>}
-            {recordings.length > 0 && (
-              <>
-                <Section title="Recording" count={recordings.length} />
-                <div className="flex flex-col gap-2">
-                  {recordings.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} />
-                  ))}
-                </div>
-              </>
-            )}
-            {running.length > 0 && (
-              <>
-                <Section title="Downloading" count={running.length}>
-                  {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="inline-flex h-7 items-center rounded-md px-1.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.05] hover:text-text">
-                      {`${settings.maxConcurrent} at a time`}
-                      <span className="ml-1.5 text-[#83f3e5]">Change</span>
-                    </button>
-                  )}
-                </Section>
-                <div className="flex flex-col gap-2">
-                  {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
-                </div>
-              </>
-            )}
-            {waiting.length > 0 && (
-              <>
-                <Section title="Queued" count={waiting.length} />
-                <RowList>
-                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
-                </RowList>
-              </>
-            )}
             {failed.length > 0 && (
               <>
                 <Section title="Failed" count={failed.length}>
@@ -481,6 +454,39 @@ export function Popup() {
                   {failed.map((j) => (
                     <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
                   ))}
+                </RowList>
+              </>
+            )}
+            {recordings.length > 0 && (
+              <>
+                <Section title="Recording" count={recordings.length} />
+                <RowList>
+                  {recordings.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} inset />
+                  ))}
+                </RowList>
+              </>
+            )}
+            {running.length > 0 && (
+              <>
+                <Section title="Downloading" count={running.length}>
+                  {settings && (
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="inline-flex h-7 items-center rounded-md px-1.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.05] hover:text-text">
+                      {`${settings.maxConcurrent} at a time`}
+                      <span className="ml-1.5 text-[#83f3e5]">Change</span>
+                    </button>
+                  )}
+                </Section>
+                <RowList>
+                  {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                </RowList>
+              </>
+            )}
+            {waiting.length > 0 && (
+              <>
+                <Section title="Queued" count={waiting.length} />
+                <RowList>
+                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
                 </RowList>
               </>
             )}

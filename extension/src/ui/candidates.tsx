@@ -114,12 +114,11 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       {candidate.info?.drm && !candidate.archived && (
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
           <Badge>
-            <IconLock size={10} />
             Protected
           </Badge>
         </span>
       )}
-      {candidate.archived && (
+      {candidate.archived && !inSheet && (
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
           <Badge tone="saved">
             <IconCheck size={11} className="-ml-px" />
@@ -182,10 +181,10 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-transparent group-hover:ring-live/50' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge'} ${candidate.live ? 'hover:!ring-live-soft hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-ctl-edge group-hover:ring-hover-edge' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge'} ${candidate.live ? 'hover:bg-white/[0.06] active:bg-white/[0.04]' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
-        <span className="size-3 rounded-full bg-live" />
+        <span className="size-2.5 rounded-full bg-live" />
       ) : (
         <IconDownload size={lead ? 19 : 17} />
       )}
@@ -220,7 +219,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
   const blocked = candidate.info?.drm && !candidate.archived;
   return (
     <span className={`${box} text-mute ring-transparent`} aria-hidden="true">
-      {blocked ? null : <IconChevron size={16} />}
+      {blocked ? <IconLock size={15} /> : <IconChevron size={16} />}
     </span>
   );
 }
@@ -368,13 +367,15 @@ function SavePath({ path }: { path: string }) {
   const stem = name.slice(0, name.length - suffix.length);
   return (
     <span className="block min-w-0 flex-1">
-      <span className="block truncate">
-        <span className="text-dim">Saves to</span> {folders}
-      </span>
-      <span className="mt-0.5 line-clamp-2 break-words text-fg2">
-        {stem}
-        <span className="whitespace-nowrap">{suffix}</span>
-      </span>
+      <span className="block truncate">Saves to {folders}</span>
+      {/\.\w+$/.test(name) ? (
+        <span className="mt-0.5 line-clamp-2 break-words">
+          {stem}
+          <span className="whitespace-nowrap">{suffix}</span>
+        </span>
+      ) : (
+        <span className="mt-0.5 block truncate">{`Folder ${name}`}</span>
+      )}
     </span>
   );
 }
@@ -585,11 +586,6 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               <IconDownload size={17} />
             )}
             {candidate.live ? (short || fmtHeight(candidate.info?.height) ? `Record ${short || fmtHeight(candidate.info?.height)}` : 'Start recording') : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
-          </Button>
-        )}
-        {error && (
-          <Button size="lg" className="mt-3 w-full" onClick={onClose} testId="sheet-close">
-            Close
           </Button>
         )}
       </div>

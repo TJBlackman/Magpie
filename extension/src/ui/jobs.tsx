@@ -145,7 +145,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
       <span data-testid="job-status" className="font-medium text-text">{statusText(job, pct)}</span>
-      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : '', siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)].filter(Boolean).map((part) => ` · ${part}`).join('')}
+      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
     <span className="min-w-0 flex-1 truncate" title={job.url}>
@@ -184,7 +184,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" className="size-9" onClick={() => setDiscarding(true)}>
-              <IconTrash size={16} />
+              <IconX size={17} />
             </IconButton>
           )
         ) : (
@@ -227,7 +227,6 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
                   Keep recording
                 </Button>
                 <Button tone="destroy" size="md" onClick={() => api.cancel(job.id)}>
-                  <IconTrash size={14} />
                   Discard
                 </Button>
               </div>

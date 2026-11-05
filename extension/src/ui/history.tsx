@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[43px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40' : 'z-10'} flex`}
+      className={`absolute top-1/2 right-[7px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40' : 'z-10'} flex`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -47,7 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        className={open ? 'size-8 !rounded-full' : 'size-8 !rounded-full !text-dim group-hover:!text-fg2 hover:!bg-white/[0.08]'}
+        className={open ? 'size-8 !rounded-full' : 'size-8 !rounded-full !text-mute group-hover:!text-fg2 hover:!bg-white/[0.08]'}
         ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
@@ -58,7 +58,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         <IconMore size={20} />
       </IconButton>
       {open && (
-        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-[#2a2d31] p-1 shadow-[0_8px_20px_rgba(0,0,0,.45)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-[#34373c] p-1 shadow-[0_12px_32px_rgba(0,0,0,.6)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
           {items.map((it, i) => (
             <button
               key={it.label}
@@ -70,7 +70,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
                 setOpen(false);
                 it.run();
               }}
-              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-live-soft' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
+              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#fca5a5]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
             >
               <span className={it.danger ? 'text-err' : 'text-mute'}>{it.icon}</span>
               {it.label}
@@ -130,16 +130,12 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       }
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
-      action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-mute transition-colors group-hover:text-fg2" aria-hidden="true">
-          <IconFolder size={16} />
-        </span>
-      }
+      action={<span className="size-9 shrink-0" aria-hidden="true" />}
       inset
-      reserve
       overlay={
         <RowMenu
           items={[
+            { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
             { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}

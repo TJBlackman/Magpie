@@ -47,13 +47,13 @@ export function Button({
   autoFocus?: boolean;
 }) {
   const cls = {
-    default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
+    default: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4ee2da] active:bg-[#19bfb7]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
-    accent: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
-    stop: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn [&>svg]:text-live',
-    destroy: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-[#33242a] hover:ring-err/60 active:bg-btn [&>svg]:text-err',
+    accent: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
+    stop: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33] [&>svg]:text-live',
+    destroy: 'bg-err/[0.16] text-[#fecaca] ring-1 ring-inset ring-err/40 hover:bg-err/25 active:bg-err/20',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -226,15 +226,15 @@ export function MediaRow({
     <>
       {tile}
       <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : hoverReserve ? 'group-hover:pr-11 group-has-[:focus-visible]:pr-11' : ''}`}>
-        <div className={`line-clamp-2 text-[13px] leading-[17px] font-medium break-words transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
-          {title}
+        <div className={`truncate text-[13px] leading-[18px] font-medium transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
+          {typeof title === 'string' ? <FitText text={title} /> : title}
         </div>
         {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
       </div>
     </>
   );
   const root = inset
-    ? `group relative rounded-[10px] outline-offset-2 outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
+    ? `group relative rounded-[10px] outline-offset-[-2px] outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[[role=menu]]:z-30 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
     : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
   const pad = inset ? 'px-[5px] py-2' : 'px-2.5 py-2.5';
   return (
@@ -314,7 +314,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-live/10 text-live-soft ring-live/45' : 'bg-btn text-text ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b]'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : 'bg-[#2c2f33] text-text ring-transparent hover:bg-[#363a3f]'}`}>
       {children}
     </button>
   );
@@ -361,7 +361,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
       <span className="min-w-0 truncate text-[12.5px] font-semibold text-mute">
         Already downloaded <span className="font-medium text-dim tabular-nums">{count}</span>
       </span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-7 shrink-0 items-center rounded-md bg-[#2c2f33] px-2.5 text-[12px] font-semibold text-text transition-colors hover:bg-[#363a3f]">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -373,7 +373,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
   if (!message) return null;
   return (
     <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_12px)] px-3.5 pt-6 pb-3">
-      <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
+      <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-white/[0.07] ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#0d4041] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>
@@ -382,7 +382,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors bg-btn text-text ring-1 ring-[#80848b] ring-inset hover:bg-btn-hover hover:ring-[#90959b]`}>
+          <button key={a.label} type="button" onClick={a.onClick} className="h-8 rounded-lg bg-[#33363b] px-3 text-[12.5px] font-semibold text-text transition-colors hover:bg-[#3d4046]">
             {a.label}
           </button>
         ))}
