@@ -114,7 +114,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
   return (
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
-      tile={<MediaTile kind={kind} thumb={thumbs ? entry.thumb : undefined} corner={entry.secs ? fmtClock(entry.secs) : entry.files ? `${entry.files} files` : undefined} />}
+      tile={<MediaTile kind={kind} glow="hover" thumb={thumbs ? entry.thumb : undefined} corner={entry.secs ? fmtClock(entry.secs) : entry.files ? `${entry.files} files` : undefined} />}
       title={highlight(title, query)}
       titleTip={entry.file}
       titleTestId="archive-title"

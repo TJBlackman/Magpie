@@ -179,10 +179,10 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#83f3e5] ring-accent-edge hover:bg-[#124d4d] hover:!ring-shine active:bg-shine/20' : `text-fg2 ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#83f3e5] ring-accent-edge hover:bg-[#13605c] hover:text-white hover:!ring-shine active:bg-shine/30' : `text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
-        <span className="flex size-4 items-center justify-center rounded-full ring-[1.5px] ring-current">
+        <span className="flex size-[13px] items-center justify-center rounded-full ring-[1.5px] ring-current">
           <span className="size-1.5 rounded-full bg-live" />
         </span>
       ) : (
@@ -331,7 +331,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
       )}
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="text-[14px] leading-5 font-semibold tabular-nums">{d.name}</span>
+          <span className={`text-[14px] leading-5 tabular-nums ${on ? 'font-semibold text-text' : 'font-medium text-fg2'}`}>{d.name}</span>
           {d.tag && <Badge>{d.tag.toUpperCase()}</Badge>}
         </span>
         {!size && (d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
@@ -561,7 +561,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex items-start gap-2 px-0.5 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
-            <IconFolder size={14} className="mt-px shrink-0" />
+            <span className="shrink-0 text-dim">Saves to</span>
             <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} />
           </div>
         )}

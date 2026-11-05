@@ -8,7 +8,7 @@ export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'po
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-[#202226] text-mute ring-white/[0.06]',
+    default: 'bg-[#2a2d31] text-mute ring-white/[0.06]',
     shine: 'bg-shine/10 text-[#83f3e5] ring-shine/25',
     // Already downloaded: the one yellow, tinted like LIVE is tinted red.
     saved: 'bg-[#2a2618] text-[#f2cc60]',
@@ -48,7 +48,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
-    shine: 'bg-[linear-gradient(105deg,#52e7d7_0%,#38bdf8_55%,#8b7bff_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#6cebdd_0%,#36cfe3_55%,#ac94f3_100%)] active:bg-[linear-gradient(105deg,#1fd8cf_0%,#2aaef0_55%,#8e71eb_100%)]',
+    shine: 'bg-[linear-gradient(105deg,#52e7d7_0%,#38bdf8_55%,#8b7bff_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_4px_12px_rgba(0,0,0,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#6cebdd_0%,#36cfe3_55%,#ac94f3_100%)] active:bg-[linear-gradient(105deg,#1fd8cf_0%,#2aaef0_55%,#8e71eb_100%)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
@@ -158,10 +158,10 @@ export function Glow({ thumb, className }: { thumb?: string; className: string }
  * captured, else an icon on a quiet gradient. Live streams pulse either way.
  * `corner` is drawn over the bottom right, like a length on a video player.
  */
-export function MediaTile({ kind, live, thumb, muted, corner, glow = true, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; glow?: boolean; className?: string }) {
+export function MediaTile({ kind, live, thumb, muted, corner, glow = true, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; glow?: boolean | 'hover'; className?: string }) {
   return (
     <div className={`relative ${className} shrink-0`}>
-      {glow && !muted && <Glow thumb={thumb} className="inset-0 opacity-50 blur-[9px]" />}
+      {glow && !muted && <Glow thumb={thumb} className={`inset-0 blur-[9px] transition-opacity duration-200 ${glow === 'hover' ? 'opacity-0 group-hover:opacity-50 group-has-[:focus-visible]:opacity-50' : 'opacity-50'}`} />}
       <div className={`relative size-full overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
         {thumb ? (
           <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
@@ -393,7 +393,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 export function Toggle({ on }: { on: boolean }) {
   return (
     <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#6e737a]'}`}>
-      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(4,43,42,.55),0_1px_2px_rgba(0,0,0,.4)] transition-transform ${on ? 'translate-x-3.5' : ''}`} />
+      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(0,0,0,.35),0_1px_2px_rgba(0,0,0,.4)] transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
 }

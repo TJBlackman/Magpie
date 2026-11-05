@@ -89,7 +89,7 @@ test('clear empties the popup list right away', async ({ magpie }) => {
   await playAndWait(page, '/hls-ts.html');
   const popup = await magpie.popupFor(page);
   await expect(popup.getByTestId('candidate').first()).toBeVisible({ timeout: 15_000 });
-  await popup.getByRole('button', { name: 'Clear detected media', exact: true }).click();
+  await popup.getByRole('button', { name: 'Clear this list', exact: true }).click();
   await expect(popup.getByTestId('candidate')).toHaveCount(0, { timeout: 2_000 });
   await expect(popup.getByText('Nothing detected yet')).toBeVisible();
 });

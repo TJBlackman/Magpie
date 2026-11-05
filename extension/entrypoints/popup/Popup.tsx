@@ -268,7 +268,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'border border-transparent font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] [background:linear-gradient(180deg,#14292b,#121e25)_padding-box,linear-gradient(120deg,rgba(31,216,207,.85),rgba(74,163,248,.45)_50%,rgba(139,123,255,.8))_border-box] [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:bg-transparent [&_.pill]:px-0.5 [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] [&_.pill]:self-center whitespace-nowrap transition-colors ${view === v ? 'border border-transparent font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] [background:linear-gradient(180deg,#14292b,#121e25)_padding-box,linear-gradient(120deg,rgba(31,216,207,.85),rgba(74,163,248,.45)_50%,rgba(139,123,255,.8))_border-box] [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:h-auto [&_.pill]:min-w-0 [&_.pill]:self-baseline [&_.pill]:bg-transparent [&_.pill]:px-0 [&_.pill]:text-[12px] [&_.pill]:font-medium [&_.pill]:text-dim'}`}
     >
       {label}
       {pill}
@@ -317,7 +317,7 @@ export function Popup() {
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
       <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.4fr_1fr] gap-0.5 rounded-xl bg-panel/80 p-[3px]`}>
-        {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
+        {tab('page', all ? 'All tabs' : 'This page', <Pill n={candidates.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
           'Downloads',
@@ -376,7 +376,7 @@ export function Popup() {
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
                     </span>
-                    <span className="inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25282b] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums">{g.list.length}</span>
+                    <span className="shrink-0 pl-0.5 text-[12px] font-medium text-dim tabular-nums">{g.list.length}</span>
                   </div>
                 )}
                 {listRuns(g.list, gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
@@ -403,7 +403,7 @@ export function Popup() {
             {scope && !scope.all && (
               <div className="mt-1 flex justify-end border-t border-edge pt-2">
                 <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
-                  Clear detected media
+                  Clear this list
                 </button>
               </div>
             )}
