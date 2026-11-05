@@ -123,6 +123,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       {candidate.info?.drm && !candidate.archived && (
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
           <Badge>
+            <IconLock size={11} className="-ml-px text-mute" />
             Protected
           </Badge>
         </span>
@@ -181,6 +182,11 @@ function quickText(candidate: Candidate): { what: string; size: string } {
   return { what: `Download${quality ? ` ${quality}` : ''}`, size };
 }
 
+/** A title with each number and each word of one or two letters bound to the next word, so no line ends on one. */
+function bind(title: string): string {
+  return title.replace(/(^|\s)(\d+|\p{L}{1,2}) (?=\S)/gu, '$1$2\u00a0');
+}
+
 /** The quick action over a frame: download now at the best quality, record now, or save every file of a post. */
 function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; variant?: 'row' | 'lead' | 'tile' }) {
   const files = candidate.post?.assets.length ?? 0;
@@ -198,7 +204,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute z-10 flex items-center justify-center rounded-full transition-colors ${look}`}
+      className={`quick absolute z-10 flex items-center justify-center rounded-full transition-colors focus-visible:shadow-[0_0_0_2px_#0b0c0d] ${look}`}
     >
       {candidate.live ? <span className={`rounded-full ${variant === 'lead' ? 'size-3 bg-shine-ink' : 'size-2.5 bg-live'}`} /> : <IconDownload size={variant === 'lead' ? 20 : 16} />}
     </button>
@@ -208,7 +214,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
 /** A running recording's own Stop button on This page: stops it and saves the file. */
 function StopAction({ job }: { job: CardJob }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-3.5 right-3.5 z-10 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-3.5 right-3.5 z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -286,7 +292,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
           <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_28%,rgba(11,12,13,.5)_56%,rgba(11,12,13,.93)_100%)]" />
           <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
             <span className="font-display line-clamp-2 block text-[20px] leading-[23px] font-semibold text-pretty text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
-              {title}
+              {bind(title)}
             </span>
             {meta && (
               <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">
@@ -324,8 +330,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             )}
           </span>
           <span className="mt-2 block">
-            <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
-              {title}
+            <span className={`line-clamp-2 block min-h-8 text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
+              {bind(title)}
             </span>
             {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</span>}
           </span>
@@ -557,7 +563,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-pretty" title={fullTitle}>{bind(title)}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
@@ -621,7 +627,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           {!post && inspection && footnote && !folded && <Callout tone="info">{footnote}</Callout>}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
-          <div className="mt-3 flex items-start gap-2 px-0.5 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
+          <div className="mt-3 flex items-start gap-2 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
             <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} files={post ? files : undefined} />
           </div>
         )}

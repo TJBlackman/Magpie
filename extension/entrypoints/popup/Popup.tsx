@@ -457,7 +457,7 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change in Settings" aria-label={`${settings.maxConcurrent} downloads at a time. Change in Settings`} className="-mr-1.5 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change in Settings" aria-label={`${settings.maxConcurrent} downloads at a time. Change in Settings`} className="-mr-2 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
                       {`${settings.maxConcurrent} at a time`}
                       <IconChevron size={14} />
                     </button>

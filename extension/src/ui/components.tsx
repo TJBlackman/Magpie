@@ -301,7 +301,11 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[#1b1e21] text-[#83f3e5] ring-1 ring-white/[0.06] ring-inset" aria-hidden="true">{icon}</div>
+      <div className="relative mb-5 flex size-16 items-center justify-center" aria-hidden="true">
+        <span className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgba(31,216,207,.13),rgba(31,216,207,0))]" />
+        <span className="absolute -inset-2.5 rounded-[28px] ring-1 ring-white/[0.05] ring-inset" />
+        <span className="relative flex size-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#24272b,#191b1e)] text-[#83f3e5] shadow-[0_10px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.07)] ring-1 ring-white/[0.07] ring-inset">{icon}</span>
+      </div>
       <div className="font-display text-[17px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
