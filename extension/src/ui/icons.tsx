@@ -249,6 +249,13 @@ export const IconCheckCircle = (p: IconProps) => (
   </Icon>
 );
 
+export const IconMinusCircle = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 12h8" />
+  </Icon>
+);
+
 /** The magpie mark used in the header. */
 export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">

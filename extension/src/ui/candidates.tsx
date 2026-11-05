@@ -121,11 +121,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.12] ring-1 ring-live/25 ring-inset" aria-hidden="true">
-          <span className="relative flex size-2.5">
-            <span className="ping absolute inline-flex size-full rounded-full bg-live/70" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-live" />
-          </span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.16] text-live ring-1 ring-live/35 ring-inset" aria-hidden="true">
+          <IconRadio size={17} className="pulse" />
         </span>
       );
     return <ProgressRing pct={job.pct} />;
@@ -233,7 +230,7 @@ function ArchivedNote({ archived, onMissing }: { archived: Archived; onMissing: 
   return (
     <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Downloaded ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
-      <Button tone="default" className="mt-2 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
+      <Button tone="default" size="md" className="mt-2.5 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
         <IconFolder size={14} />
         Show in folder
       </Button>
@@ -270,7 +267,7 @@ function PostFiles({ candidate, variants, thumbs }: { candidate: Candidate; vari
       <details className="group/files -mx-1 rounded-[10px] text-[12px] text-mute">
         <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 font-medium transition-colors hover:bg-white/[0.04] hover:text-text [&::-webkit-details-marker]:hidden">
           <span className="transition-transform group-open/files:rotate-90">›</span>
-          {`See the ${n} ${fileWord(variants, n)}`}
+          Show the file list
         </summary>
         <ol className="mt-1 flex flex-col gap-px pb-1" data-testid="post-files">
           {variants.map((v, i) => (
@@ -338,8 +335,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   // Codecs every quality shares are said once, under the list.
   const codecSet = new Set(variants.map((v) => codecNames(v.codecs)));
   const sharedCodecs = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
-  const audioNoted = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
-  const footnote = [sharedCodecs, sharedAudio && !audioNoted ? `${sharedAudio} audio merged in` : ''].filter(Boolean).join(', ');
+  const audioNote = inspection?.notes.find((n) => n.startsWith('Audio:'))?.replace(/^Audio: [^.]*\.\s*/, '');
+  const footnote = [[sharedCodecs, sharedAudio ? `${sharedAudio} audio merged in` : ''].filter(Boolean).join(', '), audioNote ?? ''].map((s) => s.replace(/\.$/, '')).filter(Boolean).join('. ');
 
   return (
     <>
@@ -356,7 +353,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance">{title}</div>
+            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance">{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
@@ -382,7 +379,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             </div>
           )}
           {candidate.archived && <ArchivedNote archived={candidate.archived} onMissing={onMissing} />}
-          {inspection?.notes.map((n) => (
+          {inspection?.notes.filter((n) => !n.startsWith('Audio:')).map((n) => (
             <Callout key={n} tone={/fail|cannot|can't|DRM|not hosted|nothing to save/i.test(n) ? 'warn' : 'info'}>
               {n}
             </Callout>
@@ -397,7 +394,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {footnote && <p className="px-1 text-[11.5px] text-mute">{`${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase())}</p>}
+          {footnote && <p className="text-[11.5px] text-pretty text-mute">{`${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase())}</p>}
         </div>
         {inspection && !error && (!post || files > 0) && (
           <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">

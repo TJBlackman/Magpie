@@ -68,7 +68,7 @@ function Row({ label, htmlFor, control, children }: { label: string; htmlFor: st
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 px-1 text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">{title}</h2>
+      <h2 className="mb-2 text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">{title}</h2>
       <div className="divide-y divide-edge overflow-hidden rounded-xl border border-edge bg-panel">{children}</div>
     </section>
   );

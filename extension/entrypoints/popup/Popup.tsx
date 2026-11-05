@@ -40,7 +40,7 @@ function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'l
   const cls = { default: 'pill bg-white/[0.08] text-mute', live: 'pill bg-live-solid text-white', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
   return (
     <span aria-label={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 font-bold text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
-      {tone === 'failed' ? <span aria-hidden="true">!</span> : n}
+      {tone === 'failed' ? <span aria-hidden="true">{n > 1 ? `!${n}` : '!'}</span> : n}
     </span>
   );
 }
@@ -221,7 +221,7 @@ export function Popup() {
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
       <div role="tablist" className="mx-3.5 mb-1 flex shrink-0 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
-        {tab('page', 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
+        {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
           'Downloads',
@@ -296,6 +296,11 @@ export function Popup() {
                 ))}
               </div>
             ))}
+            {!showDownloaded && downloaded > 0 && (
+              <button type="button" onClick={toggleDownloaded} className="mt-1 h-8 rounded-lg text-[12px] text-dim transition-colors hover:bg-btn-hover hover:text-text">
+                {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden · Show`}
+              </button>
+            )}
           </div>
         )}
       </Panel>
@@ -362,7 +367,7 @@ export function Popup() {
       <Panel shown={view === 'history'}>
         {archive.length > 0 && (
           <>
-            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset transition-shadow focus-within:ring-2 focus-within:ring-shine">
+            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset transition-shadow focus-within:ring-2 focus-within:ring-text">
               <IconSearch size={15} />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search history" aria-label={`Search ${archive.length} downloads`} className="min-w-0 flex-1 bg-transparent text-[12.5px] text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
               {query && (

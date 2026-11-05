@@ -3,7 +3,7 @@ import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
 import { Empty, IconButton, MediaRow, MediaTile } from './components';
-import { IconExternal, IconFolder, IconHistory, IconSearch, IconX } from './icons';
+import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconSearch } from './icons';
 
 /** The title with the part that matches the search marked. */
 function highlight(text: string, query: string): ReactNode {
@@ -50,10 +50,11 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           )}
         </span>
       }
+      hoverable
       action={
         <>
-          {/* Hover actions float over the end of the title, so the title has the whole row the rest of the time. */}
-          <span className="pointer-events-none absolute top-1/2 right-[52px] flex -translate-y-1/2 items-center gap-1 bg-gradient-to-r from-transparent via-panel via-30% to-panel py-1 pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+          {/* Shown on hover or keyboard focus; they take room only then, so the title ends in an ellipsis, not under a fade. */}
+          <span className="hidden items-center gap-1 group-focus-within:flex group-hover:flex">
             {page && isWebUrl(page) && (
               <a
                 href={page}
@@ -61,7 +62,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
                 rel="noreferrer"
                 aria-label={`Open ${hostOf(page)}`}
                 title={`Open ${page} in a new tab`}
-                className="inline-flex size-8 items-center justify-center rounded-lg text-mute transition-colors hover:bg-white/[0.07] hover:text-text"
+                className="inline-flex size-9 items-center justify-center rounded-lg bg-btn text-mute ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover hover:text-text"
                 onClick={(e) => {
                   e.preventDefault();
                   openPage(page);
@@ -70,8 +71,8 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
                 <IconExternal size={15} />
               </a>
             )}
-            <IconButton label="Remove from history. The video shows as new again." onClick={() => void api.removeArchive(entry.id)}>
-              <IconX size={16} />
+            <IconButton label="Remove from history. The file stays on disk." framed onClick={() => void api.removeArchive(entry.id)}>
+              <IconMinusCircle size={16} />
             </IconButton>
           </span>
           <IconButton label={folder ? 'Show the folder' : 'Show in folder'} framed onClick={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}>

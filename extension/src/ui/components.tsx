@@ -31,6 +31,7 @@ export function Button({
   title,
   className = '',
   testId,
+  pressed,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -40,17 +41,19 @@ export function Button({
   title?: string;
   className?: string;
   testId?: string;
+  /** A toggle: announces its state. */
+  pressed?: boolean;
 }) {
   const cls = {
-    default: 'bg-white/[0.07] text-text ring-1 ring-inset ring-white/[0.08] hover:bg-white/[0.11] active:bg-white/[0.05]',
+    default: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover active:bg-btn',
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
-    ghost: 'text-mute hover:bg-white/[0.06] hover:text-text active:bg-white/[0.04]',
+    ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
     live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
   return (
-    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40 ${sz} ${cls} ${className}`}>
+    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} aria-pressed={pressed} className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40 ${sz} ${cls} ${className}`}>
       {children}
     </button>
   );
@@ -65,9 +68,9 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
         ? 'text-mute hover:bg-live/10 hover:text-[#ff9fb1]'
         : active
           ? 'bg-shine/10 text-shine'
-          : 'text-mute hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04]';
+          : 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn';
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-white/[0.05] ring-1 ring-white/[0.08] ring-inset' : ''} ${color} ${className}`}>
+    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-btn-edge ring-inset hover:!bg-btn-hover' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -126,12 +129,13 @@ export function MediaRow({
   dim,
   attrs,
   children,
+  hoverable,
 }: {
   tile: ReactNode;
   title: ReactNode;
   titleTip?: string;
   titleTestId?: string;
-  meta: ReactNode;
+  meta?: ReactNode;
   action?: ReactNode;
   onOpen?: () => void;
   openTip?: string;
@@ -139,6 +143,8 @@ export function MediaRow({
   dim?: boolean;
   attrs?: Record<string, string | number | undefined>;
   children?: ReactNode;
+  /** Not one button, but it has actions that show on hover: it lifts like a clickable row. */
+  hoverable?: boolean;
 }) {
   const body = (
     <>
@@ -147,12 +153,12 @@ export function MediaRow({
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
-        <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>
+        {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
       </div>
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-offset-[3px]">
           {body}
@@ -172,12 +178,12 @@ export function MediaRow({
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-3.5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
+    <div className="mt-3.5 mb-2 flex h-8 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-7 [&_button]:bg-white/[0.04] [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:hover:bg-white/[0.08]">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-btn [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:ring-1 [&_button]:ring-btn-edge [&_button]:ring-inset [&_button]:hover:bg-btn-hover">{children}</div>}
     </div>
   );
 }
@@ -185,10 +191,10 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 /** The one empty state: centered in what is left of the panel, an icon in a soft disc, a title, a line, an optional action. */
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
-    <div className="rise-in flex flex-col items-center px-6 pt-[18%] pb-8 text-center">
+    <div className="rise-in my-auto flex flex-col items-center px-6 pt-6 pb-16 text-center">
       <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
-      {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-pretty text-mute">{children}</p>}
+      {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
       {below && <div className="mt-5">{below}</div>}
     </div>
@@ -243,7 +249,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] ring-1 ring-shine/40 ring-inset'}>
+    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] !ring-shine/40'}>
       {shown ? <IconEyeOff size={14} /> : <IconEye size={14} />}
       {shown ? 'Hide downloaded' : `${count} downloaded`}
     </Button>
@@ -278,7 +284,7 @@ export function UpdateBanner({ version, onGet, onDismiss }: { version: string; o
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
-      <Button tone="default" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab" className="bg-shine/15 text-[#7ff0ff] ring-shine/30 hover:bg-shine/25">
+      <Button tone="default" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab" className="!bg-shine/15 !text-[#7ff0ff] !ring-shine/30 hover:!bg-shine/25">
         Get it
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>

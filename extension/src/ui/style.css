@@ -21,6 +21,10 @@
   --color-live-solid: #e11d48;
   /* Already downloaded: a caution, the only yellow in the popup. */
   --color-saved: #facc15;
+  /* The one neutral button surface and its edge. */
+  --color-btn: #1a2029;
+  --color-btn-edge: #2b3441;
+  --color-btn-hover: #222a35;
 
   --font-sans: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, 'Inter', Roboto, sans-serif;
 }
