@@ -284,7 +284,7 @@ function infoFor(c: Candidate): MediaInfo {
   const duration = c.live ? undefined : c.url.endsWith('playlist.m3u8') ? 612 : 180 + (hash(c.id) % 2400);
   return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}) };
 }
-const LIVE_NOTE = 'Live stream: Magpie records from about 30 seconds back until you press Stop or the stream ends, in the quality the stream sends.';
+const LIVE_NOTE = 'Records from about 30 seconds back until you press Stop or the stream ends. Quality is whatever the stream sends.';
 const fmtBytes = (n: number) => (n < 1024 ** 3 ? `${(n / MB).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);
 
 function variantsFor(c: Candidate): Variant[] {
@@ -303,7 +303,7 @@ function variantsFor(c: Candidate): Variant[] {
   return defs.map(([resolution, bandwidth], i) => ({
     id: `v${i}`,
     label: `${resolution} · ${(bandwidth / 1000).toFixed(0)} kbps · avc1.640028,mp4a.40.2`,
-    uri: c.url.replace(/(master.m3u8|manifest.mpd)$/, `${resolution.split('x')[1]}p/index.m3u8`),
+    uri: c.url.replace(/(master\.m3u8|manifest\.mpd)$/, `${resolution.split('x')[1]}p/index.m3u8`),
     bandwidth,
     resolution,
     codecs: c.kind === 'dash' ? 'avc1.640028' : 'avc1.640028,mp4a.40.2',

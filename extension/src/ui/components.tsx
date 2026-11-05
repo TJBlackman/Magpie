@@ -20,7 +20,7 @@ export function Badge({ children, tone = 'default', className = '' }: { children
   return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[10px] leading-none font-semibold tracking-[0.04em] ring-1 ring-inset ${cls} ${className}`}>{children}</span>;
 }
 
-export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live';
+export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop';
 
 export function Button({
   children,
@@ -49,6 +49,8 @@ export function Button({
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
+    accent: 'bg-shine/15 text-[#7ff0ff] ring-1 ring-inset ring-shine/30 hover:bg-shine/25',
+    stop: 'bg-btn text-[#ff9fb1] ring-1 ring-inset ring-live/35 hover:bg-live/15',
     live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -191,7 +193,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 /** The one empty state: centered in what is left of the panel, an icon in a soft disc, a title, a line, an optional action. */
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
-    <div className="rise-in my-auto flex flex-col items-center px-6 pt-6 pb-16 text-center">
+    <div className="rise-in flex flex-col items-center px-6 pt-16 pb-8 text-center">
       <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
@@ -284,7 +286,7 @@ export function UpdateBanner({ version, onGet, onDismiss }: { version: string; o
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
-      <Button tone="default" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab" className="!bg-shine/15 !text-[#7ff0ff] !ring-shine/30 hover:!bg-shine/25">
+      <Button tone="accent" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
         Get it
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>

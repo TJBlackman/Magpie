@@ -4,7 +4,7 @@ import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconCheckCircle, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconCheckCircle, IconChevron, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
 
 /** "yesterday at 9:19 PM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
 function savedAs(a: Archived): string {
@@ -34,11 +34,11 @@ function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }
   // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says
   // nothing new. It also fills a line that would otherwise be empty.
   const host = hostOf(candidate.url);
-  const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl)) || (!lead && !tagged);
+  const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
   const rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
   return (
     <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-      {lead && <span className="font-medium text-[#b9c3cf] tabular-nums">{lead}</span>}
+      {lead && <span className="text-[#c3ccd7] tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
@@ -121,8 +121,11 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.16] text-live ring-1 ring-live/35 ring-inset" aria-hidden="true">
-          <IconRadio size={17} className="pulse" />
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.14] ring-1 ring-live/35 ring-inset" aria-hidden="true">
+          <span className="relative flex size-2.5">
+            <span className="ping absolute inline-flex size-full rounded-full bg-live/60" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-live" />
+          </span>
         </span>
       );
     return <ProgressRing pct={job.pct} />;
@@ -230,7 +233,7 @@ function ArchivedNote({ archived, onMissing }: { archived: Archived; onMissing: 
   return (
     <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Downloaded ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
-      <Button tone="default" size="md" className="mt-2.5 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
+      <Button tone="default" size="md" className="mt-2.5 -mb-0.5 !bg-white/[0.06] !ring-white/[0.12] hover:!bg-white/[0.1]" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
         <IconFolder size={14} />
         Show in folder
       </Button>
@@ -248,26 +251,24 @@ function fileWord(variants: Variant[], n: number): string {
  * What a post saves: its preview with a count, where the files land, and the
  * list of files folded away under a disclosure.
  */
-function PostFiles({ candidate, variants, thumbs }: { candidate: Candidate; variants: Variant[]; thumbs: boolean }) {
+function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Variant[] }) {
   const n = variants.length;
   const where = candidate.post?.subreddit ? `Reddit/${candidate.post.subreddit}` : 'Reddit';
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.035] p-2.5">
-        <div className="relative flex h-[42px] w-[56px] shrink-0 items-center justify-center">
-          <span className="absolute inset-0 translate-x-1.5 -translate-y-1 rounded-md bg-panel3 ring-1 ring-white/[0.06] ring-inset" />
-          <span className="absolute inset-0 translate-x-0.5 -translate-y-px rounded-md bg-edge2 ring-1 ring-white/[0.06] ring-inset" />
-          <MediaTile kind="post" thumb={thumbs ? candidate.thumb : undefined} className="relative h-full w-full shadow-[0_2px_6px_rgba(0,0,0,.4)]" />
-        </div>
+      <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.035] p-2.5 ring-1 ring-white/[0.05] ring-inset">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-btn text-mute ring-1 ring-btn-edge ring-inset">
+          <IconFolder size={18} />
+        </span>
         <div className="min-w-0 flex-1">
           <div className="text-[13px] font-semibold">{n > 1 ? 'Saved together in one folder' : 'Saved as one file'}</div>
           <div className="truncate text-[11.5px] text-mute">{`${where}, with the post's title, author and date`}</div>
         </div>
       </div>
-      <details className="group/files -mx-1 rounded-[10px] text-[12px] text-mute">
-        <summary className="flex h-9 cursor-pointer list-none items-center gap-2 rounded-lg px-2.5 font-medium transition-colors hover:bg-white/[0.04] hover:text-text [&::-webkit-details-marker]:hidden">
-          <span className="transition-transform group-open/files:rotate-90">›</span>
-          Show the file list
+      <details className="group/files text-[12px] text-mute">
+        <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-[10px] bg-btn px-3 text-[12.5px] text-text ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover [&::-webkit-details-marker]:hidden">
+          <span className="flex-1">{`The ${n} ${fileWord(variants, n)} in this post`}</span>
+          <IconChevron size={15} className="text-mute transition-transform group-open/files:rotate-90" />
         </summary>
         <ol className="mt-1 flex flex-col gap-px pb-1" data-testid="post-files">
           {variants.map((v, i) => (
@@ -336,7 +337,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const codecSet = new Set(variants.map((v) => codecNames(v.codecs)));
   const sharedCodecs = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
   const audioNote = inspection?.notes.find((n) => n.startsWith('Audio:'))?.replace(/^Audio: [^.]*\.\s*/, '');
-  const footnote = [[sharedCodecs, sharedAudio ? `${sharedAudio} audio merged in` : ''].filter(Boolean).join(', '), audioNote ?? ''].map((s) => s.replace(/\.$/, '')).filter(Boolean).join('. ');
+  const footnote = [`${sharedCodecs}${sharedAudio ? `${sharedCodecs ? ' with' : 'With'} ${sharedAudio} audio` : ''}`, audioNote ?? ''].map((s) => s.replace(/\.$/, '')).filter(Boolean).join('. ');
 
   return (
     <>
@@ -384,7 +385,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               {n}
             </Callout>
           ))}
-          {inspection && post && <PostFiles candidate={candidate} variants={variants} thumbs={thumbs} />}
+          {inspection && post && <PostFiles candidate={candidate} variants={variants} />}
           {inspection && !post && !(candidate.live && single) && (
             <ul className="flex flex-col gap-2">
               {variants.map((v) => (

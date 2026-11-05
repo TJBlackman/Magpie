@@ -6,7 +6,7 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconCheck, IconDownload, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconAlert, IconCheck, IconDownload, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -35,12 +35,13 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'live' | 'failed'; label?: string }) {
+function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'failed'; label?: string }) {
   if (!n) return null;
-  const cls = { default: 'pill bg-white/[0.08] text-mute', live: 'pill bg-live-solid text-white', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
+  const cls = { default: 'pill bg-white/[0.08] text-mute', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
   return (
-    <span aria-label={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 font-bold text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
-      {tone === 'failed' ? <span aria-hidden="true">{n > 1 ? `!${n}` : '!'}</span> : n}
+    <span aria-label={label} title={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
+      {tone === 'failed' && <IconAlert size={10} className="-ml-px" />}
+      {n}
     </span>
   );
 }
@@ -226,7 +227,8 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} tone={recording ? 'live' : 'default'} />
+            {recording && <span className="pulse size-1.5 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+            <Pill n={active.length} />
             <Pill n={failed.length} tone="failed" label={`${failed.length} failed`} />
           </>,
           failed.length ? `${failed.length} failed` : undefined,
@@ -236,7 +238,7 @@ export function Popup() {
 
       <Panel shown={view === 'page'}>
         {candidates.length > 0 && (
-          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
+          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'} count={shown.length || undefined}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             {scope && !scope.all && (
               <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
@@ -308,7 +310,7 @@ export function Popup() {
       <Panel shown={view === 'jobs'}>
         {active.length === 0 && failed.length === 0 ? (
           <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button size="md" onClick={() => setView('page')}>Go to This page</Button>}>
-            Pick a video on This page and its progress shows up here.
+            Pick a video on This page to see its progress here.
           </Empty>
         ) : (
           <>

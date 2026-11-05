@@ -146,7 +146,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
                 />
               }
             >
-              Downloads to remember and mark on the page. 0 turns history off; lowering it drops the oldest.
+              Downloads to remember and mark on the page. 0 turns it off.
             </Row>
             <Row label="Remember private windows" htmlFor="archive-private" control={<Switch id="archive-private" testId="archive-private" checked={settings.archivePrivate} onChange={(on) => void update({ archivePrivate: on })} />}>
               Off: they leave history when the last private window closes.

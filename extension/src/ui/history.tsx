@@ -45,7 +45,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           {facts && (
             <>
               {' · '}
-              <span className="font-medium text-[#b9c3cf] tabular-nums">{facts}</span>
+              <span className="text-[#c3ccd7] tabular-nums">{facts}</span>
             </>
           )}
         </span>
@@ -54,15 +54,15 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       action={
         <>
           {/* Shown on hover or keyboard focus; they take room only then, so the title ends in an ellipsis, not under a fade. */}
-          <span className="hidden items-center gap-1 group-focus-within:flex group-hover:flex">
+          <span className="hidden items-center gap-1.5 pr-0.5 group-focus-within:flex group-hover:flex">
             {page && isWebUrl(page) && (
               <a
                 href={page}
                 target="_blank"
                 rel="noreferrer"
-                aria-label={`Open ${hostOf(page)}`}
-                title={`Open ${page} in a new tab`}
-                className="inline-flex size-9 items-center justify-center rounded-lg bg-btn text-mute ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover hover:text-text"
+                aria-label="Open the page it came from"
+                title={`Open the page it came from: ${page}`}
+                className="inline-flex size-8 items-center justify-center rounded-lg text-mute transition-colors hover:bg-btn-hover hover:text-text"
                 onClick={(e) => {
                   e.preventDefault();
                   openPage(page);
@@ -71,7 +71,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
                 <IconExternal size={15} />
               </a>
             )}
-            <IconButton label="Remove from history. The file stays on disk." framed onClick={() => void api.removeArchive(entry.id)}>
+            <IconButton label="Remove from history. The file stays on disk." onClick={() => void api.removeArchive(entry.id)}>
               <IconMinusCircle size={16} />
             </IconButton>
           </span>

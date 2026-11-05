@@ -1,9 +1,9 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
 import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
 import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
-import { IconError, IconExternal, IconRedo, IconStop, IconX } from './icons';
+import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
  * Smoothed bytes per second for an active job, from the byte counts it reports.
@@ -70,7 +70,7 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
 }
 
 /** A meta line's lead value: the quality or size, a step brighter than the rest. */
-const LEAD = 'font-medium text-[#b9c3cf] tabular-nums';
+const LEAD = 'text-[#c3ccd7] tabular-nums';
 
 const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
   inspecting: { label: 'STARTING', tone: 'shine' },
@@ -111,6 +111,7 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
  * running downloads keep the room.
  */
 export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; onRetry?: () => void }) {
+  const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
   const queued = job.state === 'queued';
   const pct = jobProgress(job);
@@ -147,9 +148,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Still on This page.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'Still on This page, so a retry gets a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page for a fresh link.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page to get a fresh link.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -166,12 +167,12 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <IconButton label="Remove" framed onClick={() => api.removeJob(job.id)}>
-            <IconX size={16} />
+          <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
+            <IconMinusCircle size={16} />
           </IconButton>
         ) : job.live ? (
-          <IconButton label="Stop and discard the recording" tone="danger" framed onClick={() => api.cancel(job.id)}>
-            <IconX size={17} />
+          <IconButton label="Discard the recording" tone="danger" framed active={discarding} onClick={() => setDiscarding((d) => !d)}>
+            <IconTrash size={16} />
           </IconButton>
         ) : (
           <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
@@ -182,7 +183,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     >
       {failed ? (
         recover && (
-          <div className="flex items-center gap-3 border-t border-edge pt-2">
+          <div className="-mt-0.5 flex items-center gap-3">
             <span className="min-w-0 flex-1 truncate text-[12px] text-mute">{recover.hint}</span>
             <Button tone="default" size="md" onClick={recover.run} title={recover.tip}>
               {recover.icon}
@@ -192,7 +193,18 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
         )
       ) : queued ? null : (
         <>
-          {job.live ? <Bar pct={null} tone="live" moving /> : <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
+          {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
+          {discarding ? (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="min-w-0 flex-1 truncate text-[12px] text-[#ffb3c1]">{`Discard ${fmtBytes(job.bytes)} recorded?`}</span>
+              <Button tone="ghost" size="md" onClick={() => setDiscarding(false)}>
+                Keep recording
+              </Button>
+              <Button tone="stop" size="md" onClick={() => api.cancel(job.id)}>
+                Discard
+              </Button>
+            </div>
+          ) : (
           <StatusLine
             chip={chip}
             left={statusText(job, pct)}
@@ -200,7 +212,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               recording ? (
                 <>
                   <SpeedText job={job} rate={rate} />
-                  <Button tone="default" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="-my-1.5 !text-[#ff9fb1] !ring-live/35 hover:!bg-live/15">
+                  <Button tone="stop" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="-my-1.5">
                     <IconStop size={12} />
                     Stop
                   </Button>
@@ -210,6 +222,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               )
             }
           />
+          )}
           {job.note && (
             <div data-testid="job-note" className="mt-2">
               <Callout tone="info">{job.note}</Callout>

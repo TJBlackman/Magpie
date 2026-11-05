@@ -91,7 +91,7 @@ interface LiveOutput {
   /** Save the current file as a finished part and open the next one. */
   nextPart(): Promise<void>;
 }
-const LIVE_NOTE = 'Live stream: Magpie records from about 30 seconds back until you press Stop or the stream ends, in the quality the stream sends.';
+const LIVE_NOTE = 'Records from about 30 seconds back until you press Stop or the stream ends. Quality is whatever the stream sends.';
 
 /**
  * Stop for a live recording: unlike cancel, the job finishes its current step,
