@@ -41,20 +41,17 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-/** A tab's count. A failure is a red dot on it, named for screen readers; with nothing else to count, a red count of its own. */
+/** A tab's count, tinted on the selected tab. A failure is an alert mark beside it, announced as "n failed". */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
-  if (!n && !failed) return null;
-  if (!n)
-    return (
-      <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
-        {failed}
-      </span>
-    );
   return (
-    <span role={failed ? 'img' : undefined} aria-label={failed ? `${n}, ${failed} failed` : undefined} title={failed ? `${failed} failed` : undefined} className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
-      {n}
-      {failed > 0 && <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
-    </span>
+    <>
+      {n > 0 && <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>}
+      {failed > 0 && (
+        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="-ml-0.5 flex shrink-0 items-center text-live">
+          <IconError size={14} />
+        </span>
+      )}
+    </>
   );
 }
 
@@ -190,12 +187,12 @@ export function Popup() {
   // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
     const r = await api.start(c.id, 'best');
-    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Added to downloads', view: true, undo: r.value.id });
+    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Added to downloads', view: true, undo: r.value.id, live: c.live });
     else setSheetId(c.id);
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; view?: boolean; undo?: string } | null>(null);
+  const [toast, setToast] = useState<{ text: string; view?: boolean; undo?: string; live?: boolean } | null>(null);
   // A toast belongs to the moment: switching views clears it.
   useEffect(() => setToast(null), [view]);
   const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
@@ -234,7 +231,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-btn-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-btn-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#67e8f9]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -296,10 +293,12 @@ export function Popup() {
         {shown.length === 0 ? (
           downloaded ? (
             <>
+              <div className="mt-2">
+                <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+              </div>
               <Empty icon={<IconCheck size={24} />} title="Everything here is already downloaded">
-                Turn on Show downloaded below to get it again.
+                Show it to download it again.
               </Empty>
-              <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             </>
           ) : (
             <Empty
@@ -330,10 +329,9 @@ export function Popup() {
           )
         ) : (
           <div className="mt-2 flex flex-col gap-2">
-            {!showDownloaded && downloaded > 0 && (
-              <div className="-mr-2 -mb-1 flex h-8 items-center justify-between gap-2 text-[12px] text-dim">
-                {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden`}
-                <TextButton onClick={toggleDownloaded}>Show</TextButton>
+            {downloaded > 0 && (
+              <div className="-mb-1">
+                <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
               </div>
             )}
             {groups.map((g) => (
@@ -353,7 +351,6 @@ export function Popup() {
                 ))}
               </div>
             ))}
-            <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             {scope && !scope.all && (
               <div className="-mr-2 -mt-1 flex justify-end">
                 <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again.">
@@ -451,8 +448,9 @@ export function Popup() {
 
       <Toast
         message={toast?.text ?? null}
+        live={toast?.live}
         actions={[
-          ...(toast?.undo ? [{ label: 'Undo', onClick: () => (void api.cancel(toast.undo!), setToast({ text: 'Download canceled' })) }] : []),
+          ...(toast?.undo ? [{ label: 'Undo', onClick: () => (void api.cancel(toast.undo!), setToast({ text: toast.live ? 'Recording discarded' : 'Download canceled' })) }] : []),
           ...(toast?.view && view !== 'jobs' ? [{ label: 'View', onClick: () => (setView('jobs'), setToast(null)) }] : []),
         ]}
       />
@@ -464,11 +462,11 @@ export function Popup() {
           candidate={sheet}
           thumbs={thumbs}
           onClose={() => (setSheetId(null), setRetryOf(null))}
-          onStarted={() => {
+          onStarted={(jobId) => {
             if (retryOf) void api.removeJob(retryOf);
             setRetryOf(null);
             setSheetId(null);
-            setToast({ text: sheet.live ? 'Recording started' : 'Added to downloads', view: true });
+            setToast({ text: sheet.live ? 'Recording started' : 'Added to downloads', view: true, undo: jobId, live: sheet.live });
           }}
         />
       )}

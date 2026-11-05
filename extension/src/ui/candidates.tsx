@@ -53,8 +53,8 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
 
 function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string; rest: string }) {
   return (
-    <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-      {lead && <span className="text-fg2 tabular-nums">{lead}</span>}
+    <span className="min-w-0 flex-1 truncate" title={candidate.url}>
+      {lead && <span className="tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
@@ -163,9 +163,15 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       title={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-[10px] bg-panel2 text-fg2 ring-1 ring-edge2 transition-colors ring-inset ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live hover:ring-live/45' : 'hover:bg-accent-fill hover:text-shine hover:ring-accent-edge'}`}
+      className={`absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-white/[0.05] text-fg2 transition-colors ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live-soft' : 'hover:bg-accent-fill hover:text-shine'}`}
     >
-      {candidate.live ? <span className="size-2.5 rounded-full bg-current" /> : <IconDownload size={17} />}
+      {candidate.live ? (
+        <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current">
+          <span className="size-2 rounded-full bg-live" />
+        </span>
+      ) : (
+        <IconDownload size={17} />
+      )}
     </button>
   );
 }
@@ -231,7 +237,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
                   ? 'Download every file of this post'
                   : 'Choose a quality, or use the arrow to download the best one now'
       }
-      dim={!!candidate.archived}
+      dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
       overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
     />
@@ -260,7 +266,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge bg-ink/40 hover:border-edge3 hover:bg-panel2';
+  const shell = on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge2 bg-[#141a22] hover:border-edge3 hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -308,13 +314,12 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="overflow-hidden rounded-[10px] ring-1 ring-edge ring-inset">
+    <div className="overflow-hidden rounded-[10px] bg-[#141a22] ring-1 ring-edge2 ring-inset">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-11 cursor-pointer list-none items-center gap-3 px-3 text-[12.5px] text-text transition-colors hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
-          <span className="flex-1">Files</span>
-          <span className="text-mute tabular-nums">{n}</span>
-          <IconChevron size={15} className="text-mute transition-transform group-open/files:rotate-90" />
+          <span className="flex-1">{`${n} ${n === 1 ? 'file' : 'files'}, saved together`}</span>
+          <IconChevron size={15} className="rotate-90 text-mute transition-transform group-open/files:-rotate-90" />
         </summary>
         <ol className="flex flex-col gap-px px-1.5 pb-1.5" data-testid="post-files">
           {variants.map((v, i) => (
@@ -334,7 +339,7 @@ function PostFiles({ variants }: { variants: Variant[] }) {
  * Slides up over the list: inspects the candidate, lists its renditions, and
  * starts the download of the chosen one.
  */
-export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing }: { candidate: Candidate; thumbs: boolean; onClose: () => void; onStarted: () => void; onMissing: () => void }) {
+export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing }: { candidate: Candidate; thumbs: boolean; onClose: () => void; onStarted: (jobId: string) => void; onMissing: () => void }) {
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
@@ -366,7 +371,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
     const r = await api.start(candidate.id, post ? 'all' : variantId!);
     setBusy(false);
     if (!r.ok) setError(r.error);
-    else onStarted();
+    else onStarted(r.value.id);
   };
 
   const fullTitle = candidate.pageTitle || sourceLabel(candidate.url);

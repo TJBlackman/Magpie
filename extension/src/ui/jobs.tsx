@@ -70,7 +70,7 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
 }
 
 /** A meta line's lead value: the quality or size, a step brighter than the rest. */
-const LEAD = 'text-fg2 tabular-nums';
+const LEAD = 'tabular-nums';
 
 const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
   inspecting: { label: 'STARTING', tone: 'shine' },

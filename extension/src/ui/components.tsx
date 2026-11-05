@@ -68,12 +68,14 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
     tone === 'live'
       ? 'text-live hover:bg-live/10'
       : tone === 'danger'
-        ? 'text-mute hover:bg-live/10 hover:text-live-soft'
+        ? 'text-fg2 hover:bg-live/10 hover:text-live-soft'
         : active
           ? 'bg-accent-fill text-shine ring-1 ring-accent-edge ring-inset'
-          : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
+          : framed
+            ? 'text-fg2 hover:text-text'
+            : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 ring-1 ring-transparent ring-inset group-hover:bg-btn group-hover:ring-btn-edge group-focus-within:bg-btn group-focus-within:ring-btn-edge hover:!bg-btn-hover' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-white/[0.05] hover:!bg-white/[0.09]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -219,7 +221,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
-    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#171c23] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ring-1 ring-[#434e5c] ring-inset ${cls}`}>
+    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#141a22] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ring-1 ring-edge2 ring-inset ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
       <div className="min-w-0 text-pretty">
         {title && <div className="mb-0.5 font-semibold text-text">{title}</div>}
@@ -232,7 +234,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors ${armed ? 'bg-live/10 text-live-soft' : 'text-mute hover:bg-white/[0.06] hover:text-text'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold transition-colors ${armed ? 'bg-live/10 text-live-soft' : 'text-fg2 hover:bg-panel3 hover:text-text'}`}>
       {children}
     </button>
   );
@@ -271,26 +273,28 @@ export function Toggle({ on }: { on: boolean }) {
   );
 }
 
-/** Shows or hides media the history already has: the last row of the list, a switch like a setting. Nothing when there is none. */
+/** Shows or hides media the history already has: one line at the top of the list. Nothing when there is none. */
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
+  const what = `${count} downloaded ${count === 1 ? 'video' : 'videos'}`;
   return (
-    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="flex h-11 w-full shrink-0 items-center gap-3 rounded-xl px-3 text-left text-[12.5px] text-fg2 ring-1 ring-edge transition-colors ring-inset hover:bg-white/[0.03] hover:text-text">
-      <span className="flex-1">Show downloaded</span>
-      {!shown && <span className="text-dim tabular-nums">{`${count} hidden`}</span>}
-      <Toggle on={shown} />
-    </button>
+    <div className="-mr-2 flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
+      <span className="min-w-0 truncate">{shown ? `${what} listed` : `${what} hidden`}</span>
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
+        {shown ? 'Hide' : 'Show'}
+      </button>
+    </div>
   );
 }
 
 /** A short message at the bottom of the popup that fades after a few seconds, with up to two actions; the last is the main one. */
-export function Toast({ message, actions = [] }: { message: string | null; actions?: { label: string; onClick: () => void }[] }) {
+export function Toast({ message, actions = [], live }: { message: string | null; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
   if (!message) return null;
   return (
     <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
       <div className="rise-in flex h-11 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
-          <IconCheck size={12} />
+          {live ? <span className="pulse size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>
         <span className="min-w-0 flex-1 truncate">{message}</span>
         {actions.map((a, i) => (

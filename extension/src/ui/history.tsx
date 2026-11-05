@@ -10,7 +10,7 @@ import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconS
  * hovered or holds keyboard focus. The list opens above the button when the
  * row sits low in the panel. Escape or a click elsewhere closes it.
  */
-function RowMenu({ items }: { items: { label: string; hint?: string; icon: ReactNode; run: () => void }[] }) {
+function RowMenu({ items }: { items: { label: string; hint?: string; icon: ReactNode; run: () => void; danger?: boolean }[] }) {
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const box = useRef<HTMLSpanElement>(null);
@@ -47,6 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
+        framed={!open}
         className={open ? 'size-9' : 'size-9 !text-fg2'}
         ref={trigger}
         onClick={() => {
@@ -59,9 +60,10 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       </IconButton>
       {open && (
         <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
-          {items.map((it) => (
+          {items.map((it, i) => (
             <button
               key={it.label}
+              data-danger={it.danger || undefined}
               type="button"
               role="menuitem"
               title={it.hint ? `${it.label}. ${it.hint}` : it.label}
@@ -69,9 +71,9 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
                 setOpen(false);
                 it.run();
               }}
-              className="flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap text-text transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px]"
+              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-live-soft' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
             >
-              <span className="text-mute">{it.icon}</span>
+              <span className={it.danger ? 'text-live-soft' : 'text-mute'}>{it.icon}</span>
               {it.label}
             </button>
           ))}
@@ -122,7 +124,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           {facts && (
             <>
               {' · '}
-              <span className="text-fg2 tabular-nums">{facts}</span>
+              <span className="tabular-nums">{facts}</span>
             </>
           )}
         </span>
@@ -139,7 +141,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           items={[
             { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
-            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id) },
+            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}
         />
       }
