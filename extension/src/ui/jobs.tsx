@@ -128,7 +128,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : null;
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
   const meta = failed ? (
-    <span className="flex min-w-0 flex-1 items-center gap-2.5" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
+    <span className="flex min-w-0 flex-1 items-center gap-3" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
       <IconError size={14} className="shrink-0 text-live" />
       <span className="min-w-0 truncate text-[#c9d2dd]">{friendlyError(job.error ?? 'The download stopped.')}</span>
     </span>

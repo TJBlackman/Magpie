@@ -42,13 +42,13 @@ async function resolveScope(): Promise<Scope> {
 }
 
 /** A tab's count. While something records, the count wears the live colour and a ring, and says so. */
-function Pill({ n, rec }: { n: number; rec?: boolean }) {
+function Pill({ n, rec, on }: { n: number; rec?: boolean; on?: boolean }) {
   if (!n) return null;
   return (
     <span
       aria-label={rec ? `${n}, recording` : undefined}
       title={rec ? 'Recording' : undefined}
-      className={`inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${rec ? 'bg-[#2a1a22] text-[#ff9fb1] ring-1 ring-live ring-inset' : 'pill bg-white/[0.08] text-mute'}`}
+      className={`pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors ${rec ? (on ? 'shadow-[0_0_0_1.5px_var(--color-panel3),0_0_0_3px_var(--color-live)]' : 'shadow-[0_0_0_1.5px_var(--color-panel),0_0_0_3px_var(--color-live)]') : ''}`}
     >
       {n}
     </span>
@@ -263,7 +263,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} rec={recording} />
+            <Pill n={active.length} rec={recording} on={view === 'jobs'} />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
@@ -357,21 +357,6 @@ export function Popup() {
           </Empty>
         ) : (
           <>
-            {/* One failure waits its turn under the running jobs; several lead, since they need a hand. */}
-            {failed.length > 1 && (
-              <>
-                <Section title="Failed" count={failed.length}>
-                  <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                    Clear
-                  </Button>
-                </Section>
-                <div className="flex flex-col gap-2">
-                  {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
-                  ))}
-                </div>
-              </>
-            )}
             {active.length === 0 && <p className="mt-3 px-0.5 text-[12px] text-mute">Nothing downloading</p>}
             {recordings.length > 0 && (
               <>
@@ -398,7 +383,7 @@ export function Popup() {
                 </div>
               </>
             )}
-            {failed.length === 1 && (
+            {failed.length > 0 && (
               <>
                 <Section title="Failed" count={failed.length}>
                   <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">

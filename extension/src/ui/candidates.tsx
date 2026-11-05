@@ -19,7 +19,9 @@ function savedAs(a: Archived): string {
 function postLabel(candidate: Candidate): string {
   const p = candidate.post;
   const from = p?.subreddit ? `r/${p.subreddit}` : p?.author ? `u/${p.author}` : '';
-  return [from, p?.summary].filter(Boolean).join(' · ');
+  // "Gallery, 12 images" loses its count when the frame already shows it.
+  const kind = (p?.assets.length ?? 0) > 1 ? p?.summary?.replace(/, \d+ \w+$/, '') : p?.summary;
+  return [from, kind].filter(Boolean).join(' · ');
 }
 
 /**
@@ -379,13 +381,13 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
       >
         <div className="mx-auto mb-2.5 h-1 w-9 shrink-0 rounded-full bg-edge3" />
         <div className="mb-3 flex items-start gap-3">
-          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : undefined} />
+          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-                {post ? postLabel(candidate).replace(/, \d+ (images|files|videos)$/, '') : hostOf(candidate.url)}
+                {post ? postLabel(candidate) : hostOf(candidate.url)}
               </span>
             </div>
           </div>
