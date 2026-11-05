@@ -35,12 +35,13 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'failed'; label?: string }) {
+function Pill({ n, tone = 'default', label, rec }: { n: number; tone?: 'default' | 'failed'; label?: string; rec?: boolean }) {
   if (!n) return null;
   const cls = { default: 'pill bg-white/[0.08] text-mute', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
   return (
     <span aria-label={label} title={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
       {tone === 'failed' && <IconAlert size={10} className="-ml-px" />}
+      {rec && <span className="pulse mr-0.5 size-1.5 rounded-full bg-live" role="img" aria-label="Recording" />}
       {n}
     </span>
   );
@@ -227,8 +228,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            {recording && <span className="pulse size-1.5 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
-            <Pill n={active.length} />
+            <Pill n={active.length} rec={recording} />
             <Pill n={failed.length} tone="failed" label={`${failed.length} failed`} />
           </>,
           failed.length ? `${failed.length} failed` : undefined,

@@ -26,7 +26,8 @@ function postLabel(candidate: Candidate): string {
  * best quality and the host; before that, the host and the file name, since
  * streams on one page often share a title.
  */
-function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }) {
+/** The quality or size, then the host when it is another site, then the file name before anything is known. */
+function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; rest: string } {
   const file = sourceLabel(candidate.url).split(' · ')[1];
   const lead = fmtHeight(candidate.info?.height) || (candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
@@ -36,12 +37,21 @@ function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }
   const host = hostOf(candidate.url);
   const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
   const rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
+  return { lead, rest };
+}
+
+function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string; rest: string }) {
   return (
     <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
       {lead && <span className="text-[#c3ccd7] tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
+}
+
+/** A status tag shows on the card: live, queued or running, saved, or protected. */
+function tagged(candidate: Candidate, job?: CardJob): boolean {
+  return !!job || !!candidate.live || !!candidate.archived || !!candidate.info?.drm;
 }
 
 /** A job on Downloads for a card: what the card shows instead of its download button. */
@@ -96,6 +106,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
 }
 
 function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
+  const src = sourceParts(candidate, tagged(candidate, job));
   return (
     <>
       <StatusTags candidate={candidate} job={job} />
@@ -104,7 +115,7 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
           {postLabel(candidate)}
         </span>
       ) : (
-        <Source candidate={candidate} tagged={!!job || !!candidate.live || !!candidate.archived || !!candidate.info?.drm} />
+        <Source candidate={candidate} {...src} />
       )}
     </>
   );
@@ -162,7 +173,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       title={title}
       titleTip={title}
       titleTestId="candidate-title"
-      meta={<Meta candidate={candidate} job={job} />}
+      meta={candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? <Meta candidate={candidate} job={job} /> : undefined}
       onOpen={() => onOpen(candidate, job?.id)}
       openTip={
         candidate.archived
