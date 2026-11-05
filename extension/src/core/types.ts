@@ -28,6 +28,8 @@ export interface Archived {
   file: string;
   /** A post saved as several files: how many. */
   files?: number;
+  /** Length in seconds, when history knows it. */
+  secs?: number;
 }
 
 /**

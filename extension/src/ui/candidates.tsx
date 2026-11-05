@@ -4,7 +4,8 @@ import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconCheckCircle, IconChevron, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconCheckCircle, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
+import { postPath } from '../core/reddit';
 
 /** "yesterday at 9:19 PM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
 function savedAs(a: Archived): string {
@@ -54,6 +55,16 @@ function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string;
 /** A status tag shows on the card: live, queued or running, saved, or protected. */
 function tagged(candidate: Candidate, job?: CardJob): boolean {
   return !!job || !!candidate.live || !!candidate.archived || !!candidate.info?.drm;
+}
+
+/** The corner of a post's frame: how many files it holds. */
+function FileCount({ n }: { n: number }) {
+  return (
+    <span className="flex items-center gap-0.5">
+      <IconImages size={9} />
+      {n}
+    </span>
+  );
 }
 
 /** A job on Downloads for a card: what the card shows instead of its download button. */
@@ -147,7 +158,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       ? 'bg-white/[0.05] text-mute ring-white/[0.08] group-hover:bg-white/[0.09] group-hover:text-text'
       : candidate.live
         ? 'bg-live/[0.12] text-live ring-live/25 group-hover:bg-live/[0.22]'
-        : 'bg-shine/[0.1] text-shine ring-shine/25 group-hover:bg-shine/[0.22] group-hover:text-[#7ff0ff] group-hover:ring-shine/50';
+        : 'bg-accent-fill text-shine ring-accent-edge group-hover:bg-[#163845] group-hover:text-[#7ff0ff] group-hover:ring-shine/60';
   return (
     <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150 ${cls}`} aria-hidden="true">
       {blocked ? <IconLock size={16} /> : candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
@@ -164,11 +175,12 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  */
 export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void }) {
   const title = candidate.pageTitle || sourceLabel(candidate.url);
-  const duration = candidate.info?.duration;
+  const duration = candidate.info?.duration ?? candidate.archived?.secs;
+  const files = candidate.post?.assets.length ?? 0;
   return (
     <MediaRow
       attrs={{ 'data-testid': 'candidate', 'data-url': candidate.url, 'data-state': candidate.archived ? 'archived' : job ? 'queued' : 'fresh' }}
-      tile={<MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} corner={duration ? fmtClock(duration) : undefined} />}
+      tile={<MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} corner={duration ? fmtClock(duration) : files > 1 ? <FileCount n={files} /> : undefined} />}
       title={title}
       titleTip={title}
       titleTestId="candidate-title"
@@ -264,24 +276,24 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Variant[] }) {
   const n = variants.length;
   const where = candidate.post?.subreddit ? `Reddit/${candidate.post.subreddit}` : 'Reddit';
+  const folder = candidate.post ? postPath(candidate.post) : where;
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-mute">
-          <IconFolder size={18} />
+    <div className="divide-y divide-edge overflow-hidden rounded-[10px] ring-1 ring-edge ring-inset">
+      <div className="flex h-11 items-center gap-3 px-3 text-[12.5px]" title={folder}>
+        <IconFolder size={16} className="shrink-0 text-mute" />
+        <span className="shrink-0 text-mute">Save to</span>
+        <span className="min-w-0 flex-1 truncate text-right text-text/90" style={{ direction: 'rtl' }}>
+          <bdi>{folder}</bdi>
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold">{n > 1 ? 'Saved together in one folder' : 'Saved as one file'}</div>
-          <div className="truncate text-[11.5px] text-mute">{`${where}, with the post's title, author and date`}</div>
-        </div>
       </div>
       <details className="group/files text-[12px] text-mute">
-        <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-[10px] bg-btn px-3 text-[12.5px] text-text ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover [&::-webkit-details-marker]:hidden">
+        <summary className="flex h-11 cursor-pointer list-none items-center gap-3 px-3 text-[12.5px] text-text transition-colors hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
+          <IconImages size={16} className="shrink-0 text-mute" />
           <span className="flex-1">Files</span>
           <span className="text-mute tabular-nums">{n}</span>
           <IconChevron size={15} className="text-mute transition-transform group-open/files:rotate-90" />
         </summary>
-        <ol className="mt-1 flex flex-col gap-px pb-1" data-testid="post-files">
+        <ol className="flex flex-col gap-px px-1.5 pb-1.5" data-testid="post-files">
           {variants.map((v, i) => (
             <li key={v.id} className="flex h-7 items-center gap-2.5 rounded-md px-1.5 hover:bg-white/[0.03]" title={v.uri}>
               <span className="w-5 shrink-0 text-right text-dim tabular-nums">{i + 1}</span>

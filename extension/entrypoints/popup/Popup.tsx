@@ -46,7 +46,7 @@ function Pill({ n, dot, on }: { n: number; dot?: boolean; on?: boolean }) {
   return (
     <span className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
       {n}
-      {dot && <span className={`pulse absolute -top-0.5 -right-0.5 size-2 rounded-full bg-live ring-2 ${on ? 'ring-panel3' : 'ring-panel'}`} role="img" aria-label="Recording" title="Recording" />}
+      {dot && <span className={`pulse absolute -top-[5px] -right-[5px] size-[7px] rounded-full bg-live ring-[1.5px] ${on ? 'ring-panel3' : 'ring-panel'}`} role="img" aria-label="Recording" title="Recording" />}
     </span>
   );
 }
@@ -215,7 +215,7 @@ export function Popup() {
   return (
     <div data-popup-root className="relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(420px_220px_at_50%_-90px,rgba(34,211,238,.09),transparent_70%)]">
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-shine to-indigo-500 text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-shine to-blue-500 text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
           <Logo />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
@@ -239,7 +239,7 @@ export function Popup() {
           <>
             <Pill n={active.length} dot={recording} on={view === 'jobs'} />
             {failed.length > 0 && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
+              <span className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
                 {failed.length}
               </span>
@@ -298,7 +298,7 @@ export function Popup() {
             {groups.map((g) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
-                  <div className="mt-3 mb-0.5 flex items-center gap-2 px-0.5 text-[11.5px]" title={g.page}>
+                  <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
                     <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase ring-1 ring-edge2 ring-inset">{hostOf(g.page).slice(0, 1)}</span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
@@ -365,8 +365,8 @@ export function Popup() {
                   </Button>
                 </Section>
                 <div className="flex flex-col gap-2">
-                  {failed.map((j, i) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} compact={i > 0} />
+                  {failed.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
                   ))}
                 </div>
               </>

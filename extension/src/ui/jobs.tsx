@@ -110,7 +110,7 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
  * failed one stay one row tall, with their state on the second line, so the
  * running downloads keep the room.
  */
-export function JobRow({ job, thumbs, onRetry, compact }: { job: Job; thumbs: boolean; onRetry?: () => void; compact?: boolean }) {
+export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; onRetry?: () => void }) {
   const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
   const queued = job.state === 'queued';
@@ -148,9 +148,9 @@ export function JobRow({ job, thumbs, onRetry, compact }: { job: Job; thumbs: bo
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Trying again fetches a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'Still on This page, so trying again gets a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page first.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -167,23 +167,9 @@ export function JobRow({ job, thumbs, onRetry, compact }: { job: Job; thumbs: bo
       }
       action={
         failed ? (
-          compact && recover ? (
-            <>
-              {/* A later failure: the way back is the tile, Remove floats in on hover. */}
-              <span className="pointer-events-none absolute top-1/2 right-[52px] -translate-y-1/2 bg-gradient-to-r from-transparent via-panel via-40% to-panel py-1 pl-5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
-                <IconButton label="Remove from the list" className="size-8" onClick={() => api.removeJob(job.id)}>
-                  <IconMinusCircle size={16} />
-                </IconButton>
-              </span>
-              <IconButton label={`${recover.label}: ${recover.hint}`} framed onClick={recover.run} className="text-text">
-                {recover.label === 'Try again' ? <IconRedo size={16} /> : <IconExternal size={16} />}
-              </IconButton>
-            </>
-          ) : (
-            <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
-              <IconMinusCircle size={16} />
-            </IconButton>
-          )
+          <IconButton label="Remove from the list" className="size-9" onClick={() => api.removeJob(job.id)}>
+            <IconMinusCircle size={17} />
+          </IconButton>
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
@@ -198,10 +184,10 @@ export function JobRow({ job, thumbs, onRetry, compact }: { job: Job; thumbs: bo
       }
     >
       {failed ? (
-        recover && !compact && (
+        recover && (
           <div className="-mt-0.5 flex items-center gap-3">
-            <span className="min-w-0 flex-1 truncate text-[12px] text-mute">{recover.hint}</span>
-            <Button tone="default" size="md" onClick={recover.run} title={recover.tip}>
+            <span className="line-clamp-2 min-w-0 flex-1 text-[12px] leading-[1.4] text-pretty text-mute">{recover.hint}</span>
+            <Button tone="accent" size="md" onClick={recover.run} title={recover.tip}>
               {recover.icon}
               {recover.label}
             </Button>
@@ -220,7 +206,7 @@ export function JobRow({ job, thumbs, onRetry, compact }: { job: Job; thumbs: bo
               }}
             >
               <span className="pulse size-2 shrink-0 rounded-full bg-live" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-[12px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} (${fmtBytes(job.bytes)})?`}</span>
+              <span className="min-w-0 flex-1 truncate text-[12px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} · ${fmtBytes(job.bytes)}?`}</span>
               <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>

@@ -25,6 +25,9 @@
   --color-btn: #1a2029;
   --color-btn-edge: #2b3441;
   --color-btn-hover: #222a35;
+  /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
+  --color-accent-fill: #112831;
+  --color-accent-edge: #177384;
 
   --font-sans: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, 'Inter', Roboto, sans-serif;
 }

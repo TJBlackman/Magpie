@@ -1,9 +1,70 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
 import { Empty, IconButton, MediaRow, MediaTile } from './components';
-import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconSearch } from './icons';
+import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
+
+/**
+ * A row's extra actions behind one small button, shown while the row is
+ * hovered or holds keyboard focus. The list opens above the button when the
+ * row sits low in the panel. Escape or a click elsewhere closes it.
+ */
+function RowMenu({ items }: { items: { label: string; hint?: string; icon: ReactNode; run: () => void }[] }) {
+  const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', away);
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  return (
+    <span
+      ref={box}
+      className={`relative ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape' || !open) return;
+        e.stopPropagation();
+        setOpen(false);
+      }}
+    >
+      <IconButton
+        label="More"
+        active={open}
+        className="size-7"
+        onClick={() => {
+          const r = box.current?.getBoundingClientRect();
+          setUp(!!r && r.top > window.innerHeight / 2);
+          setOpen((o) => !o);
+        }}
+      >
+        <IconMore size={16} />
+      </IconButton>
+      {open && (
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-56 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
+          {items.map((it) => (
+            <button
+              key={it.label}
+              type="button"
+              role="menuitem"
+              title={it.hint ? `${it.label}. ${it.hint}` : it.label}
+              onClick={() => {
+                setOpen(false);
+                it.run();
+              }}
+              className="flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-left text-[12.5px] text-text transition-colors hover:bg-btn-hover"
+            >
+              <span className="text-mute">{it.icon}</span>
+              <span className="min-w-0 flex-1 truncate">{it.label}</span>
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** The title with the part that matches the search marked. */
 function highlight(text: string, query: string): ReactNode {
@@ -53,28 +114,13 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       hoverable
       action={
         <>
-          {/* Shown on hover or keyboard focus; they take room only then, so the title ends in an ellipsis, not under a fade. */}
-          <span className="hidden items-center gap-0.5 group-focus-within:flex group-hover:flex">
-            {page && isWebUrl(page) && (
-              <a
-                href={page}
-                target="_blank"
-                rel="noreferrer"
-                aria-label="Open the page it came from"
-                title={`Open the page it came from: ${page}`}
-                className="inline-flex size-7 items-center justify-center rounded-lg text-mute transition-colors hover:bg-btn-hover hover:text-text"
-                onClick={(e) => {
-                  e.preventDefault();
-                  openPage(page);
-                }}
-              >
-                <IconExternal size={15} />
-              </a>
-            )}
-            <IconButton label="Remove from history. The file stays on disk." className="size-7" onClick={() => void api.removeArchive(entry.id)}>
-              <IconMinusCircle size={16} />
-            </IconButton>
-          </span>
+          {/* One "more" button on hover or keyboard focus: 28px, so the title keeps almost all its width. */}
+          <RowMenu
+            items={[
+              ...(page && isWebUrl(page) ? [{ label: 'Open the page it came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
+              { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id) },
+            ]}
+          />
           <IconButton label={folder ? 'Show the folder' : 'Show in folder'} framed onClick={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}>
             <IconFolder size={16} />
           </IconButton>

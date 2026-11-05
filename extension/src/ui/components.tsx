@@ -51,7 +51,7 @@ export function Button({
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
-    accent: 'bg-shine/[0.12] text-[#7ff0ff] ring-1 ring-inset ring-shine/35 hover:bg-shine/20',
+    accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     stop: 'bg-btn text-[#ff9fb1] ring-1 ring-inset ring-live/35 hover:bg-live/15',
     live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
   }[tone];
@@ -162,12 +162,12 @@ export function MediaRow({
   return (
     <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-none">
+        <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2.5 text-left focus-visible:outline-none">
           {body}
           {action}
         </button>
       ) : (
-        <div className="flex items-center gap-3 p-2 pr-2.5">
+        <div className="flex items-center gap-3 p-2.5">
           {body}
           <div className="flex shrink-0 items-center gap-1">{action}</div>
         </div>
@@ -209,7 +209,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
     info: 'bg-sky-400/[0.07] ring-sky-300/20 text-sky-100/90 [&_svg]:text-sky-300',
     warn: 'bg-amber-400/[0.09] ring-amber-300/30 text-amber-100/90 [&_svg]:text-amber-300',
     error: 'bg-rose-500/[0.09] ring-rose-300/25 text-rose-100/90 [&_svg]:text-rose-300',
-    neutral: 'bg-white/[0.04] ring-white/[0.09] text-[#c9d2dd] [&_svg]:text-mute',
+    neutral: 'bg-white/[0.04] ring-transparent text-[#c9d2dd] [&_svg]:text-mute',
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
@@ -251,7 +251,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : `${count} hidden. Click to show ${count === 1 ? 'it' : 'them'}`} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] ring-1 ring-shine/35 ring-inset'}>
+    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : `${count} hidden. Click to show ${count === 1 ? 'it' : 'them'}`} className={shown ? '' : '!bg-accent-fill !text-[#7ff0ff] ring-1 ring-accent-edge ring-inset'}>
       <IconEyeOff size={14} />
       Hide downloaded
     </Button>
@@ -269,7 +269,7 @@ export function Toast({ message, action }: { message: string | null; action?: { 
         </span>
         <span className="min-w-0 flex-1 truncate">{message}</span>
         {action && (
-          <button type="button" onClick={action.onClick} className="h-8 rounded-lg px-3 text-[12.5px] font-semibold text-shine transition-colors hover:bg-shine/10">
+          <button type="button" onClick={action.onClick} className="h-8 rounded-lg bg-[#232d3a] px-3 text-[12.5px] font-semibold text-shine transition-colors hover:bg-shine/10">
             {action.label}
           </button>
         )}

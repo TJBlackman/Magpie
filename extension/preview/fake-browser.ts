@@ -477,7 +477,7 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
       return ok(
         list.map((c) => {
           const e = inHistory(c);
-          return e ? { ...c, archived: { at: e.at, file: e.file, files: e.files }, thumb: c.thumb ?? e.thumb } : c;
+          return e ? { ...c, archived: { at: e.at, file: e.file, files: e.files, secs: e.secs }, thumb: c.thumb ?? e.thumb } : c;
         }),
       );
     }

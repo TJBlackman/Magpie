@@ -337,7 +337,7 @@ export default defineBackground(() => {
           const e = archive.find(c, byTab.get(c.tabId));
           if (!e) return c;
           // A card for media already saved shows the frame its history entry kept, so it needs no capture.
-          return { ...c, archived: { at: e.at, file: e.file, files: e.files }, thumb: c.thumb ?? e.thumb };
+          return { ...c, archived: { at: e.at, file: e.file, files: e.files, secs: e.secs }, thumb: c.thumb ?? e.thumb };
         });
         wantThumbs(shown);
         return ok(shown);

@@ -158,7 +158,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
             </Row>
           </Group>
           <div className="mt-auto flex items-center justify-center gap-2 pt-1 text-[11.5px] text-dim">
-            <span className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-shine to-indigo-500 text-[#06121a]">
+            <span className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-shine to-blue-500 text-[#06121a]">
               <Logo size={13} />
             </span>
             <span>Magpie {browser.runtime.getManifest().version}</span>
