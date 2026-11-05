@@ -45,8 +45,8 @@ function Switch({ id, testId, checked, onChange }: { id: string; testId: string;
   return (
     <span className="relative inline-flex shrink-0">
       <input id={id} data-testid={testId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-      <span className="block h-6 w-10 rounded-full bg-[#334152] ring-1 ring-[#5f6e80] ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-shine" />
-      <span className="pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-4" />
+      <span className="block h-[18px] w-8 rounded-full bg-[#3d4b5d] ring-1 ring-[#5b6b82] ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
+      <span className="pointer-events-none absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-3.5" />
     </span>
   );
 }

@@ -104,7 +104,7 @@ test('quality sheet closes on Escape and on the veil', async ({ magpie }) => {
   const sheet = popup.getByTestId('sheet');
   await expect(sheet.getByTestId('variant')).toHaveCount(3, { timeout: 15_000 });
   // The top rendition is picked by default and the main button names it.
-  await expect(sheet.getByTestId('variant').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheet.getByTestId('variant').first()).toHaveAttribute('aria-checked', 'true');
   await expect(sheet.getByTestId('start')).toHaveText('Download 720p');
   await sheet.getByTestId('variant').nth(2).click();
   await expect(sheet.getByTestId('start')).toHaveText('Download 360p');

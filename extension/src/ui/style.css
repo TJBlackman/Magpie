@@ -21,9 +21,12 @@
   --color-live-solid: #e11d48;
   /* Already downloaded: a caution, the only yellow in the popup. */
   --color-saved: #facc15;
+  /* Errors and failures: one red for text and icons, one for destructive fills. Live keeps its coral. */
+  --color-err: #f87171;
+  --color-err-solid: #dc2626;
   /* The one neutral button surface and its edge. */
   --color-btn: #1a2029;
-  --color-btn-edge: #2b3441;
+  --color-btn-edge: #3a4859;
   --color-btn-hover: #222a35;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;

@@ -235,7 +235,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
     );
   const shell = on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge bg-ink/40 hover:border-edge3 hover:bg-panel2';
   return (
-    <button type="button" data-testid="variant" aria-pressed={on} onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
+    <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
         <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-shine' : 'border-[#66768a]'}`}>
           <span className={`size-2 rounded-full bg-shine transition-transform ${on ? 'scale-100' : 'scale-0'}`} />
@@ -289,8 +289,8 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
       <div className="flex items-center gap-3 px-3 py-2 text-[12.5px]" title={folder}>
         <IconFolder size={16} className="shrink-0 text-mute" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-text/90">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
-          <span className="block truncate text-[11.5px] text-dim">{`Saves to ${folder.slice(0, folder.lastIndexOf('/'))}`}</span>
+          <span className="block truncate text-text/90">{`Saves to ${folder.slice(0, folder.lastIndexOf('/'))}`}</span>
+          <span className="block truncate text-[11.5px] text-dim">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
         </span>
       </div>
       <details className="group/files text-[12px] text-mute">
@@ -425,7 +425,22 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           ))}
           {inspection && post && files > 0 && <PostFiles candidate={candidate} variants={variants} />}
           {inspection && !post && !(candidate.live && single) && (
-            <ul className="flex flex-col gap-2">
+            <ul
+              role="radiogroup"
+              aria-label="Quality"
+              className="flex flex-col gap-2"
+              onKeyDown={(e) => {
+                // Arrow keys move the choice and the focus together, like any radio group.
+                if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+                e.preventDefault();
+                const at = variants.findIndex((v) => v.id === variantId);
+                const next = variants[(at + (e.key === 'ArrowDown' ? 1 : variants.length - 1)) % variants.length];
+                if (!next) return;
+                const list = e.currentTarget;
+                setVariantId(next.id);
+                requestAnimationFrame(() => list.querySelector<HTMLElement>('[aria-checked="true"]')?.focus());
+              }}
+            >
               {variants.map((v) => (
                 <li key={v.id}>
                   <VariantRow variant={v} on={v.id === variantId} single={single} duration={duration} showAudio={!sharedAudio} hideCodecs={codecSet.size === 1} onPick={() => setVariantId(v.id)} />

@@ -129,15 +129,13 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
   const meta = failed ? (
     <span className="flex min-w-0 flex-1 items-center gap-2" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
-      <IconError size={14} className="shrink-0 text-live" />
+      <IconError size={14} className="shrink-0 text-err" />
       <span className="min-w-0 truncate text-[#c9d2dd]">{friendlyError(job.error ?? 'The download stopped.')}</span>
     </span>
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate text-dim">
-      {lead}
-      {rendition && ' · '}
-      <span data-testid="job-status">{statusText(job, pct)}</span>
-      {job.bytesTotal ? ` · ${fmtBytes(job.bytesTotal)}` : ''}
+      <span data-testid="job-status" className="text-[#c3ccd7]">{statusText(job, pct)}</span>
+      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
     <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
@@ -148,7 +146,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'The page is open. Try again for a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'The page is open, so trying again gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
         ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
@@ -167,9 +165,17 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
-            <IconX size={17} />
-          </IconButton>
+          <>
+            {recover && (
+              <Button tone="accent" size="md" onClick={recover.run} title={`${recover.hint} ${recover.tip}`}>
+                {recover.icon}
+                {recover.label}
+              </Button>
+            )}
+            <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
+              <IconX size={17} />
+            </IconButton>
+          </>
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
@@ -184,15 +190,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
     >
       {failed ? (
-        recover && (
-          <div className="-mt-0.5 flex items-center gap-3">
-            <span className="line-clamp-2 min-w-0 flex-1 text-[12px] leading-[1.4] text-pretty text-mute">{recover.hint}</span>
-            <Button tone="accent" size="md" onClick={recover.run} title={recover.tip}>
-              {recover.icon}
-              {recover.label}
-            </Button>
-          </div>
-        )
+        null
       ) : queued ? null : (
         <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}

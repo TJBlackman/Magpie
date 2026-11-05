@@ -53,7 +53,7 @@ export function Button({
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     stop: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover [&_svg]:text-live',
-    destroy: 'bg-[#dc2626] text-white font-semibold hover:bg-[#ef3b3b] active:bg-[#b91c1c]',
+    destroy: 'bg-err-solid text-white font-semibold hover:bg-[#ef3b3b] active:bg-[#b91c1c]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -149,13 +149,13 @@ export function MediaRow({
   children?: ReactNode;
   /** Not one button, but it has actions that show on hover: it lifts like a clickable row. */
   hoverable?: boolean;
-  /** Room for an action that floats over the end of the text: the text always ends 44px early, so it never reflows. */
+  /** Room for an action that floats over the end of the text: while hovered or focused, the text ends 44px early with an ellipsis. */
   reserve?: boolean;
 }) {
   const body = (
     <>
       {tile}
-      <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : ''}`}>
+      <div className={`min-w-0 flex-1 ${reserve ? 'group-focus-within:pr-11 group-hover:pr-11' : ''}`}>
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
@@ -251,14 +251,21 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
   );
 }
 
+/** The one switch look, 32 by 18: the list filter and every setting. */
+export function Toggle({ on }: { on: boolean }) {
+  return (
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#3d4b5d] ring-1 ring-[#5b6b82] ring-inset'}`}>
+      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
+    </span>
+  );
+}
+
 /** Shows or hides media the history already has. Nothing when there is none. */
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="inline-flex shrink-0 items-center gap-2 rounded-lg text-mute transition-colors hover:bg-btn-hover hover:text-text" aria-label={shown ? 'Show downloaded' : `Show downloaded (${count} hidden)`}>
-      <span className={`relative h-3.5 w-6 shrink-0 rounded-full transition-colors ${shown ? 'bg-shine' : 'bg-[#334152] ring-1 ring-[#5f6e80] ring-inset'}`}>
-        <span className={`absolute top-0.5 left-0.5 size-2.5 rounded-full bg-white shadow transition-transform ${shown ? 'translate-x-2.5' : ''}`} />
-      </span>
+    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="!h-8 inline-flex shrink-0 items-center gap-2 rounded-lg !px-2 !text-[12px] !text-dim transition-colors hover:bg-btn-hover hover:!text-text" aria-label={shown ? 'Show downloaded' : `Show downloaded (${count} hidden)`}>
+      <Toggle on={shown} />
       Show downloaded
     </button>
   );
