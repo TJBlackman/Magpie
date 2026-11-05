@@ -26,7 +26,7 @@ async function startRecording(popup: Page, prefix = '/live/', manifest = 'master
   const sheet = await openCandidate(popup, [prefix, manifest]);
   await expect(sheet).toContainText('Starts about 30 seconds back', { timeout: 15_000 });
   const start = sheet.getByTestId('start');
-  await expect(start).toHaveText('Start recording');
+  await expect(start).toHaveText(/^(Start recording|Record \d+p)$/);
   await start.click();
   await view(popup, 'Downloads');
   const job = popup.locator('[data-testid="job"]').first();

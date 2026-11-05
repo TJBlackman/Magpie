@@ -153,6 +153,11 @@ function quickable(candidate: Candidate): boolean {
   return !candidate.archived && !candidate.info?.drm && (candidate.kind !== 'post' || (candidate.post?.assets.length ?? 0) > 0);
 }
 
+/** The first media one click can save, with a frame to show, leads the page in its own card. */
+export function leads(candidate: Candidate, thumbs: boolean, job?: CardJob): boolean {
+  return thumbs && !!candidate.thumb && !job && quickable(candidate);
+}
+
 /** What one click on the arrow does, shown in place of the meta line while the arrow is hovered or focused. */
 function quickText(candidate: Candidate): { what: string; size: string } {
   const files = candidate.post?.assets.length ?? 0;
@@ -175,7 +180,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead && !candidate.live ? 'bg-accent-fill text-[#7ff0ff] ring-accent-edge hover:bg-[#163845] hover:!ring-shine/80 active:bg-shine/20' : `text-fg2 ring-ctl-edge group-hover:text-text group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#7ff0ff] ring-accent-edge hover:bg-[#163845] hover:!ring-shine/80 active:bg-shine/20' : `text-fg2 ring-ctl-edge group-hover:text-text group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -184,7 +189,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
           </span>
         </span>
       ) : (
-        <IconDownload size={17} />
+        <IconDownload size={lead ? 19 : 17} />
       )}
     </button>
   );
@@ -256,10 +261,11 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             ? 'Download every file of this post'
             : 'Choose a quality, or use the arrow to download the best one now';
   // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
-  if (hero && thumbs && candidate.thumb && !job && quickable(candidate))
+  if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent outline-offset-2 outline-text transition-[border-color] duration-150 hover:z-10 hover:border-hover-edge has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
-        <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute -top-6 -left-6 h-[calc(100%+48px)] w-1/2 object-cover opacity-55 mix-blend-screen blur-[28px] saturate-150 [mask-image:linear-gradient(90deg,#000_45%,transparent)]" />
+      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45)] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
+        <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute -inset-10 size-[calc(100%+80px)] max-w-none object-cover opacity-40 mix-blend-screen blur-[44px] saturate-[1.4] [mask-image:linear-gradient(90deg,#000_20%,rgba(0,0,0,.45)_65%,transparent)]" />
+        <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(148,163,184,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
             <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
@@ -290,6 +296,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
       overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
+      inset
     />
   );
 });
@@ -583,7 +590,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             ) : (
               <IconDownload size={17} />
             )}
-            {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
+            {candidate.live ? (short || fmtHeight(candidate.info?.height) ? `Record ${short || fmtHeight(candidate.info?.height)}` : 'Start recording') : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}
       </div>

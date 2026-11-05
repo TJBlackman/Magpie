@@ -1,8 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
-import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, TextButton, Toast, UpdateBanner } from '../../src/ui/components';
-import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidates';
+import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, RowList, Section, TextButton, Toast, UpdateBanner } from '../../src/ui/components';
+import { CandidateCard, leads, QualitySheet, type CardJob } from '../../src/ui/candidates';
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel, Stepper } from '../../src/ui/settings';
@@ -43,6 +43,20 @@ async function resolveScope(): Promise<Scope> {
 }
 
 /** "Show the 9 found on this page": the way from an empty tab to the media found. */
+type Run = { lead?: Candidate; items: Candidate[]; archived?: boolean };
+
+/** A tab's media in runs: the lead card on its own, then rows that share one surface, with a new run where downloaded media start. */
+function listRuns(list: Candidate[], lead: boolean, firstArchived?: string): Run[] {
+  const out: Run[] = [];
+  list.forEach((c, i) => {
+    if (i === 0 && lead) return void out.push({ lead: c, items: [] });
+    const last = out[out.length - 1];
+    if (!last || last.lead || c.id === firstArchived) out.push({ items: [c], archived: c.id === firstArchived });
+    else last.items.push(c);
+  });
+  return out;
+}
+
 function foundLabel(n: number): string {
   return n === 1 ? 'Show the one found on this page' : `Show the ${n} found on this page`;
 }
@@ -358,21 +372,29 @@ export function Popup() {
                     <span className="inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums">{g.list.length}</span>
                   </div>
                 )}
-                {g.list.map((c, ci) => (
-                  <Fragment key={c.id}>
-                    {c.id === firstArchived && (
-                      <div className="mt-3 mb-0.5">
-                        <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
-                      </div>
-                    )}
-                    <CandidateCard candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} hero={gi === 0 && ci === 0} />
-                  </Fragment>
-                ))}
+                {listRuns(g.list, gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
+                  run.lead ? (
+                    <CandidateCard key={run.lead.id} candidate={run.lead} thumbs={thumbs} onOpen={openCard} onQuick={quickStart} hero />
+                  ) : (
+                    <Fragment key={run.items[0]!.id}>
+                      {run.archived && (
+                        <div className="mt-3 mb-0.5">
+                          <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+                        </div>
+                      )}
+                      <RowList>
+                        {run.items.map((c) => (
+                          <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
+                        ))}
+                      </RowList>
+                    </Fragment>
+                  ),
+                )}
               </div>
             ))}
             {!showDownloaded && downloaded > 0 && <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />}
             {scope && !scope.all && (
-              <div className="mt-1 flex justify-center border-t border-edge pt-2">
+              <div className="mt-1 flex justify-end border-t border-edge pt-2">
                 <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#8796a9]">
                   Clear detected media
                 </button>

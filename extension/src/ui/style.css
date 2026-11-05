@@ -21,18 +21,19 @@
   --color-live: #fb5a78;
   --color-live-soft: #ff9fb1;
   /* Already downloaded: a caution, the only yellow in the popup. */
-  --color-saved: #facc15;
+  --color-saved: #f2cc60;
   /* Errors use the same red, by its own name. A filled red button carries dark text at 6.3:1. */
   --color-err: #fb5a78;
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
   --color-btn: #1a2029;
   --color-btn-edge: #64748b;
   /* Buttons: the arrow, More, text actions and neutral buttons. Inputs and steppers keep btn-edge. */
-  --color-ctl-edge: #64748b;
+  --color-ctl-edge: #6e7d93;
   /* Clickable cards on the page and rows in a sheet: 3.1:1 on their background. Hover is a step brighter. */
   --color-card-edge: #526174;
+  --color-row-hover: #263041;
   --color-row-edge: #56657a;
-  --color-hover-edge: #6b7a90;
+  --color-hover-edge: #7d8ba0;
   --color-btn-hover: #222a35;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;
@@ -209,13 +210,13 @@ body {
 
 /* A list that scrolls under a footer fades out instead of being cut mid line. */
 .fade-top {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.4) 0, #000 8px);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, #000 16px);
 }
 .fade-bottom {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
 }
 .fade-both {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.4) 0, #000 8px, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, #000 16px, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
 }
 
 /* Component classes live in a layer, so hover and focus utilities can still change them. */

@@ -260,6 +260,7 @@ export function qualityOfFile(file: string): string {
   return /\[(\d{3,4}p)\]/.exec(file)?.[1] ?? '';
 }
 
+
 /** "wildframe.tv" for "cdn.wildframe.tv", "bbc.co.uk" for "media.bbc.co.uk": the site a host belongs to. */
 export function siteOf(host: string): string {
   const parts = host.replace(/^www\./, '').split('.');

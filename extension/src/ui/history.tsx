@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-2.5 -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[7px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -48,7 +48,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         label="More"
         active={open}
         framed
-        className={open ? 'size-9' : 'size-9 !text-fg2'}
+        className={open ? 'size-8' : 'size-8 !text-fg2'}
         ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
@@ -59,7 +59,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         <IconMore size={20} />
       </IconButton>
       {open && (
-        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-[#232d3c] p-1 shadow-[0_14px_36px_rgba(0,0,0,.6)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
           {items.map((it, i) => (
             <button
               key={it.label}
@@ -136,6 +136,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           <IconFolder size={16} />
         </span>
       }
+      inset
       overlay={
         <RowMenu
           items={[
@@ -165,7 +166,7 @@ export const HistoryList = memo(function HistoryList({ entries, total, query, th
       </Empty>
     );
   return (
-    <div className="flex flex-col gap-2" data-testid="archive">
+    <div className="card-surface flex flex-col rounded-[16px] p-1.5" data-testid="archive">
       {entries.map((e) => (
         <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} />
       ))}

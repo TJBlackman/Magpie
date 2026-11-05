@@ -77,7 +77,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
             ? 'text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? '!rounded-full size-9 ring-1 ring-ctl-edge ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? '!rounded-full ring-1 ring-ctl-edge ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -133,7 +133,10 @@ function fitLength(text: string, width: number, style: CSSStyleDeclaration): num
     if (measure.measureText(`${trim(text.slice(0, mid))}…`).width <= width) lo = mid;
     else hi = mid - 1;
   }
-  return trim(text.slice(0, lo)).length;
+  // A cut that would leave a stub of three letters or fewer ("Platte R…") steps back to the word before.
+  const inWord = /[\p{L}\p{N}]/u.test(text[lo] ?? '') && /[\p{L}\p{N}]/u.test(text[lo - 1] ?? '');
+  const space = inWord ? text.lastIndexOf(' ', lo) : -1;
+  return trim(text.slice(0, space > 0 && lo - space <= 4 ? space : lo)).length;
 }
 
 /**
@@ -183,6 +186,7 @@ export function MediaRow({
   hoverable,
   reserve,
   overlay,
+  inset,
 }: {
   tile: ReactNode;
   title: ReactNode;
@@ -202,6 +206,8 @@ export function MediaRow({
   reserve?: boolean;
   /** A control drawn over the row, outside its button. */
   overlay?: ReactNode;
+  /** One row of a list that shares one raised surface (RowList): no surface of its own, a soft fill on hover. */
+  inset?: boolean;
 }) {
   const body = (
     <>
@@ -214,21 +220,34 @@ export function MediaRow({
       </div>
     </>
   );
+  const root = inset
+    ? `group relative rounded-[12px] outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
+    : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
+  const pad = inset ? 'px-[5px] py-2' : 'px-2.5 py-2.5';
   return (
-    <div {...attrs} className={`card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`}>
+    <div {...attrs} className={root}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-2.5 py-2.5 text-left focus-visible:outline-none">
+        <button type="button" onClick={onOpen} title={openTip} className={`row-main flex w-full cursor-pointer items-center gap-3 text-left focus-visible:outline-none ${inset ? 'rounded-[12px]' : 'rounded-[14px]'} ${pad}`}>
           {body}
           {action}
         </button>
       ) : (
-        <div className="flex items-center gap-3 px-2.5 py-2.5">
+        <div className={`flex items-center gap-3 ${pad}`}>
           {body}
           <div className="flex shrink-0 items-center gap-1">{action}</div>
         </div>
       )}
       {overlay}
-      {children && <div className="px-2.5 pb-2.5">{children}</div>}
+      {children && <div className={inset ? 'px-[5px] pb-2' : 'px-2.5 pb-2.5'}>{children}</div>}
+    </div>
+  );
+}
+
+/** Rows that share one raised surface, each lighting up on hover: This page and History. */
+export function RowList({ children, testId }: { children: ReactNode; testId?: string }) {
+  return (
+    <div data-testid={testId} className="card-surface flex flex-col rounded-[16px] p-1.5">
+      {children}
     </div>
   );
 }
@@ -250,7 +269,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[linear-gradient(140deg,rgba(34,211,238,.16),rgba(129,140,248,.14))] text-[#7ff0ff] ring-1 ring-accent-edge ring-inset">{icon}</div>
+      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[linear-gradient(140deg,rgba(34,211,238,.13),rgba(129,140,248,.11))] text-[#7ff0ff]" aria-hidden="true">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -338,8 +357,8 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, detail, actions = [], live }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
   if (!message) return null;
   return (
-    <div role="status" className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),rgba(9,12,17,.92)_40%)] px-3.5 pt-6 pb-3">
-      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
+    <div role="status" className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),#090c11_22px)] px-3.5 pt-6 pb-3">
+      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#123e4a] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>

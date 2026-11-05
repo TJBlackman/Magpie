@@ -282,7 +282,7 @@ function infoFor(c: Candidate): MediaInfo {
   if (c.kind === 'file') return { height: 1080 };
   const variants = variantsFor(c);
   // A single playlist states no resolution; the capture reads it from the decoded frame.
-  const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0))) || (c.url.endsWith('playlist.m3u8') ? 1080 : 0);
+  const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0))) || (c.url.endsWith('playlist.m3u8') || c.live ? 1080 : 0);
   const duration = c.live ? undefined : c.url.endsWith('playlist.m3u8') ? 612 : 180 + (hash(c.id) % 2400);
   const bitrate = variants[0]?.bandwidth;
   const qualities = variants.filter((v) => v.resolution).length;
