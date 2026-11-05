@@ -45,7 +45,7 @@ function Switch({ id, testId, checked, onChange }: { id: string; testId: string;
   return (
     <span className="relative -m-2 inline-flex shrink-0 p-2">
       <input id={id} data-testid={testId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-      <span className="block h-[18px] w-8 rounded-full bg-[#64748b] transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
+      <span className="block h-[18px] w-8 rounded-full bg-[#6e737a] transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
       <span className="pointer-events-none absolute top-[11px] left-[11px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(5,42,49,.55),0_1px_2px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-3.5" />
     </span>
   );
@@ -171,7 +171,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
             </Row>
           </Group>
           <div className="mt-auto flex items-center justify-center gap-2 pt-1 text-[11.5px] text-dim">
-            <span className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-[#67e8f9] to-shine text-[#06121a]">
+            <span className="flex size-5 items-center justify-center rounded-md bg-gradient-to-br from-[#67e8f9] to-shine text-[#0e1113]">
               <Logo size={13} />
             </span>
             <span>Magpie {browser.runtime.getManifest().version}</span>

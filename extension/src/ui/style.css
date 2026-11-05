@@ -2,18 +2,18 @@
 
 @theme {
   /* Surfaces, darkest to lightest. */
-  --color-ink: #090c11;
-  --color-panel: #10151c;
-  --color-panel2: #161d26;
-  --color-panel3: #1c2531;
-  --color-edge: #1d2632;
-  --color-edge2: #2b3747;
-  --color-edge3: #3a4859;
+  --color-ink: #0b0c0d;
+  --color-panel: #131517;
+  --color-panel2: #1b1d1f;
+  --color-panel3: #222528;
+  --color-edge: #232629;
+  --color-edge2: #33363b;
+  --color-edge3: #43474c;
   /* Text. `dim` is the faintest text that still passes WCAG AA on every surface. */
-  --color-text: #e9eef4;
-  --color-fg2: #c3ccd7;
-  --color-mute: #9aa7b7;
-  --color-dim: #7d8a9b;
+  --color-text: #eceeef;
+  --color-fg2: #c9cbcf;
+  --color-mute: #a2a6ab;
+  --color-dim: #85898e;
   /* Accent and its ink, for text on a solid accent. */
   --color-shine: #22d3ee;
   --color-shine-ink: #052a31;
@@ -25,16 +25,16 @@
   /* Errors use the same red, by its own name. A filled red button carries dark text at 6.3:1. */
   --color-err: #fb5a78;
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
-  --color-btn: #1a2029;
-  --color-btn-edge: #6e7d93;
+  --color-btn: #282b2e;
+  --color-btn-edge: #787c83;
   /* Buttons: the arrow, More, text actions and neutral buttons. Inputs and steppers keep btn-edge. */
-  --color-ctl-edge: #6e7d93;
+  --color-ctl-edge: #787c83;
   /* Clickable cards on the page and rows in a sheet: 3.1:1 on their background. Hover is a step brighter. */
-  --color-card-edge: #526174;
-  --color-row-hover: #263041;
-  --color-row-edge: #56657a;
-  --color-hover-edge: #7d8ba0;
-  --color-btn-hover: #222a35;
+  --color-card-edge: #5c6066;
+  --color-row-hover: #2d3035;
+  --color-row-edge: #60646b;
+  --color-hover-edge: #868a91;
+  --color-btn-hover: #323539;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;
   --color-accent-edge: #1c9db3;
@@ -217,7 +217,6 @@ body {
   transform-origin: left;
   animation-name: drain;
   animation-timing-function: linear;
-  animation-fill-mode: forwards;
 }
 @media (prefers-reduced-motion: reduce) {
   .toast-drain { display: none; }
@@ -244,7 +243,7 @@ body {
 
 /* A raised card: a soft vertical light, a hairline of top light, a shadow under it. */
 .card-surface {
-  background-image: linear-gradient(180deg, #1a2230 0%, #131922 100%);
+  background-image: linear-gradient(180deg, #202226 0%, #17191b 100%);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.5), 0 6px 18px rgb(0 0 0 / 0.22);
 }
 }

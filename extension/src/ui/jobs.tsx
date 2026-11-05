@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-[linear-gradient(90deg,#22d3ee,#60a5fa_65%,#818cf8)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-0.5 h-1.5 rounded-full bg-[#3b475a]">
+    <div className="mt-0.5 h-1.5 rounded-full bg-[#43474c]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -220,7 +220,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               }}
             >
               <p className="text-[12.5px] font-medium text-text">Discard this recording?</p>
-              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes the ${fmtClock(job.duration ?? 0)} (${fmtBytes(job.bytes)}) recorded so far. Nothing is saved.`}</p>
+              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes ${fmtClock(job.duration ?? 0)} of recording, ${fmtBytes(job.bytes)}. Nothing is saved.`}</p>
               <div className="mt-2.5 flex justify-end gap-2">
                 <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                   Keep recording

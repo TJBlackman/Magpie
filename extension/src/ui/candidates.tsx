@@ -43,8 +43,7 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // The count of qualities tells that the card opens a choice; the arrow takes the best.
   const choice = candidate.info?.qualities && !candidate.archived ? `${candidate.info.qualities} qualities` : '';
-  const unknownSize = fmtHeight(candidate.info?.height) && !size && !candidate.live && candidate.kind !== 'post' ? 'size unknown' : '';
-  const lead = [fmtHeight(candidate.info?.height), size || unknownSize, choice].filter(Boolean).join(' · ');
+  const lead = [fmtHeight(candidate.info?.height), size, choice].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
@@ -183,7 +182,9 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#7ff0ff] ring-accent-edge hover:bg-[#164b58] hover:!ring-shine active:bg-shine/20' : `text-fg2 ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
-        <span className="size-3 rounded-full bg-live" />
+        <span className="flex size-4 items-center justify-center rounded-full ring-[1.5px] ring-current">
+          <span className="size-1.5 rounded-full bg-live" />
+        </span>
       ) : (
         <IconDownload size={lead ? 19 : 17} />
       )}
@@ -259,9 +260,9 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
   if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#1b2433,#141a24)_padding-box,linear-gradient(125deg,rgba(34,211,238,.6),rgba(96,165,250,.22)_45%,rgba(129,140,248,.5))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45)] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
+      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(34,211,238,.6),rgba(96,165,250,.22)_45%,rgba(129,140,248,.5))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45),0_6px_22px_rgba(34,211,238,.13)] hover:[background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(34,211,238,.9),rgba(96,165,250,.35)_45%,rgba(129,140,248,.75))_border-box] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(34,211,238,.16),transparent_52%),radial-gradient(110%_130%_at_100%_100%,rgba(129,140,248,.15),transparent_55%)]" />
-        <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(148,163,184,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
+        <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
             <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
@@ -319,11 +320,11 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'bg-sel-fill shadow-[inset_0_0_0_1px_var(--color-sel-edge)]' : 'hover:bg-panel2';
+  const shell = on ? 'bg-sel-fill' : 'hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-10 w-full items-center gap-3 rounded-[7px] px-2 py-1 text-left transition-colors ${shell}`}>
       {!single && (
-        <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-shine' : 'border-[#66768a]'}`}>
+        <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-shine' : 'border-[#70757b]'}`}>
           <span className={`size-2 rounded-full bg-shine transition-transform ${on ? 'scale-100' : 'scale-0'}`} />
         </span>
       )}
@@ -388,7 +389,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-ctl-edge ring-inset transition-colors hover:ring-hover-edge">
+    <div className="rounded-[10px] bg-[#181a1c] ring-1 ring-ctl-edge ring-inset transition-colors hover:ring-hover-edge">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
@@ -482,7 +483,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
 
   return (
     <>
-      <div className="veil-in absolute inset-0 z-10 bg-[#03050a]/70 backdrop-blur-[3px]" onClick={onClose} data-testid="veil" />
+      <div className="veil-in absolute inset-0 z-10 bg-[#040506]/70 backdrop-blur-[3px]" onClick={onClose} data-testid="veil" />
       <div
         role="dialog"
         aria-modal="true"
@@ -535,7 +536,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <ul
               role="radiogroup"
               aria-label="Quality"
-              className="flex flex-col gap-0.5 rounded-[12px] bg-[#141a22] p-1.5 ring-1 ring-ctl-edge ring-inset"
+              className="flex flex-col gap-0.5 rounded-[12px] bg-[#181a1c] p-1.5 ring-1 ring-ctl-edge ring-inset"
               onKeyDown={(e) => {
                 // Arrow keys move the choice and the focus together, like any radio group.
                 if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;

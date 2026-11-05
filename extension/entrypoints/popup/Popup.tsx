@@ -64,9 +64,9 @@ function foundLabel(n: number): string {
 /** A tab's count, tinted on the selected tab, and a failure chip beside it: an alert mark and the number, announced as "n failed". */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
-    <>
+    <span className="inline-flex items-center gap-1">
       {n > 0 && (
-        <span className="pill relative inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+        <span className="pill relative inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25282b] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
           {n}
         </span>
       )}
@@ -77,7 +77,7 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
           {failed}
         </span>
       )}
-    </>
+    </span>
   );
 }
 
@@ -106,7 +106,7 @@ function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
   useEffect(measure, [shown, measure]);
   const fade = edges.top && edges.bottom ? 'fade-both' : edges.top ? 'fade-top' : edges.bottom ? 'fade-bottom' : '';
   return (
-    <div hidden={!shown} className={`min-h-0 flex-1 border-t transition-colors ${edges.top ? 'border-edge' : 'border-transparent'}`}>
+    <div hidden={!shown} className="min-h-0 flex-1">
       <div ref={scroller} onScroll={measure} className={`h-full overflow-y-auto px-3.5 pb-[calc(16px+var(--toast-pad))] scroll-thin ${fade}`}>
         <div className="flex min-h-full flex-col">{children}</div>
       </div>
@@ -267,7 +267,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45),-6px_0_18px_rgba(34,211,238,.12),6px_0_18px_rgba(129,140,248,.12)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -287,7 +287,7 @@ export function Popup() {
   return (
     <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(34,211,238,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(99,102,241,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#67e8f9] to-shine text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#67e8f9] to-shine text-[#0e1113] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)]">
           <Logo />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
@@ -375,7 +375,7 @@ export function Popup() {
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
                     </span>
-                    <span className="inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums">{g.list.length}</span>
+                    <span className="inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25282b] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums">{g.list.length}</span>
                   </div>
                 )}
                 {listRuns(g.list, gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
@@ -401,7 +401,7 @@ export function Popup() {
             {!showDownloaded && downloaded > 0 && <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />}
             {scope && !scope.all && (
               <div className="mt-1 flex justify-end border-t border-edge pt-2">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#8796a9]">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
                   Clear detected media
                 </button>
               </div>

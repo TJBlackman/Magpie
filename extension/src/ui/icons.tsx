@@ -268,6 +268,6 @@ export const IconMore = (p: IconProps) => (
 export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
     <path d="M4 18c2-6 5-10 9-12 1.5-.8 3.5-.6 4.6.8L21 10l-3.4.4c-1.6.2-2.8 1.2-3.6 2.6L11 20l-2-3-5 1z" fill="currentColor" />
-    <circle cx="16.4" cy="8.4" r=".9" fill="#0b0f14" />
+    <circle cx="16.4" cy="8.4" r=".9" fill="#0e0f10" />
   </svg>
 );

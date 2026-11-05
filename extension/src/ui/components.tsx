@@ -8,7 +8,7 @@ export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'po
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-[#1a2230] text-mute ring-white/[0.06]',
+    default: 'bg-[#202226] text-mute ring-white/[0.06]',
     shine: 'bg-shine/10 text-[#7ff0ff] ring-shine/25',
     // Already downloaded: the one yellow, tinted like LIVE is tinted red.
     saved: 'bg-[#2a2618] text-[#f2cc60]',
@@ -47,7 +47,7 @@ export function Button({
   autoFocus?: boolean;
 }) {
   const cls = {
-    default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#8796a9] active:bg-btn',
+    default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
     shine: 'bg-[linear-gradient(105deg,#4be3f6_0%,#38bdf8_55%,#818cf8_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#67e8f9_0%,#56c8fa_55%,#939cfa_100%)] active:bg-[linear-gradient(105deg,#22d3ee_0%,#2aaef0_55%,#6f7cf3_100%)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
@@ -70,14 +70,14 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
     tone === 'live'
       ? 'text-live hover:bg-live/10'
       : tone === 'danger'
-        ? 'text-mute hover:bg-[#1f2834] hover:text-live-soft'
+        ? 'text-mute hover:bg-[#25282b] hover:text-live-soft'
         : active
           ? '!bg-sel-fill text-shine ring-1 !ring-sel-edge ring-inset'
           : framed
             ? 'text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? '!rounded-full ring-1 ring-ctl-edge ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? '!rounded-full ring-1 ring-ctl-edge ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:!bg-[#282b2e] hover:!ring-[#90959b]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -222,7 +222,7 @@ export function MediaRow({
   );
   const root = inset
     ? `group relative rounded-[12px] outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
-    : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#1c2532,#17202b)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
+    : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
   const pad = inset ? 'px-[5px] py-2' : 'px-2.5 py-2.5';
   return (
     <div {...attrs} className={root}>
@@ -288,7 +288,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
-    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#141a22] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ${cls}`}>
+    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#181a1c] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
       <div className="min-w-0 text-pretty">
         {title && <div className="mb-0.5 font-semibold text-text">{title}</div>}
@@ -301,7 +301,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-live/10 text-live-soft ring-live/45' : 'bg-btn text-text ring-ctl-edge hover:bg-btn-hover hover:ring-[#8796a9]'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-live/10 text-live-soft ring-live/45' : 'bg-btn text-text ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b]'}`}>
       {children}
     </button>
   );
@@ -334,7 +334,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 /** The one switch look, 32 by 18: the list filter and every setting. */
 export function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#64748b]'}`}>
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#6e737a]'}`}>
       <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(5,42,49,.55),0_1px_2px_rgba(0,0,0,.4)] transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
@@ -346,7 +346,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#8796a9]">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -357,7 +357,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, detail, actions = [], live, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
   if (!message) return null;
   return (
-    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),#090c11_22px)] px-3.5 pt-6 pb-3">
+    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#090c11_22px)] px-3.5 pt-6 pb-3">
       <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#123e4a] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
@@ -367,12 +367,12 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn-hover hover:ring-[#8796a9]'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn-hover hover:ring-[#90959b]'}`}>
             {a.label}
           </button>
         ))}
         {/* How long the toast stays: a line that drains, and waits while the pointer or focus is on the toast. */}
-        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#22d3ee,#818cf8)] opacity-70" style={{ animationDuration: `${duration}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
+        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#22d3ee,#818cf8)] opacity-70" style={{ animationDuration: `${duration + 250}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
       </div>
     </div>
   );
@@ -381,7 +381,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
 /** A line under the header when the website has a newer Magpie. Update opens the download page; X hides it until the next version. */
 export function UpdateBanner({ version, onGet, onDismiss }: { version: string; onGet: () => void; onDismiss: () => void }) {
   return (
-    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-[#141a22] pr-1.5 pl-3 text-[12.5px]">
+    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-[#181a1c] pr-1.5 pl-3 text-[12.5px]">
       <IconUpdate size={16} className="shrink-0 text-shine" />
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out

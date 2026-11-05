@@ -59,7 +59,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         <IconMore size={20} />
       </IconButton>
       {open && (
-        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-[#232d3c] p-1 shadow-[0_8px_20px_rgba(0,0,0,.45)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-[#2a2d31] p-1 shadow-[0_8px_20px_rgba(0,0,0,.45)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
           {items.map((it, i) => (
             <button
               key={it.label}
