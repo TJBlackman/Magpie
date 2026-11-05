@@ -96,7 +96,7 @@ function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live'
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
-        <div className={`h-full rounded-full transition-[width] duration-300 ${color} ${moving ? 'bar-sheen' : ''}`} style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%` }} />
+        <div className={`h-full rounded-full transition-[width] duration-300 ${color} ${moving ? 'bar-sheen' : ''}`} style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%`, backgroundSize: `${100 / Math.max(pct, 0.02)}% 100%` }} />
       )}
     </div>
   );

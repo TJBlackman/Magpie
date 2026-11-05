@@ -264,6 +264,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(157,130,240,.2),transparent_60%)]" />
         <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
+          <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="ambient pointer-events-none absolute top-[calc(50%-46px)] left-0 h-[92px] w-[150px] max-w-none rounded-2xl object-cover opacity-50 blur-[14px] saturate-150" />
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
             <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
             {(duration || files > 1) && (

@@ -115,13 +115,38 @@ function reflect(ctx: Ctx, horizon: number, tint: string): void {
   ctx.save();
   ctx.translate(0, horizon * 2);
   ctx.scale(1, -1);
-  ctx.globalAlpha = 0.55;
+  ctx.globalAlpha = 0.6;
+  ctx.filter = 'blur(1.5px)';
   ctx.drawImage(copy, 0, 0, W, horizon, 0, 0, W, horizon);
   ctx.restore();
   ctx.fillStyle = tint;
   ctx.fillRect(0, horizon, W, H - horizon);
-  ctx.fillStyle = 'rgba(255,255,255,0.10)';
-  for (let y = horizon + 3; y < H; y += 4) ctx.fillRect(0, y, W, 0.6);
+  // A few soft glints instead of hard ripple lines.
+  ctx.save();
+  ctx.filter = 'blur(1px)';
+  ctx.fillStyle = 'rgba(255,236,210,0.22)';
+  for (let i = 0; i < 9; i++) ctx.fillRect(40 + ((i * 53) % 170), horizon + 6 + ((i * 17) % (H - horizon - 10)), 18 + ((i * 7) % 20), 1.2);
+  ctx.restore();
+}
+
+/** A walking elephant in silhouette, `s` tall at the shoulder, facing left. */
+function elephant(ctx: Ctx, x: number, y: number, s: number): void {
+  ctx.beginPath();
+  ctx.ellipse(x, y - s * 0.62, s * 0.62, s * 0.38, 0, 0, Math.PI * 2);
+  ctx.ellipse(x - s * 0.62, y - s * 0.72, s * 0.24, s * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(x - s * 0.86, y - s * 0.68, s * 0.1, s * 0.62);
+  for (const dx of [-0.42, -0.2, 0.2, 0.42]) ctx.fillRect(x + dx * s - s * 0.07, y - s * 0.4, s * 0.14, s * 0.4);
+}
+
+/** A crane or other long winged bird in flight, a shallow V. */
+function bird(ctx: Ctx, x: number, y: number, s: number): void {
+  ctx.beginPath();
+  ctx.moveTo(x - s, y - s * 0.35);
+  ctx.quadraticCurveTo(x - s * 0.4, y - s * 0.1, x, y);
+  ctx.quadraticCurveTo(x + s * 0.4, y - s * 0.1, x + s, y - s * 0.35);
+  ctx.lineWidth = Math.max(1, s * 0.18);
+  ctx.stroke();
 }
 
 /** Film grain and a soft vignette, the two things that make flat shapes read as footage. */
@@ -143,6 +168,196 @@ function finish(ctx: Ctx, rand: Rand): void {
 }
 
 const scenes: { match: RegExp; paint: (ctx: Ctx, r: Rand, title: string) => void }[] = [
+  { match: /alpine|lake/i, paint: (ctx, r) => dawn(ctx, r) },
+  {
+    match: /dolomites|peaks/i,
+    paint: (ctx, r) => {
+      // Alpenglow: pale limestone spires lit rose, blue shadow, a green meadow.
+      sky(ctx, [[0, '#3b4f86'], [0.55, '#9db2da'], [1, '#e9d6dc']]);
+      ctx.fillStyle = vertical(ctx, 20, 100, '#f2b8a8', '#a7879c');
+      ctx.beginPath();
+      ctx.moveTo(0, 104);
+      let x = 0;
+      while (x < W) {
+        const w = 26 + r() * 40;
+        ctx.lineTo(x + w * 0.35, 40 + r() * 20);
+        ctx.lineTo(x + w * 0.5, 18 + r() * 30);
+        ctx.lineTo(x + w * 0.62, 34 + r() * 20);
+        ctx.lineTo(x + w, 74 + r() * 18);
+        x += w;
+      }
+      ctx.lineTo(W, 104);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(60,70,120,0.35)';
+      ctx.fillRect(0, 80, W, 30);
+      ridge(ctx, r, 116, 12, vertical(ctx, 100, H, '#6f9a52', '#3e6634'), 0.08);
+      pines(ctx, r, 132, 10, 10, 20, '#24402a');
+    },
+  },
+  {
+    match: /crane|platte|river/i,
+    paint: (ctx, r) => {
+      sky(ctx, [[0, '#4b5a8c'], [0.5, '#e7a27a'], [0.8, '#f6cf8f'], [1, '#fbe3b5']], 96);
+      glow(ctx, 160, 92, 56, 'rgba(255,226,160,0.9)');
+      ctx.fillStyle = '#4a3b3e';
+      ctx.fillRect(0, 94, W, 4);
+      reflect(ctx, 96, 'rgba(60,40,50,0.25)');
+      ctx.strokeStyle = '#2a2230';
+      for (let i = 0; i < 9; i++) bird(ctx, 40 + i * 12 + r() * 6, 26 + Math.abs(i - 4) * 5 + r() * 3, 4 + r() * 1.5);
+      ctx.fillStyle = '#2a2420';
+      for (let i = 0; i < 60; i++) ctx.fillRect(r() * W, 126 + r() * 18, 1, 6 + r() * 10);
+    },
+  },
+  {
+    match: /elephant|waterhole|etosha/i,
+    paint: (ctx, r) => {
+      sky(ctx, [[0, '#6d5a86'], [0.5, '#d98e86'], [1, '#f2c49b']], 100);
+      glow(ctx, 60, 96, 46, 'rgba(255,214,170,0.75)');
+      ctx.fillStyle = '#8a6a55';
+      ctx.fillRect(0, 98, W, H - 98);
+      ctx.fillStyle = vertical(ctx, 108, 132, '#e5a993', '#b98a86');
+      ctx.beginPath();
+      ctx.ellipse(128, 120, 96, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2b1f1f';
+      elephant(ctx, 150, 112, 26);
+      elephant(ctx, 186, 110, 20);
+      elephant(ctx, 94, 112, 16);
+    },
+  },
+  {
+    match: /leopard|hemis/i,
+    paint: (ctx, r) => {
+      // Cold crags at dusk: steep grey rock streaked with snow.
+      sky(ctx, [[0, '#2c3a57'], [1, '#93a6c2']]);
+      ctx.fillStyle = vertical(ctx, 20, H, '#c9d4e2', '#5c6a80');
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      ctx.lineTo(0, 70);
+      ctx.lineTo(54, 28);
+      ctx.lineTo(80, 52);
+      ctx.lineTo(126, 18);
+      ctx.lineTo(168, 60);
+      ctx.lineTo(206, 40);
+      ctx.lineTo(W, 74);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(40,52,74,0.45)';
+      for (const [x0, y0] of [[54, 28], [126, 18], [206, 40]] as const) {
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x0 + 26, y0 + 70);
+        ctx.lineTo(x0 + 6, y0 + 70);
+        ctx.closePath();
+        ctx.fill();
+      }
+      haze(ctx, r, 96, 'rgba(230,238,248,0.5)', 5, 10);
+      ridge(ctx, r, 132, 10, vertical(ctx, 120, H, '#eef3f8', '#c3cfdb'), 0.05);
+    },
+  },
+  {
+    match: /redwood|canopy/i,
+    paint: (ctx, r) => {
+      // Looking up a redwood grove: tall trunks, green crowns, shafts of light.
+      sky(ctx, [[0, '#cfe0c8'], [1, '#6b8a5c']]);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.filter = 'blur(4px)';
+      ctx.fillStyle = 'rgba(255,245,200,0.18)';
+      for (let i = 0; i < 4; i++) {
+        const x = 40 + i * 50;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 18, 0);
+        ctx.lineTo(x + 60, H);
+        ctx.lineTo(x + 30, H);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+      for (const [depth, alpha] of [[0.5, 0.45], [1, 1]] as const) {
+        for (let i = 0; i < 5; i++) {
+          const x = r() * W;
+          const w = (6 + r() * 14) * depth + 3;
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = vertical(ctx, 0, H, '#4a271c', '#8a4a32');
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x + w * 0.8, 0);
+          ctx.lineTo(x + w, H);
+          ctx.lineTo(x - w * 0.2, H);
+          ctx.closePath();
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255,200,160,0.2)';
+          ctx.fillRect(x + w * 0.55, 0, w * 0.18, H);
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.save();
+      ctx.filter = 'blur(3px)';
+      ctx.fillStyle = 'rgba(30,60,32,0.85)';
+      for (let i = 0; i < 9; i++) {
+        ctx.beginPath();
+        ctx.ellipse(r() * W, r() * 22, 30 + r() * 30, 12 + r() * 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+      haze(ctx, r, 120, 'rgba(230,240,225,0.55)', 6, 16);
+      ctx.fillStyle = '#2f5a2a';
+      for (let i = 0; i < 30; i++) {
+        ctx.beginPath();
+        ctx.ellipse(r() * W, H - r() * 10, 8 + r() * 8, 3, (r() - 0.5) * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+  },
+  {
+    match: /plains|thunderstorm/i,
+    paint: (ctx, r) => {
+      // A supercell over green prairie, light breaking under the cloud.
+      sky(ctx, [[0, '#2a3340'], [0.55, '#5d6b7a'], [0.7, '#e8c98f'], [1, '#c9b57e']], 100);
+      ctx.save();
+      ctx.filter = 'blur(6px)';
+      ctx.fillStyle = 'rgba(30,36,46,0.9)';
+      ctx.beginPath();
+      ctx.ellipse(128, 34, 130, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(70,80,96,0.8)';
+      ctx.beginPath();
+      ctx.ellipse(150, 60, 70, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.filter = 'blur(3px)';
+      ctx.fillStyle = 'rgba(120,130,150,0.45)';
+      for (let i = 0; i < 12; i++) ctx.fillRect(170 + i * 5, 62, 2, 40);
+      ctx.restore();
+      ctx.fillStyle = vertical(ctx, 100, H, '#7f9a4a', '#46602a');
+      ctx.fillRect(0, 100, W, H - 100);
+      ctx.fillStyle = 'rgba(255,240,190,0.25)';
+      ctx.fillRect(0, 100, W, 3);
+    },
+  },
+  {
+    match: /butterfly|monarch/i,
+    paint: (ctx, r) => {
+      // Fir forest in morning light, thick with monarchs.
+      sky(ctx, [[0, '#2d3d2a'], [1, '#6a7d3e']]);
+      glow(ctx, 170, 30, 80, 'rgba(255,220,140,0.45)');
+      pines(ctx, r, 144, 18, 50, 110, 'rgba(20,30,18,0.85)');
+      for (let i = 0; i < 90; i++) {
+        ctx.fillStyle = r() < 0.5 ? '#f39a2e' : '#e4661a';
+        const x = r() * W;
+        const y = r() * H;
+        ctx.beginPath();
+        ctx.ellipse(x - 1.6, y, 2.2, 1.3, 0.6, 0, Math.PI * 2);
+        ctx.ellipse(x + 1.6, y, 2.2, 1.3, -0.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+  },
   {
     match: /aurora|northern lights/i,
     paint: (ctx, r) => {
@@ -220,14 +435,22 @@ const scenes: { match: RegExp; paint: (ctx: Ctx, r: Rand, title: string) => void
       // A breaching whale: a dark arc and a splash.
       ctx.fillStyle = '#16232e';
       ctx.beginPath();
-      ctx.ellipse(150, 82, 34, 13, -0.5, Math.PI * 0.95, Math.PI * 2.05);
+      ctx.ellipse(86, 70, 46, 17, -0.75, Math.PI * 0.95, Math.PI * 2.05);
+      ctx.fill();
+      // Pectoral fin and the white throat grooves catching light.
+      ctx.beginPath();
+      ctx.ellipse(70, 62, 16, 4, -1.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(220,230,240,0.55)';
+      ctx.beginPath();
+      ctx.ellipse(98, 58, 18, 4, -0.75, 0, Math.PI);
       ctx.fill();
       ctx.save();
       ctx.filter = 'blur(2px)';
-      ctx.fillStyle = 'rgba(255,255,255,0.8)';
-      for (let i = 0; i < 18; i++) {
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      for (let i = 0; i < 26; i++) {
         ctx.beginPath();
-        ctx.arc(120 + r() * 70, 78 + r() * 14, 1.5 + r() * 3, 0, Math.PI * 2);
+        ctx.arc(52 + r() * 80, 76 + r() * 14, 1.5 + r() * 3.5, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -236,18 +459,38 @@ const scenes: { match: RegExp; paint: (ctx: Ctx, r: Rand, title: string) => void
   {
     match: /geyser|faithful/i,
     paint: (ctx, r) => {
-      sky(ctx, [[0, '#4f93d6'], [1, '#bfe0f5']]);
+      sky(ctx, [[0, '#2f6fb8'], [1, '#a9d2ef']]);
+      ridge(ctx, r, 98, 14, '#47603f', 0.1);
+      // The column: a bright narrow jet that billows into steam as it rises.
       ctx.save();
-      ctx.filter = 'blur(7px)';
-      for (let i = 0; i < 16; i++) {
-        ctx.fillStyle = `rgba(255,255,255,${0.35 + r() * 0.4})`;
+      ctx.filter = 'blur(1.5px)';
+      ctx.fillStyle = vertical(ctx, 20, 110, 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.98)');
+      ctx.beginPath();
+      ctx.moveTo(112, 110);
+      ctx.quadraticCurveTo(118, 60, 108, 24);
+      ctx.lineTo(132, 24);
+      ctx.quadraticCurveTo(124, 60, 128, 110);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.filter = 'blur(6px)';
+      for (let i = 0; i < 14; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${0.3 + r() * 0.4})`;
         ctx.beginPath();
-        ctx.arc(128 + (r() - 0.5) * (14 + i * 4), 104 - i * 6, 10 + i * 1.6, 0, Math.PI * 2);
+        ctx.arc(122 + (r() - 0.3) * (20 + i * 5), 40 - i * 2 + r() * 20, 8 + r() * 12, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
-      ridge(ctx, r, 104, 10, '#5d6f52', 0.1);
-      ridge(ctx, r, 126, 8, vertical(ctx, 110, H, '#a58d6b', '#7a6449'), 0.2);
+      // The sinter cone, pale and mineral.
+      ctx.fillStyle = vertical(ctx, 100, H, '#d9cdb2', '#9c8a6c');
+      ctx.beginPath();
+      ctx.moveTo(0, H);
+      ctx.lineTo(0, 120);
+      ctx.quadraticCurveTo(120, 100, W, 122);
+      ctx.lineTo(W, H);
+      ctx.closePath();
+      ctx.fill();
     },
   },
   {
@@ -375,7 +618,7 @@ const scenes: { match: RegExp; paint: (ctx: Ctx, r: Rand, title: string) => void
     },
   },
   {
-    match: /serengeti|wildebeest|elephant|herd|savanna|migration/i,
+    match: /serengeti|wildebeest|savanna/i,
     paint: (ctx, r) => {
       sky(ctx, [[0, '#f0a65a'], [0.6, '#f8d58f'], [1, '#f6e2b0']]);
       glow(ctx, 70, 92, 50, 'rgba(255,240,200,0.7)');
@@ -394,23 +637,6 @@ const scenes: { match: RegExp; paint: (ctx: Ctx, r: Rand, title: string) => void
       ctx.beginPath();
       ctx.ellipse(198, 70, 28, 7, 0, 0, Math.PI * 2);
       ctx.fill();
-    },
-  },
-  {
-    match: /butterfly|monarch/i,
-    paint: (ctx, r) => {
-      sky(ctx, [[0, '#2d3d2a'], [1, '#6a7d3e']]);
-      glow(ctx, 170, 30, 80, 'rgba(255,220,140,0.45)');
-      pines(ctx, r, 144, 18, 50, 110, 'rgba(20,30,18,0.85)');
-      for (let i = 0; i < 70; i++) {
-        ctx.fillStyle = r() < 0.5 ? '#f08a24' : '#e4661a';
-        const x = r() * W;
-        const y = r() * H;
-        ctx.beginPath();
-        ctx.ellipse(x - 1.5, y, 2, 1.2, 0.6, 0, Math.PI * 2);
-        ctx.ellipse(x + 1.5, y, 2, 1.2, -0.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
     },
   },
   {

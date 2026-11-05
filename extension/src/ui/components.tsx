@@ -105,14 +105,18 @@ export function LiveBadge() {
  */
 export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
   return (
-    <div className={`relative ${className} shrink-0 overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
-      {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
-      ) : (
-        <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
-      )}
-      {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
-      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[10.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
+    <div className={`relative ${className} shrink-0`}>
+      {/* Ambient light: the frame's own colours, blurred, glow softly around it, so a list takes on the colours of its videos. */}
+      {thumb && !muted && <img src={thumb} alt="" aria-hidden="true" draggable={false} className="ambient pointer-events-none absolute top-[-5px] left-[-7px] h-[calc(100%+10px)] w-[calc(100%+14px)] max-w-none rounded-xl object-cover opacity-45 blur-[9px] saturate-150" />}
+      <div className={`relative size-full overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
+        {thumb ? (
+          <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
+        ) : (
+          <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
+        )}
+        {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
+        {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[10.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
+      </div>
     </div>
   );
 }
