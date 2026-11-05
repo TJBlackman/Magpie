@@ -1,6 +1,23 @@
 import { manifestUrl } from './detect';
 import type { Candidate, MediaKind } from './types';
 
+const SEP = '[\\\\/]';
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * A regular expression for downloads.search that finds a saved file again by
+ * the name history kept: the file itself, or a file inside a post's folder.
+ * The browser may have added " (1)" to a name that was taken.
+ */
+export function downloadPattern(file: string, folder: boolean): string {
+  const parts = file.split('/').map(escapeRe);
+  if (folder) return `(^|${SEP})${parts.join(SEP)}${SEP}[^\\\\/]+$`;
+  const last = parts.pop()!;
+  const dot = last.lastIndexOf('\\.');
+  const name = dot > 0 ? `${last.slice(0, dot)}( \\(\\d+\\))?${last.slice(dot)}` : last;
+  return `(^|${SEP})${[...parts, name].join(SEP)}$`;
+}
+
 /** One finished download. Kept small on purpose: what it was, when, how long, and where it came from. */
 export interface ArchiveEntry {
   /** The job id. */
@@ -243,3 +260,4 @@ export function splitForStorage(entries: ArchiveEntry[], keepPrivate: boolean): 
   if (keepPrivate) return { local: entries, session: [] };
   return { local: entries.filter((e) => !e.priv), session: entries.filter((e) => e.priv) };
 }
+

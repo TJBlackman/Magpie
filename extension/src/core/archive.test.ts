@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  downloadPattern,
   addEntry,
   findArchived,
   indexArchive,
@@ -220,5 +221,19 @@ describe('storage', () => {
     const local = [entry({ id: 'a', at: 3 }), entry({ id: 'b', at: 1 })];
     const session = [entry({ id: 'p', at: 2, priv: true }), entry({ id: 'b', at: 1 })];
     expect(mergeStores(local, session).map((e) => e.id)).toEqual(['a', 'p', 'b']);
+  });
+});
+
+describe('downloadPattern', () => {
+  const match = (file: string, folder: boolean, path: string) => new RegExp(downloadPattern(file, folder)).test(path);
+  it('finds a file by its name, with or without a number the browser added', () => {
+    expect(match('Harbor at Dusk [1080p].mp4', false, String.raw`C:\Users\me\Downloads\Harbor at Dusk [1080p].mp4`)).toBe(true);
+    expect(match('Harbor at Dusk [1080p].mp4', false, '/home/me/Downloads/Harbor at Dusk [1080p] (2).mp4')).toBe(true);
+    expect(match('Harbor at Dusk [1080p].mp4', false, '/home/me/Downloads/Not Harbor at Dusk [1080p].mp4')).toBe(false);
+    expect(match('a.b+c.mp4', false, '/d/aXb+c.mp4')).toBe(false);
+  });
+  it('finds a file inside a post folder', () => {
+    expect(match('Reddit/pics/2026-10-28 me · Title [abc]', true, String.raw`C:\dl\Reddit\pics\2026-10-28 me · Title [abc]\01.jpg`)).toBe(true);
+    expect(match('Reddit/pics/2026-10-28 me · Title [abc]', true, String.raw`C:\dl\Reddit\pics\2026-10-28 me · Title [abc].json`)).toBe(false);
   });
 });

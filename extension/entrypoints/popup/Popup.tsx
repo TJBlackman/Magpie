@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { browser } from 'wxt/browser';
 import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
 import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Toast, UpdateBanner } from '../../src/ui/components';
-import { CandidateCard, QualitySheet } from '../../src/ui/candidates';
+import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidates';
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconPlay, IconSearch, IconSettings, IconX, Logo } from '../../src/ui/icons';
-import { shortUrl } from '../../src/ui/format';
+import { IconDownload, IconPlay, IconSearch, IconSettings, IconX, Logo } from '../../src/ui/icons';
+import { hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
 
@@ -35,17 +35,46 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n, live }: { n: number; live?: boolean }) {
+function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'live' | 'failed'; label?: string }) {
   if (!n) return null;
-  return <span className={`pill inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10.5px] font-bold ${live ? 'bg-live text-white' : 'bg-edge2 text-text'}`}>{n}</span>;
+  const cls = { default: 'pill bg-white/[0.08] text-mute', live: 'pill bg-live-solid text-white', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
+  return (
+    <span aria-label={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
+      {tone === 'failed' && <span aria-hidden="true">!</span>}
+      {n}
+    </span>
+  );
 }
 
 function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
   return (
     <div hidden={!shown} className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4 scroll-thin">
-      {children}
+      <div className="flex min-h-full flex-col">{children}</div>
     </div>
   );
+}
+
+/** A card's job, if it has one: the job, or for a post the files of it, as one fraction. */
+function cardJobs(active: Job[]): Map<string, CardJob> {
+  const groups = new Map<string, Job[]>();
+  const out = new Map<string, CardJob>();
+  for (const j of active) {
+    const key = j.group?.candidateId ?? j.candidateId;
+    const list = groups.get(key);
+    if (list) list.push(j);
+    else groups.set(key, [j]);
+  }
+  for (const [key, list] of groups) {
+    const first = list[0]!;
+    const queued = list.every((j) => j.state === 'queued');
+    let pct: number | null;
+    if (first.group) {
+      const saved = Math.max(0, ...list.map((j) => j.group?.saved ?? 0));
+      pct = (saved + list.reduce((n, j) => n + (jobProgress(j) ?? 0), 0)) / first.group.total;
+    } else pct = jobProgress(first);
+    out.set(key, { id: first.id, queued, pct });
+  }
+  return out;
 }
 
 export function Popup() {
@@ -66,28 +95,30 @@ export function Popup() {
   const jobs = useJobs();
   const active = jobs.filter((j) => j.state !== 'error');
   const failed = jobs.filter((j) => j.state === 'error');
-  const running = active.filter((j) => j.state === 'downloading' && !j.live).length;
-  // Candidates with a job waiting or running, so the card on This page goes gray. A post's files point back at the post's card.
-  const queued = new Map(active.map((j) => [j.group?.candidateId ?? j.candidateId, j.id]));
+  const recordings = active.filter((j) => j.live && j.state !== 'queued');
+  const running = active.filter((j) => j.state !== 'queued' && !j.live);
+  const waiting = active.filter((j) => j.state === 'queued');
+  // Candidates with a job waiting or running: the card on This page steps back and shows the progress. A post's files point back at the post's card.
+  const byCard = useMemo(() => cardJobs(active), [active]);
   // The files of one post are one row on Downloads; the others stay rows of their own.
-  const rows = useMemo(() => {
+  const rowsOf = (list: Job[]) => {
     const out: ({ group: string; jobs: Job[]; job?: undefined } | { group?: undefined; job: Job })[] = [];
     const seen = new Map<string, Job[]>();
-    for (const j of active) {
+    for (const j of list) {
       if (!j.group) {
         out.push({ job: j });
         continue;
       }
-      const list = seen.get(j.group.id);
-      if (list) list.push(j);
+      const g = seen.get(j.group.id);
+      if (g) g.push(j);
       else {
-        const fresh = [j];
-        seen.set(j.group.id, fresh);
-        out.push({ group: j.group.id, jobs: fresh });
+        const first = [j];
+        seen.set(j.group.id, first);
+        out.push({ group: j.group.id, jobs: first });
       }
     }
     return out;
-  }, [active]);
+  };
   const recording = active.some((j) => j.live && j.state === 'downloading');
   const thumbs = settings?.thumbnails ?? true;
   const update = useUpdate(settings?.updateCheck ?? false);
@@ -99,6 +130,8 @@ export function Popup() {
 
   const [view, setView] = useState<View>('page');
   const [sheetId, setSheetId] = useState<string | null>(null);
+  /** A failed job the open sheet is a second try at: it leaves the list once the new download starts. */
+  const [retryOf, setRetryOf] = useState<string | null>(null);
   /** Opens a card's sheet, or for a gray card shows the job it already has instead of starting a second download. Stable, so memoized cards skip re-rendering. */
   const openCard = useCallback((c: Candidate, queuedJobId?: string) => {
     if (!queuedJobId) {
@@ -115,10 +148,11 @@ export function Popup() {
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; view?: boolean } | null>(null);
+  const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2000);
+    const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
   useEffect(() => {
@@ -144,23 +178,48 @@ export function Popup() {
     return out;
   }, [shown, all]);
 
-  const tab = (v: View, label: string, pill: ReactNode) => (
-    <button type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={`flex h-[30px] flex-1 items-center justify-center gap-1.5 rounded-lg text-[12.5px] font-medium transition ${view === v ? 'bg-panel2 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.04),0_2px_6px_rgba(0,0,0,.35)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:text-text'}`}>
+  const tab = (v: View, label: string, pill: ReactNode, tip?: string) => (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={view === v}
+      onClick={() => setView(v)}
+      title={tip}
+      className={`relative flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[9px] text-[12.5px] font-medium transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
+    >
       {label}
       {pill}
     </button>
   );
 
+  const failedRetry = (j: Job) => {
+    const id = j.group?.candidateId ?? j.candidateId;
+    if (!candidates.some((c) => c.id === id && !c.live)) return undefined;
+    return () => {
+      setRetryOf(j.id);
+      setView('page');
+      setSheetId(id);
+    };
+  };
+
   return (
-    <div className="relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-[radial-gradient(900px_300px_at_50%_-120px,rgba(34,211,238,.10),transparent_60%)]">
-      <header className="flex items-center gap-2.5 px-3.5 pt-3 pb-2">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-shine to-indigo-500 text-[#06121a] shadow-[0_2px_10px_rgba(34,211,238,.35)]">
+    <div data-popup-root className="relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(420px_220px_at_50%_-90px,rgba(34,211,238,.09),transparent_70%)]">
+      <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-shine to-indigo-500 text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
           <Logo />
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold tracking-wide">Magpie</div>
-          <div className="truncate text-[11px] text-mute" title={scope?.url}>
-            {scope ? (scope.all ? scope.label : `${shortUrl(scope.url).split('/')[0]} · ${scope.label}`) : ''}
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="text-[14px] font-semibold tracking-[0.01em]">Magpie</div>
+          <div className="truncate text-[11.5px] text-dim" title={scope?.url}>
+            {scope &&
+              (scope.all ? (
+                scope.label
+              ) : (
+                <>
+                  <span className="text-mute">{hostOf(scope.url)}</span>
+                  {` · ${scope.label}`}
+                </>
+              ))}
           </div>
         </div>
         <IconButton label="Settings" onClick={() => setSettingsOpen(true)} active={settingsOpen}>
@@ -170,94 +229,176 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-2.5 flex rounded-xl border border-edge bg-panel p-[3px]">
-        {tab('page', 'This page', <Pill n={fresh.length} />)}
-        {tab('jobs', 'Downloads', <Pill n={active.length} live={recording} />)}
+      <div role="tablist" className="mx-3.5 mb-1 flex shrink-0 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+        {tab('page', 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
+        {tab(
+          'jobs',
+          'Downloads',
+          <>
+            <Pill n={active.length} tone={recording ? 'live' : 'default'} />
+            <Pill n={failed.length} tone="failed" label={`${failed.length} failed`} />
+          </>,
+          failed.length ? `${failed.length} failed` : undefined,
+        )}
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
 
       <Panel shown={view === 'page'}>
-        <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
-          <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
-          {scope && !scope.all && candidates.length > 0 && (
-            <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
-              Clear
-            </Button>
-          )}
-        </Section>
+        {candidates.length > 0 && (
+          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
+            <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+            {scope && !scope.all && (
+              <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
+                Clear
+              </Button>
+            )}
+          </Section>
+        )}
         {shown.length === 0 ? (
-          <Empty icon={<IconPlay size={26} />} title={downloaded ? 'Everything here is already downloaded' : 'Nothing detected yet'}>
-            {downloaded ? 'Show downloaded media to get it again.' : 'Press play on a video and the stream shows up here.'}
-          </Empty>
+          downloaded ? (
+            <Empty icon={<IconDownload size={22} />} title="Everything here is already downloaded" action={<Button onClick={toggleDownloaded}>Show downloaded</Button>}>
+              Show downloaded media to get it again.
+            </Empty>
+          ) : (
+            <Empty
+              icon={<IconPlay size={20} />}
+              title="Nothing detected yet"
+              above={
+                scope && (
+                  <div className="mb-5 flex items-center gap-2 rounded-full bg-white/[0.04] py-1 pr-3 pl-2.5 text-[11.5px] text-mute ring-1 ring-edge ring-inset">
+                    <span className="relative flex size-2">
+                      <span className="ping absolute inline-flex size-full rounded-full bg-shine/70" />
+                      <span className="relative inline-flex size-2 rounded-full bg-shine" />
+                    </span>
+                    {scope.all ? 'Listening on every tab' : `Listening on ${hostOf(scope.url)}`}
+                  </div>
+                )
+              }
+            >
+              Press play on a video and the stream shows up here. Already playing? Reload the page.
+            </Empty>
+          )
         ) : (
-          groups.map((g) => (
-            <div key={g.key} className="mb-2 flex flex-col gap-1.5">
-              {scope?.all && (
-                <div className="mt-1 truncate text-[11px] text-mute" title={g.page}>
-                  {shortUrl(g.page)}
-                </div>
-              )}
-              {g.list.map((c) => (
-                <CandidateCard key={c.id} candidate={c} thumbs={thumbs} queuedJobId={queued.get(c.id)} onOpen={openCard} />
-              ))}
-            </div>
-          ))
+          <div className="flex flex-col gap-2">
+            {groups.map((g) => (
+              <div key={g.key} className="flex flex-col gap-2">
+                {scope?.all && (
+                  <div className="mt-1.5 flex items-center gap-2 px-0.5 text-[11.5px] first:mt-0" title={g.page}>
+                    <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase ring-1 ring-edge2 ring-inset">{hostOf(g.page).slice(0, 1)}</span>
+                    <span className="min-w-0 flex-1 truncate">
+                      <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
+                      <span className="text-dim">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
+                    </span>
+                    <span className="shrink-0 text-dim tabular-nums">{g.list.length}</span>
+                  </div>
+                )}
+                {g.list.map((c) => (
+                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} />
+                ))}
+              </div>
+            ))}
+          </div>
         )}
       </Panel>
 
       <Panel shown={view === 'jobs'}>
-        <Section title={`Active (${active.length})`}>
-          {settings && <span className="text-[11px] font-medium text-dim">{`${running} of ${settings.maxConcurrent} slots`}</span>}
-        </Section>
-        {active.length === 0 ? (
-          <p className="px-1 py-1.5 text-[12px] text-dim">Nothing downloading</p>
+        {active.length === 0 && failed.length === 0 ? (
+          <Empty icon={<IconDownload size={22} />} title="Nothing downloading" action={<Button onClick={() => setView('page')}>Go to This page</Button>}>
+            Pick a video on This page and its progress shows up here.
+          </Empty>
         ) : (
-          <div className="flex flex-col gap-1.5">
-            {rows.map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
-          </div>
-        )}
-        {failed.length > 0 && (
           <>
-            <Section title={`Failed (${failed.length})`}>
-              <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                Clear failed
-              </Button>
-            </Section>
-            <div className="flex flex-col gap-1.5">
-              {failed.map((j) => (
-                <JobRow key={j.id} job={j} thumbs={thumbs} />
-              ))}
-            </div>
+            {failed.length > 0 && (
+              <>
+                <Section title="Failed" count={failed.length}>
+                  <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                    Clear failed
+                  </Button>
+                </Section>
+                <div className="flex flex-col gap-2">
+                  {failed.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
+                  ))}
+                </div>
+              </>
+            )}
+            {active.length === 0 && <p className="mt-3 px-0.5 text-[12px] text-mute">Nothing downloading</p>}
+            {recordings.length > 0 && (
+              <>
+                <Section title="Recording" count={recordings.length} />
+                <div className="flex flex-col gap-2">
+                  {recordings.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} />
+                  ))}
+                </div>
+              </>
+            )}
+            {running.length > 0 && (
+              <>
+                <Section title="Downloading" count={running.length}>
+                  {settings && (
+                    <Button tone="ghost" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once">
+                      {`${settings.maxConcurrent} at a time`}
+                    </Button>
+                  )}
+                </Section>
+                <div className="flex flex-col gap-2">
+                  {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
+                </div>
+              </>
+            )}
+            {waiting.length > 0 && (
+              <>
+                <Section title="Queued" count={waiting.length} />
+                <div className="flex flex-col gap-2">
+                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
+                </div>
+              </>
+            )}
           </>
         )}
       </Panel>
 
       <Panel shown={view === 'history'}>
         {archive.length > 0 && (
-          <div className="mt-0.5 mb-2 flex h-[34px] items-center gap-2 rounded-lg border border-edge bg-panel px-2.5 text-dim focus-within:border-shine/60">
-            <IconSearch />
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={`Search ${archive.length} downloaded videos`} className="min-w-0 flex-1 bg-transparent text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
-            {query && (
-              <IconButton label="Clear search" onClick={() => setQuery('')} className="size-6">
-                <IconX size={14} />
-              </IconButton>
-            )}
-          </div>
+          <>
+            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset transition-shadow focus-within:ring-shine/60">
+              <IconSearch size={15} />
+              <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search history" aria-label={`Search ${archive.length} downloads`} className="min-w-0 flex-1 bg-transparent text-[12.5px] text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
+              {query && (
+                <IconButton label="Clear search" onClick={() => setQuery('')} className="-mr-2 size-7">
+                  <IconX size={14} />
+                </IconButton>
+              )}
+            </div>
+            <Section title={q ? 'Matches' : 'Downloaded'} count={q ? matches.length : archive.length}>
+              {!q && (
+              <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
+                Clear history
+              </ConfirmButton>
+              )}
+            </Section>
+          </>
         )}
-        {archive.length > 0 && (
-          <Section title={q ? `${matches.length} of ${archive.length}` : `${archive.length} downloaded`}>
-            <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
-              Clear history
-            </ConfirmButton>
-          </Section>
-        )}
-        {archive.length === 0 && <div className="h-2.5" />}
-        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} />
+        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} />
       </Panel>
 
-      {sheet && <QualitySheet key={sheet.id} candidate={sheet} thumbs={thumbs} onClose={() => setSheetId(null)} onStarted={() => (setSheetId(null), setToast('Added to downloads'))} />}
+      {sheet && (
+        <QualitySheet
+          key={sheet.id}
+          candidate={sheet}
+          thumbs={thumbs}
+          onClose={() => (setSheetId(null), setRetryOf(null))}
+          onStarted={() => {
+            if (retryOf) void api.removeJob(retryOf);
+            setRetryOf(null);
+            setSheetId(null);
+            setToast({ text: sheet.live ? 'Recording started' : 'Added to downloads', view: true });
+          }}
+        />
+      )}
       {settingsOpen && <SettingsPanel latest={update.latest} onClose={() => setSettingsOpen(false)} />}
-      <Toast message={toast} />
+      <Toast message={toast?.text ?? null} action={toast?.view && view !== 'jobs' ? { label: 'View', onClick: () => (setView('jobs'), setToast(null)) } : undefined} />
     </div>
   );
 }

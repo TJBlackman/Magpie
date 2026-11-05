@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtAgo, fmtClock, fmtDate, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
+import { codecNames, describeVariant, fmtAgo, fmtBitrate, fmtEstimate, fmtClock, fmtDate, fmtDay, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
 import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
@@ -59,15 +59,16 @@ describe('archive rows', () => {
   it('show the date without the time', () => {
     expect(fmtDate(new Date(2026, 9, 26, 10, 42).getTime(), 'en-US')).toBe('Oct 26, 2026');
   });
-  it('say how long ago media was downloaded, then the date after a month', () => {
+  it('say how long ago media was downloaded the same day, then the day like History', () => {
     const now = new Date(2026, 10, 3, 12, 0).getTime();
     const ago = (ms: number) => fmtAgo(now - ms, now, 'en-US');
     expect(ago(20_000)).toBe('just now');
     expect(ago(12 * 60_000)).toBe('12m ago');
     expect(ago(5 * 3600_000 + 59 * 60_000)).toBe('5h ago');
-    expect(ago(3 * 86_400_000)).toBe('3d ago');
-    expect(ago(29 * 86_400_000)).toBe('29d ago');
-    expect(fmtAgo(new Date(2026, 8, 1, 9, 0).getTime(), now, 'en-US')).toBe('Sep 1, 2026');
+    expect(fmtAgo(new Date(2026, 9, 25, 23, 0).getTime(), new Date(2026, 9, 26, 9, 0).getTime(), 'en-US')).toBe('yesterday');
+    expect(fmtAgo(new Date(2026, 9, 20, 9, 0).getTime(), new Date(2026, 9, 26, 9, 0).getTime(), 'en-US')).toBe('Oct 20');
+    expect(fmtAgo(new Date(2026, 8, 1, 9, 0).getTime(), now, 'en-US')).toBe('Sep 1');
+    expect(fmtAgo(new Date(2025, 8, 1, 9, 0).getTime(), now, 'en-US')).toBe('Sep 1, 2025');
     // A clock that moved back never says "-2m ago".
     expect(fmtAgo(now + 120_000, now)).toBe('just now');
   });
@@ -121,5 +122,42 @@ describe('nextRate', () => {
     const a = nextRate(nextRate(null, 0, 0), 1000, 1000);
     expect(nextRate(a, 10, 2000).rate).toBe(1000);
     expect(nextRate(a, 2000, 1000).rate).toBe(1000);
+  });
+});
+
+describe('quality sheet labels', () => {
+  it('names a rendition by its shorter side and tags HD and 4K', () => {
+    expect(describeVariant({ label: 'x', resolution: '3840x2160', bandwidth: 15_200_000, codecs: 'avc1.640028,mp4a.40.2' })).toEqual({ name: '2160p', tag: '4K', detail: '3840×2160 · 15.2 Mbps · H.264 · AAC', audio: '' });
+    expect(describeVariant({ label: 'x', resolution: '1080x1920', audioLabel: 'English' })).toMatchObject({ name: '1080p', tag: 'Full HD', audio: 'English' });
+    expect(describeVariant({ label: 'x', resolution: '640x360', bandwidth: 800_000 })).toMatchObject({ name: '360p', tag: '', detail: '640×360 · 800 kbps' });
+  });
+  it('keeps the words of labels with no resolution', () => {
+    expect(describeVariant({ label: 'video/mp4 · 412.0 MB' })).toMatchObject({ name: 'Original file', detail: 'MP4 · 412.0 MB' });
+    expect(describeVariant({ label: 'Live · ts' })).toMatchObject({ name: 'Live', detail: 'MPEG-TS' });
+    expect(describeVariant({ label: '102 segments · 10m 12s · fmp4' })).toMatchObject({ name: 'Full stream', detail: '10m 12s · fMP4 · 102 segments' });
+    expect(describeVariant({ label: 'a', audioOnly: true, bandwidth: 128_000, codecs: 'mp4a.40.2' })).toMatchObject({ name: 'Audio only', detail: '128 kbps · AAC' });
+  });
+  it('names codecs people know', () => {
+    expect(codecNames('hvc1.2.4.L153,ec-3')).toBe('HEVC · Dolby Digital Plus');
+    expect(codecNames('weird.1')).toBe('weird.1');
+    expect(codecNames(undefined)).toBe('');
+  });
+  it('estimates a size from bitrate and length', () => {
+    expect(fmtEstimate(6_000_000, 600)).toBe('~429.2 MB');
+    expect(fmtEstimate(6_000_000, undefined)).toBe('');
+  });
+  it('formats bitrates', () => {
+    expect(fmtBitrate(6_000_000)).toBe('6.0 Mbps');
+    expect(fmtBitrate(96_000)).toBe('96 kbps');
+  });
+});
+
+describe('fmtDay', () => {
+  const now = new Date(2026, 10, 4, 15, 0).getTime();
+  it('says today and yesterday, then the date', () => {
+    expect(fmtDay(new Date(2026, 10, 4, 1, 0).getTime(), now, 'en-US')).toBe('Today');
+    expect(fmtDay(new Date(2026, 10, 3, 23, 0).getTime(), now, 'en-US')).toBe('Yesterday');
+    expect(fmtDay(new Date(2026, 9, 30).getTime(), now, 'en-US')).toBe('Oct 30');
+    expect(fmtDay(new Date(2025, 9, 30).getTime(), now, 'en-US')).toBe('Oct 30, 2025');
   });
 });

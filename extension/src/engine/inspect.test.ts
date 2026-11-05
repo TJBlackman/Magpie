@@ -374,3 +374,22 @@ describe('record: live DASH in memory', () => {
     expect(saved).toHaveLength(1);
   });
 });
+
+describe('media info for cards', () => {
+  it('gives a static MPD its length', async () => {
+    serve({ [MPD_URL]: text(mpd(videoSet(SD) + audioSet(AUDIO))) });
+    expect((await inspect(candidate(MPD_URL))).duration).toBe(8);
+  });
+
+  it('marks a fully protected stream as DRM from the thumbnail capture, without a frame', async () => {
+    serve({ [MPD_URL]: text(mpd(videoSet(`${HD}${DRM}</Representation>`) + audioSet(AUDIO))) });
+    const r = await new Engine(platform).thumbnail(candidate(MPD_URL));
+    expect(r).toEqual({ ok: true, value: { frame: null, info: { drm: true } } });
+  });
+
+  it('reports the best quality and length even when no frame decodes', async () => {
+    serve({ [MPD_URL]: text(mpd(videoSet(`${HD}</Representation>${SD}`) + audioSet(AUDIO))) });
+    const r = await new Engine(platform).thumbnail(candidate(MPD_URL));
+    expect(r.ok && r.value.info).toEqual({ height: 1080, duration: 8 });
+  });
+});

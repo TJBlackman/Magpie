@@ -15,7 +15,7 @@ import type { ArchiveEntry } from '../src/core/archive';
 import { pickThumbs, withoutThumb } from '../src/core/thumbs';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { UPDATE_KEY } from '../src/core/update';
-import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type Result, type UiRequest, type Variant } from '../src/core/types';
+import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type MediaInfo, type Result, type UiRequest, type Variant } from '../src/core/types';
 
 const MB = 1024 * 1024;
 const DAY = 86_400_000;
@@ -136,6 +136,7 @@ function seedCandidates(): Candidate[] {
     cand('c4', tab(1), 'Old Faithful Geyser Live Cam', 'https://live.wildframe.tv/cams/old-faithful/chunklist.m3u8', 'hls', { live: true, reloads: 14 }),
     cand('c5', tab(2), 'Monsoon Storm over the Sonoran Desert', 'https://dash.wildframe.tv/v/sonoran-monsoon/manifest.mpd', 'dash'),
     cand('c6', tab(2), 'Aurora Borealis Timelapse, Tromso', 'https://cdn.wildframe.tv/v/aurora-tromso/master.m3u8', 'hls'),
+    cand('c13', tab(2), 'The Living Coast, official trailer', 'https://drm.streamhouse.example/living-coast/manifest.mpd', 'dash'),
     redditPost('1xr7a2', allTabs ? tabs[3]! : tabs[0]!, 'Dawn over the Dolomites, 12 shots from a week of hiking [OC]', 12),
     redditPost('1xq9zz', allTabs ? tabs[3]! : tabs[0]!, 'Fog in the valley this morning [OC] [4000x6000]', 1),
   ];
@@ -160,7 +161,7 @@ function job(id: string, title: string, kind: Job['kind'], variantLabel: string,
     candidateId: '',
     title,
     filename: `${title}${short ? ` [${short}p]` : ''}.mp4`,
-    url: '',
+    url: `https://cdn.wildframe.tv/v/${title.toLowerCase().replace(/[^a-z]+/g, '-')}/${short ? `${short}p/index.m3u8` : 'video.mp4'}`,
     kind,
     variantLabel,
     state,
@@ -178,7 +179,7 @@ function seedJobs(): Job[] {
   const list = [
     job('j1', 'Serengeti Wildebeest Migration', 'hls', '1920x1080 · 6000 kbps', 'downloading', { segmentsTotal: 412, segmentsDone: 256, bytes: 598 * MB, startedAt: now - 140_000 }),
     job('j2', 'Glacier Calving, Perito Moreno', 'hls', '3840x2160 · 15200 kbps', 'downloading', { segmentsTotal: 198, segmentsDone: 31, bytes: 240 * MB, startedAt: now - 40_000 }),
-    job('j3', 'Coral Reef Drift, Great Barrier Reef', 'file', 'video/mp4 · 980.0 MB', 'queued', { bytesTotal: 980 * MB, queuePosition: 1, startedAt: now - 20_000 }),
+    job('j3', 'Coral Reef Drift, Great Barrier Reef', 'file', 'video/mp4 · 980.0 MB', 'queued', { bytesTotal: 980 * MB, queuePosition: scenario === 'busy' ? 2 : 1, startedAt: now - 20_000 }),
     job('j4', 'Monarch Butterfly Migration, Michoacan', 'hls', '1920x1080 · 6000 kbps', 'error', {
       segmentsTotal: 300,
       segmentsDone: 118,
@@ -192,8 +193,8 @@ function seedJobs(): Job[] {
     list.splice(
       2,
       0,
-      job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'downloading', { segmentsTotal: 65, segmentsDone: 12, bytes: 70 * MB, startedAt: now - 15_000 }),
-      job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { bytesTotal: 640 * MB, queuePosition: 2, startedAt: now - 10_000 }),
+      job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'queued', { segmentsTotal: 65, queuePosition: 1, startedAt: now - 15_000 }),
+      job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { bytesTotal: 640 * MB, queuePosition: 3, startedAt: now - 10_000 }),
     );
   }
   return list;
@@ -258,17 +259,27 @@ function captureThumbs(list: Candidate[]) {
   if (!settings().thumbnails) return;
   let delay = 500;
   for (const c of list) {
-    if (c.thumb || c.kind === 'dash' || capturing.has(c.id)) continue;
+    if (c.thumb || c.info?.drm || capturing.has(c.id)) continue;
     capturing.add(c.id);
     setTimeout(() => {
       // A new object, not the old one changed in place: memoized cards only redraw when their candidate is a new object.
-      const thumb = paintThumb(c.pageTitle);
-      state.candidates = state.candidates.map((x) => (x.id === c.id ? { ...x, thumb } : x));
+      // Like the engine: a protected stream gets no frame, only the info that it is protected.
+      const info = infoFor(c);
+      const thumb = info.drm ? undefined : paintThumb(c.pageTitle);
+      state.candidates = state.candidates.map((x) => (x.id === c.id ? { ...x, thumb, info } : x));
       capturing.delete(c.id);
       emit({ type: 'candidates', tabId: c.tabId });
     }, delay);
     delay += 700;
   }
+}
+/** What the engine's thumbnail capture learns about a stream: best quality, length, DRM. */
+function infoFor(c: Candidate): MediaInfo {
+  if (c.id === 'c13') return { drm: true };
+  if (c.kind === 'file') return {};
+  const best = Math.max(0, ...variantsFor(c).map((v) => Number(v.resolution?.split('x')[1] ?? 0)));
+  const duration = c.live ? undefined : c.url.endsWith('playlist.m3u8') ? 612 : 180 + (hash(c.id) % 2400);
+  return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}) };
 }
 const LIVE_NOTE = 'Live stream. Download records from about 30 seconds back until you press Stop or the stream ends.';
 const fmtBytes = (n: number) => (n < 1024 ** 3 ? `${(n / MB).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);
@@ -289,10 +300,11 @@ function variantsFor(c: Candidate): Variant[] {
   return defs.map(([resolution, bandwidth], i) => ({
     id: `v${i}`,
     label: `${resolution} · ${(bandwidth / 1000).toFixed(0)} kbps · avc1.640028,mp4a.40.2`,
-    uri: c.url.replace('master.m3u8', `${resolution.split('x')[1]}p/index.m3u8`),
+    uri: c.url.replace(/(master.m3u8|manifest.mpd)$/, `${resolution.split('x')[1]}p/index.m3u8`),
     bandwidth,
     resolution,
-    codecs: 'avc1.640028,mp4a.40.2',
+    codecs: c.kind === 'dash' ? 'avc1.640028' : 'avc1.640028,mp4a.40.2',
+    ...(c.kind === 'dash' ? { label: `${resolution} · ${(bandwidth / 1000).toFixed(0)} kbps · avc1.640028 + English`, audioUri: c.url, audioLabel: 'English' } : {}),
   }));
 }
 
@@ -302,10 +314,10 @@ async function inspect(c: Candidate): Promise<Result<Inspection>> {
   const cached = state.inspections.get(c.id);
   if (cached) return ok(cached);
   await delay(550);
-  if (c.kind === 'dash') return err('DASH manifests are detected but not downloadable yet (phase 2).');
+  if (c.id === 'c13') return err('This stream uses DRM (the MPD marks its video or its audio protected), which Magpie does not download.');
   const notes: string[] = [];
   if (c.live) notes.push(LIVE_NOTE);
-  if (c.id === 'c2') notes.push('Some renditions carry audio in a separate track. v1 saves video only for those; merging comes in phase 2.');
+  if (c.id === 'c5') notes.push('Audio: English (default). Other languages are not selectable yet.');
   const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live };
   state.inspections.set(c.id, ins);
   return ok(ins);
@@ -512,6 +524,9 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
       return ok({ jobs: pickThumbs(state.jobs, req.jobs), archive: pickThumbs(state.archive, req.archive) });
     case 'checkUpdate':
       return ok(null);
+    case 'showFile':
+      note(`Would show ${req.file} in its folder`);
+      return ok(true);
   }
 }
 
@@ -529,7 +544,7 @@ export const browser = {
       removeListener: (fn: (raw: unknown) => void) => void uiListeners.delete(fn),
     },
     getURL: (path: string) => new URL(path, location.href).href,
-    getManifest: () => ({ version: '0.3.0 preview' }),
+    getManifest: () => ({ version: '0.7.1' }),
   },
   storage: {
     local: {

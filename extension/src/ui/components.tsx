@@ -1,30 +1,33 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconFilm, IconImages, IconRadio, IconUpdate, IconX } from './icons';
+import { IconAlert, IconCheck, IconError, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
 
-export type Tone = 'default' | 'shine' | 'warn' | 'alert' | 'bad' | 'good' | 'file' | 'post';
+export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
-export function Badge({ children, tone = 'default' }: { children: ReactNode; tone?: Tone }) {
+/** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
+export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-edge text-mute',
-    shine: 'bg-shine/12 text-shine',
-    warn: 'bg-amber-500/15 text-amber-300',
-    // Solid yellow, so it reads as a warning and stands apart from the tinted DASH badge.
-    alert: 'bg-amber-400 text-ink',
-    bad: 'bg-live/15 text-rose-300',
-    good: 'bg-emerald-500/15 text-emerald-300',
-    file: 'bg-violet-500/15 text-violet-300',
-    post: 'bg-orange-500/15 text-orange-300',
+    default: 'bg-white/[0.06] text-[#b4bfcc] ring-white/[0.07]',
+    shine: 'bg-shine/10 text-[#67e8f9] ring-shine/25',
+    warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
+    // Already downloaded: the only yellow in the popup, so it reads as a caution without shouting.
+    saved: 'bg-saved/[0.14] text-[#fde68a] ring-saved/40',
+    bad: 'bg-live/[0.13] text-[#ff9fb1] ring-live/30',
+    good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
+    post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
   }[tone];
-  return <span className={`inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${cls}`}>{children}</span>;
+  return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[10px] leading-none font-semibold tracking-[0.04em] ring-1 ring-inset ${cls} ${className}`}>{children}</span>;
 }
+
+export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live';
 
 export function Button({
   children,
   onClick,
   disabled,
   tone = 'default',
+  size = 'sm',
   title,
   className = '',
   testId,
@@ -32,63 +35,82 @@ export function Button({
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
-  tone?: 'default' | 'shine' | 'ghost' | 'danger' | 'live';
+  tone?: ButtonTone;
+  size?: 'sm' | 'md' | 'lg';
   title?: string;
   className?: string;
   testId?: string;
 }) {
   const cls = {
-    default: 'bg-edge text-text hover:bg-edge2',
-    shine: 'bg-shine text-shine-ink font-bold hover:bg-cyan-300 shadow-[0_2px_8px_rgba(34,211,238,.3)]',
-    ghost: 'text-mute hover:bg-panel2 hover:text-text',
-    danger: 'text-rose-300 hover:bg-live/10',
-    live: 'bg-live text-white font-bold hover:bg-rose-400',
+    default: 'bg-white/[0.07] text-text ring-1 ring-inset ring-white/[0.08] hover:bg-white/[0.11] active:bg-white/[0.05]',
+    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
+    ghost: 'text-mute hover:bg-white/[0.06] hover:text-text active:bg-white/[0.04]',
+    danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
+    live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
   }[tone];
+  const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
   return (
-    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition disabled:opacity-40 ${cls} ${className}`}>
+    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40 ${sz} ${cls} ${className}`}>
       {children}
     </button>
   );
 }
 
-/** A square button holding one icon. `label` is what screen readers and tests see. */
+/** A square button holding one icon. `label` is what screen readers, tooltips and tests see. */
 export function IconButton({ label, onClick, children, active, tone = 'default', className = '' }: { label: string; onClick?: () => void; children: ReactNode; active?: boolean; tone?: 'default' | 'live' | 'danger'; className?: string }) {
-  const color = tone === 'live' ? 'text-live hover:bg-live/10' : tone === 'danger' ? 'text-mute hover:bg-live/10 hover:text-rose-300' : active ? 'bg-shine/10 text-shine' : 'text-mute hover:bg-panel2 hover:text-text';
+  const color =
+    tone === 'live'
+      ? 'text-live hover:bg-live/10'
+      : tone === 'danger'
+        ? 'text-mute hover:bg-live/10 hover:text-[#ff9fb1]'
+        : active
+          ? 'bg-shine/10 text-shine'
+          : 'text-mute hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04]';
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition ${color} ${className}`}>
+    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${color} ${className}`}>
       {children}
     </button>
   );
 }
 
-const KIND_TONE: Record<MediaKind, Tone> = { hls: 'shine', dash: 'warn', file: 'file', post: 'post' };
-
-/** HLS, DASH, FILE or REDDIT, in the kind's color. The same badge on every tab, so an item is easy to follow. */
+/** HLS, DASH, FILE or REDDIT, neutral: the format is a detail, so colour stays free for status. */
 export function KindBadge({ kind }: { kind: MediaKind }) {
-  return <Badge tone={KIND_TONE[kind]}>{kindLabel(kind)}</Badge>;
+  return <Badge>{kindLabel(kind)}</Badge>;
+}
+
+/** LIVE with a beating dot. */
+export function LiveBadge() {
+  return (
+    <Badge tone="bad">
+      <span className="pulse size-1.5 rounded-full bg-live" />
+      LIVE
+    </Badge>
+  );
 }
 
 /**
  * The 16:9 slot at the left of every row: a frame of the stream once one is
- * captured, else an icon in the kind's color. Live streams pulse either way.
+ * captured, else an icon on a quiet gradient. Live streams pulse either way.
+ * `corner` is drawn over the bottom right, like a length on a video player.
  */
-export function MediaTile({ kind, live, thumb, muted, className = 'h-9 w-16' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; className?: string }) {
-  const tone = live ? 'bg-live/15 text-live' : { hls: 'bg-shine/12 text-shine', dash: 'bg-amber-500/15 text-amber-300', file: 'bg-violet-500/15 text-violet-300', post: 'bg-orange-500/15 text-orange-300' }[kind];
+export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w-16' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
   return (
-    <div className={`relative ${className} shrink-0 overflow-hidden rounded-lg ${thumb ? 'bg-ink' : tone} ${muted ? 'grayscale' : ''}`}>
+    <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-45 grayscale' : ''}`} />
       ) : (
-        <div className="flex size-full items-center justify-center">{live ? <IconRadio size={18} className="pulse" /> : kind === 'post' ? <IconImages size={18} /> : <IconFilm size={18} />}</div>
+        <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
+      {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
       {thumb && live && <span className="pulse absolute top-1 left-1 size-1.5 rounded-full bg-live shadow-[0_0_4px_var(--color-live)]" />}
+      {corner && <span className="absolute right-0.5 bottom-0.5 rounded-[4px] bg-black/75 px-1 py-px text-[9.5px] leading-[13px] font-semibold text-white tabular-nums">{corner}</span>}
     </div>
   );
 }
 
 /**
- * One row, the same on This page, Downloads and History: kind tile, title,
- * meta line, action on the right, and anything extra (a progress bar) below.
+ * One row, the same on This page, Downloads and History: tile, title, meta
+ * line, action on the right, and anything extra (a progress bar) below.
  * With `onOpen` the whole row is one button and `action` is drawn inside it.
  */
 export function MediaRow({
@@ -112,59 +134,82 @@ export function MediaRow({
   action?: ReactNode;
   onOpen?: () => void;
   openTip?: string;
-  /** Already downloaded or in the queue: drawn in grayscale and faded, except meta items marked `data-keep`. */
+  /** Already downloaded or in the queue: the frame and title step back, the meta line stays readable. */
   dim?: boolean;
   attrs?: Record<string, string | number | undefined>;
   children?: ReactNode;
 }) {
-  // The parts fade one by one instead of the whole row, so a tag that says why the row is gray (DOWNLOADED) keeps its color.
-  const fade = dim ? 'opacity-50 grayscale transition-opacity group-hover:opacity-80' : '';
-  const fadeMeta = dim ? '[&>*:not([data-keep])]:opacity-50 [&>*:not([data-keep])]:grayscale group-hover:[&>*:not([data-keep])]:opacity-80' : '';
   const body = (
     <>
-      <div className={`shrink-0 ${fade}`}>{tile}</div>
+      {tile}
       <div className="min-w-0 flex-1">
-        <div className={`truncate text-[12.5px] font-semibold ${fade}`} data-testid={titleTestId} title={titleTip}>
+        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute grayscale' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
-        <div className={`mt-1 flex items-center gap-1.5 text-[11px] text-mute ${fadeMeta}`}>{meta}</div>
+        <div className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>
       </div>
     </>
   );
   return (
-    <div {...attrs} className={`group rounded-xl border border-edge bg-panel transition ${onOpen ? 'hover:border-edge2 hover:bg-panel2' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-panel2' : ''}`}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className="flex w-full items-center gap-2.5 p-2 text-left">
+        <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-offset-[3px]">
           {body}
-          <span className={`shrink-0 ${fade}`}>{action}</span>
+          {action}
         </button>
       ) : (
-        <div className="flex items-center gap-2.5 p-2">
+        <div className="flex items-center gap-3 p-2 pr-2">
           {body}
-          <div className="flex shrink-0 items-center gap-0.5">{action}</div>
+          <div className="flex shrink-0 items-center gap-1">{action}</div>
         </div>
       )}
-      {children && <div className="px-2 pb-2">{children}</div>}
+      {children && <div className="px-2.5 pt-0.5 pb-2.5">{children}</div>}
     </div>
   );
 }
 
-/** Section heading inside a panel: small caps label on the left, actions on the right. */
-export function Section({ title, children }: { title: ReactNode; children?: ReactNode }) {
+/** Section heading inside a panel: small caps label and count on the left, actions on the right. */
+export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-2.5 mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold tracking-wider text-dim uppercase">
-      <span className="min-w-0 truncate">{title}</span>
-      {children && <div className="flex shrink-0 items-center gap-0.5 tracking-normal normal-case">{children}</div>}
+    <div className="mt-3 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
+      <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
+        {title}
+        {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
+      </h2>
+      {children && <div className="-mr-2 flex shrink-0 items-center gap-0.5 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[11.5px]">{children}</div>}
     </div>
   );
 }
 
-export function Empty({ icon, title, children }: { icon: ReactNode; title: string; children?: ReactNode }) {
+/** The one empty state: centered in what is left of the panel, an icon in a soft disc, a title, a line, an optional action. */
+export function Empty({ icon, title, children, action, above }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; above?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-edge2 px-4 py-7 text-center text-mute">
-      <div className="mx-auto mb-2 w-fit text-dim">{icon}</div>
-      <div className="mb-1 text-[13px] font-semibold text-text">{title}</div>
-      {children}
+    <div className="rise-in my-auto flex flex-col items-center px-6 py-8 text-center">
+      {above}
+      <div className="mb-3.5 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-b from-panel3 to-panel text-mute shadow-[inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge2 ring-inset">{icon}</div>
+      <div className="text-[14px] font-semibold text-text">{title}</div>
+      {children && <p className="mt-1 max-w-[270px] text-[12.5px] leading-relaxed text-mute">{children}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
+
+/** A boxed note with an icon: info (blue), warn (amber), error (rose). */
+export function Callout({ tone, title, children, testId, icon }: { tone: 'info' | 'warn' | 'error' | 'neutral'; title?: string; children: ReactNode; testId?: string; icon?: ReactNode }) {
+  const cls = {
+    info: 'bg-sky-400/[0.07] ring-sky-300/20 text-sky-100/90 [&_svg]:text-sky-300',
+    warn: 'bg-amber-400/[0.09] ring-amber-300/30 text-amber-100/90 [&_svg]:text-amber-300',
+    error: 'bg-rose-500/[0.09] ring-rose-300/25 text-rose-100/90 [&_svg]:text-rose-300',
+    neutral: 'bg-white/[0.04] ring-white/[0.09] text-[#c9d2dd] [&_svg]:text-mute',
+  }[tone];
+  const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
+  return (
+    <div data-testid={testId} className={`flex gap-2.5 rounded-lg px-3 py-2.5 text-[12px] leading-[1.5] ring-1 ring-inset ${cls}`}>
+      <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
+      <div className="min-w-0">
+        {title && <div className="mb-0.5 font-semibold text-white">{title}</div>}
+        {children}
+      </div>
     </div>
   );
 }
@@ -181,6 +226,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
     <Button
       tone={armed ? 'danger' : 'ghost'}
       title={title}
+      className={armed ? 'bg-live/10' : ''}
       onClick={() => {
         if (!armed) return setArmed(true);
         setArmed(false);
@@ -202,12 +248,22 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   );
 }
 
-/** A short message at the bottom of the popup that fades after two seconds. */
-export function Toast({ message }: { message: string | null }) {
+/** A short message at the bottom of the popup that fades after a few seconds, with an optional action. */
+export function Toast({ message, action }: { message: string | null; action?: { label: string; onClick: () => void } }) {
   if (!message) return null;
   return (
     <div role="status" className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center">
-      <div className="veil-in rounded-lg bg-text px-3.5 py-2 text-xs font-semibold text-ink shadow-[0_6px_20px_rgba(0,0,0,.4)]">{message}</div>
+      <div className="rise-in pointer-events-auto flex h-10 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.6),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
+        <span className="flex size-[18px] items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300">
+          <IconCheck size={12} />
+        </span>
+        {message}
+        {action && (
+          <button type="button" onClick={action.onClick} className="ml-1 h-7 rounded-lg px-2.5 text-[12.5px] font-semibold text-shine transition-colors hover:bg-shine/10">
+            {action.label}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -215,17 +271,35 @@ export function Toast({ message }: { message: string | null }) {
 /** A line under the header when the website has a newer Magpie. Get it opens the download page; X hides it until the next version. */
 export function UpdateBanner({ version, onGet, onDismiss }: { version: string; onGet: () => void; onDismiss: () => void }) {
   return (
-    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex items-center gap-2 rounded-xl border border-shine/25 bg-shine/8 py-1 pr-1 pl-3 text-[12px]">
-      <IconUpdate size={15} className="shrink-0 text-shine" />
-      <span className="min-w-0 flex-1 truncate">
-        <b className="font-semibold">Magpie {version}</b> is out
+    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-gradient-to-r from-shine/[0.13] to-indigo-400/[0.08] pr-1.5 pl-3 text-[12.5px] ring-1 ring-shine/25 ring-inset">
+      <IconUpdate size={16} className="shrink-0 text-shine" />
+      <span className="min-w-0 flex-1 truncate text-mute">
+        <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
       <Button tone="shine" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
         Get it
       </Button>
-      <IconButton label="Hide until the next version" onClick={onDismiss} className="size-7">
-        <IconX size={14} />
+      <IconButton label="Hide until the next version" onClick={onDismiss}>
+        <IconX size={15} />
       </IconButton>
     </div>
+  );
+}
+
+/** A ring that fills with a job's progress, for a card whose download is running. `pct` null spins. */
+export function ProgressRing({ pct, live }: { pct: number | null; live?: boolean }) {
+  const r = 14;
+  const c = 2 * Math.PI * r;
+  const color = live ? 'var(--color-live)' : 'var(--color-shine)';
+  return (
+    <svg viewBox="0 0 36 36" className={`size-9 shrink-0 ${pct === null ? 'animate-spin [animation-duration:1.4s]' : ''}`} aria-hidden="true">
+      <circle cx="18" cy="18" r={r} fill="none" stroke="var(--color-edge2)" strokeWidth="3" />
+      <circle cx="18" cy="18" r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={pct === null ? c * 0.72 : c * (1 - pct)} transform="rotate(-90 18 18)" className="transition-[stroke-dashoffset] duration-300" />
+      {pct !== null && (
+        <text x="18" y="18" textAnchor="middle" dominantBaseline="central" fill="var(--color-text)" fontSize="9.5" fontWeight="650" className="tabular-nums">
+          {Math.floor(pct * 100)}
+        </text>
+      )}
+    </svg>
   );
 }

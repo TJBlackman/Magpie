@@ -30,10 +30,10 @@ try {
   const open = async (query) => {
     await page.goto(`http://localhost:5180/${query}`);
     await popup.waitFor();
-    // Every thumbnail in, like a popup that has been open a moment. DASH rows never get one.
+    // Every thumbnail in, like a popup that has been open a moment. A copy protected stream never gets one.
     await page.waitForFunction(() => {
       const rows = document.querySelectorAll('[data-testid="candidate"]');
-      return rows.length > 0 && [...rows].every((r) => r.querySelector('[data-testid="thumb"]') || r.textContent.includes('DASH'));
+      return rows.length > 0 && [...rows].every((r) => r.querySelector('[data-testid="thumb"]') || r.textContent.includes('PROTECTED'));
     });
     await page.waitForTimeout(300);
   };

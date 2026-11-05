@@ -1,9 +1,9 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api } from './api';
-import { fmtBytes, fmtClock, fmtEta, fmtRate, jobProgress, nextRate, shortVariant, sourceLabel, type RateSample } from './format';
-import { Badge, Button, IconButton, KindBadge, MediaRow, MediaTile } from './components';
-import { IconStop, IconX } from './icons';
+import { fmtBytes, fmtClock, fmtEta, fmtRate, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
+import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
+import { IconError, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
  * Smoothed bytes per second for an active job, from the byte counts it reports.
@@ -22,113 +22,165 @@ function useRate(bytes: number, active: boolean): number {
   return last.current.rate;
 }
 
-function statusText(job: Job, pct: number | null, rate: number): string {
+/** Bytes still to fetch: exact for a file with a size, estimated from the segments so far for a stream. NaN when unknown. */
+function remaining(job: Job): number {
+  if (job.bytesTotal) return job.bytesTotal - job.bytes;
+  if (job.segmentsDone && job.segmentsTotal) return (job.segmentsTotal - job.segmentsDone) * (job.bytes / job.segmentsDone);
+  return NaN;
+}
+
+/** The left half of the status line: how far along, in words people use. */
+function statusText(job: Job, pct: number | null): string {
   switch (job.state) {
     case 'queued':
-      return job.queuePosition ? `Waiting, #${job.queuePosition} in queue` : 'Waiting';
+      return job.queuePosition ? `#${job.queuePosition} in line` : 'Waiting for a free slot';
     case 'inspecting':
       return 'Starting';
     case 'muxing':
-      return 'Finishing';
+      return 'Finishing the file';
     case 'saving':
       return 'Saving to your downloads';
     case 'downloading': {
-      const parts: string[] = [];
-      if (job.live) {
-        parts.push(`Recording ${fmtClock(job.duration ?? 0)}`, fmtBytes(job.bytes));
-        if (rate > 0) parts.push(fmtRate(rate));
-        return parts.join(' · ');
-      }
-      if (job.kind === 'file') {
-        parts.push(job.bytesTotal ? `${fmtBytes(job.bytes)} of ${fmtBytes(job.bytesTotal)}` : fmtBytes(job.bytes));
-      } else {
-        parts.push(`${job.segmentsDone} of ${job.segmentsTotal} segments`, fmtBytes(job.bytes));
-      }
-      if (pct !== null) parts.push(`${Math.floor(pct * 100)}%`);
-      if (rate > 0) {
-        parts.push(fmtRate(rate));
-        const remaining = job.bytesTotal
-          ? job.bytesTotal - job.bytes
-          : job.segmentsDone && job.segmentsTotal
-            ? (job.segmentsTotal - job.segmentsDone) * (job.bytes / job.segmentsDone)
-            : NaN;
-        const eta = fmtEta(remaining / rate);
-        if (eta) parts.push(eta);
-      }
-      return parts.join(' · ');
+      if (job.live) return `Recording ${fmtClock(job.duration ?? 0)} · ${fmtBytes(job.bytes)}`;
+      const total = job.bytesTotal ?? (job.segmentsDone && job.segmentsTotal ? (job.bytes / job.segmentsDone) * job.segmentsTotal : 0);
+      const of = total ? `${fmtBytes(job.bytes)} of ${job.bytesTotal ? '' : '~'}${fmtBytes(total)}` : fmtBytes(job.bytes);
+      return pct === null ? of : `${of} · ${Math.floor(pct * 100)}%`;
     }
     default:
-      return fmtBytes(job.bytes);
+      return job.bytes ? `Stopped at ${fmtBytes(job.bytes)}` : '';
   }
 }
 
-const STATE_LABEL: Record<Job['state'], string> = {
-  queued: 'Queued',
-  inspecting: 'Starting',
-  downloading: 'Downloading',
-  muxing: 'Finishing',
-  saving: 'Saving',
-  error: 'Failed',
+/** The right half: speed and time left. Time left is the one thing that never truncates. */
+function SpeedText({ job, rate }: { job: Job; rate: number }) {
+  if (job.state === 'queued' && job.bytesTotal) return <span className="shrink-0">{fmtBytes(job.bytesTotal)}</span>;
+  if (job.state !== 'downloading' || rate <= 0) return null;
+  const eta = job.live ? '' : fmtEta(remaining(job) / rate);
+  return (
+    <span className="flex min-w-0 shrink-0 items-center gap-1.5">
+      <span className="truncate">{fmtRate(rate)}</span>
+      {eta && <span className="shrink-0 font-medium text-text">{`· ${eta}`}</span>}
+    </span>
+  );
+}
+
+const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
+  inspecting: { label: 'STARTING', tone: 'shine' },
+  muxing: { label: 'FINISHING', tone: 'shine' },
+  saving: { label: 'SAVING', tone: 'shine' },
+  error: { label: 'FAILED', tone: 'bad' },
 };
 
+/** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
+function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
+  const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-rose-400/80', idle: 'bg-edge3' }[tone];
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+      {pct === null ? (
+        <div className={`bar-indeterminate h-full rounded-full ${color}`} />
+      ) : (
+        <div className={`h-full rounded-full transition-[width] duration-300 ${color} ${moving ? 'bar-sheen' : ''}`} style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%` }} />
+      )}
+    </div>
+  );
+}
+
+function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: ReactNode; left: string; right?: ReactNode; testId?: string }) {
+  return (
+    <div className="mt-2 flex h-[18px] items-center gap-2 text-[11.5px] text-mute tabular-nums">
+      {chip}
+      <span className="min-w-0 flex-1 truncate" data-testid={testId}>
+        {left}
+      </span>
+      {right}
+    </div>
+  );
+}
+
 /** A download in flight or failed: the same row it had on the page, with a progress bar and status underneath. */
-export function JobRow({ job, thumbs }: { job: Job; thumbs: boolean }) {
+export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; onRetry?: () => void }) {
   const failed = job.state === 'error';
   const pct = jobProgress(job);
   const rate = useRate(job.bytes, job.state === 'downloading');
-  const recording = job.live && job.state === 'downloading';
-  const tone = recording || failed ? 'bad' : job.state === 'queued' ? 'default' : 'shine';
-  const indeterminate = !failed && pct === null;
-  const barColor = recording ? 'bg-live' : failed ? 'bg-rose-400' : 'bg-shine';
+  const recording = !!job.live && job.state === 'downloading';
   const rendition = shortVariant(job.variantLabel);
+  const chip = recording ? (
+    <Badge tone="bad">
+      <span className="pulse size-1.5 rounded-full bg-live" />
+      REC
+    </Badge>
+  ) : STATE_CHIP[job.state] ? (
+    <Badge tone={STATE_CHIP[job.state]!.tone}>{STATE_CHIP[job.state]!.label}</Badge>
+  ) : null;
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
-      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
+      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} muted={job.state === 'queued'} />}
       title={job.title || job.filename}
       titleTip={job.filename}
       meta={
         <>
-          <KindBadge kind={job.kind} />
-          {job.live && <Badge tone="bad">LIVE</Badge>}
-          {job.group && <Badge tone="post">{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
-          {rendition && <Badge>{rendition}</Badge>}
+          {job.group && <Badge>{`${job.group.index + 1} OF ${job.group.total}`}</Badge>}
           <span className="min-w-0 flex-1 truncate" title={job.url}>
-            {sourceLabel(job.url)}
+            {rendition && <span className="font-medium text-text/90">{rendition}</span>}
+            {hostOf(job.url) && <span className={rendition ? 'text-dim' : ''}>{`${rendition ? ' · ' : ''}${hostOf(job.url)}`}</span>}
           </span>
         </>
       }
       action={
         <>
           {recording && (
-            <Button tone="live" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
-              <IconStop size={14} />
+            <Button tone="default" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="text-[#ff9fb1] ring-live/30 hover:bg-live/15">
+              <IconStop size={12} />
               Stop
             </Button>
           )}
           {failed ? (
-            <IconButton label="Remove" onClick={() => api.removeJob(job.id)} className="size-9">
-              <IconX />
+            <IconButton label="Remove" onClick={() => api.removeJob(job.id)}>
+              <IconX size={17} />
+            </IconButton>
+          ) : job.live ? (
+            <IconButton label="Discard recording" tone="danger" onClick={() => api.cancel(job.id)}>
+              <IconTrash size={16} />
             </IconButton>
           ) : (
-            <IconButton label="Cancel" tone="danger" onClick={() => api.cancel(job.id)} className="size-9">
-              <IconX />
+            <IconButton label="Cancel" tone="danger" onClick={() => api.cancel(job.id)}>
+              <IconX size={17} />
             </IconButton>
           )}
         </>
       }
     >
-      <div className="h-1 overflow-hidden rounded bg-edge">
-        <div className={`h-full rounded ${barColor} ${indeterminate ? 'bar-indeterminate' : 'transition-[width] duration-300'}`} style={indeterminate ? undefined : { width: `${(pct ?? 0) * 100}%` }} />
-      </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-mute tabular-nums">
-        <Badge tone={tone}>{recording ? 'Recording' : STATE_LABEL[job.state]}</Badge>
-        <span className="min-w-0 truncate text-right" data-testid="job-status">
-          {statusText(job, pct, rate)}
-        </span>
-      </div>
-      {job.note && <div data-testid="job-note" className="mt-1.5 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-200">{job.note}</div>}
-      {job.error && <div className="mt-1.5 rounded-md bg-live/10 px-2 py-1 text-[11px] text-rose-300">{job.error}</div>}
+      {!failed && !job.live && job.state !== 'queued' && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
+      {failed ? (
+        <>
+          {job.error && (
+            <p className="-mt-0.5 flex gap-2 text-[12px] leading-[1.45] text-[#ffb3c1]" title={job.error}>
+              <IconError size={14} className="mt-0.5 shrink-0 text-live" />
+              <span className="line-clamp-2">{job.error}</span>
+            </p>
+          )}
+          <StatusLine
+            chip={chip}
+            left={statusText(job, pct)}
+            right={
+              onRetry && (
+                <Button tone="default" onClick={onRetry} title="Open the quality sheet for this video again" className="-mr-0.5">
+                  <IconRedo size={13} />
+                  Try again
+                </Button>
+              )
+            }
+          />
+        </>
+      ) : (
+        <StatusLine chip={chip} left={statusText(job, pct)} right={<SpeedText job={job} rate={rate} />} />
+      )}
+      {job.note && (
+        <div data-testid="job-note" className="mt-2">
+          <Callout tone="info">{job.note}</Callout>
+        </div>
+      )}
     </MediaRow>
   );
 }
@@ -151,37 +203,32 @@ export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
   const running = jobs.filter((j) => j.state === 'downloading').length;
   const parts = [`${saved} of ${total} files saved`];
   if (bytes) parts.push(fmtBytes(bytes));
-  if (rate > 0) parts.push(fmtRate(rate));
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job-group', 'data-group-id': first.group?.id, 'data-jobs': ids, 'data-state': active ? 'downloading' : 'queued', 'data-saved': saved, 'data-pct': Math.floor(pct * 100) }}
-      tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} />}
+      tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} muted={!active} />}
       title={first.title || first.filename}
       titleTip={first.filename}
       meta={
         <>
-          <KindBadge kind="post" />
           <Badge>{`${total} files`}</Badge>
           <span className="min-w-0 flex-1 truncate" title={first.url}>
-            {sourceLabel(first.url).split(' · ')[0]}
+            {hostOf(first.url)}
           </span>
         </>
       }
       action={
-        <IconButton label="Cancel" tone="danger" onClick={() => jobs.forEach((j) => void api.cancel(j.id))} className="size-9">
-          <IconX />
+        <IconButton label="Cancel" tone="danger" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
+          <IconX size={17} />
         </IconButton>
       }
     >
-      <div className="h-1 overflow-hidden rounded bg-edge">
-        <div className="h-full rounded bg-shine transition-[width] duration-300" style={{ width: `${pct * 100}%` }} />
-      </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-mute tabular-nums">
-        <Badge tone={active ? 'shine' : 'default'}>{active ? (running > 1 ? `${running} at once` : 'Downloading') : first.queuePosition ? `Queued, #${first.queuePosition}` : 'Queued'}</Badge>
-        <span className="min-w-0 truncate text-right" data-testid="job-status">
-          {parts.join(' · ')}
-        </span>
-      </div>
+      <Bar pct={active ? pct : 0} tone={active ? 'shine' : 'idle'} moving={active} />
+      <StatusLine
+        chip={active ? running > 1 ? <Badge tone="shine">{`${running} AT ONCE`}</Badge> : null : <Badge>{first.queuePosition ? `QUEUED #${first.queuePosition}` : 'QUEUED'}</Badge>}
+        left={parts.join(' · ')}
+        right={rate > 0 ? <span className="shrink-0">{fmtRate(rate)}</span> : null}
+      />
     </MediaRow>
   );
 }

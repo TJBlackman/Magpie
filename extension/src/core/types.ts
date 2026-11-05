@@ -30,6 +30,26 @@ export interface Archived {
   files?: number;
 }
 
+/**
+ * What the engine learned about a stream while capturing its thumbnail, so a
+ * card can say "2160p · 12:40" before the quality sheet opens. Never fetched
+ * on its own: thumbnails off means no info.
+ */
+export interface MediaInfo {
+  /** Best rendition's shorter side in pixels (1080 for 1920x1080 and for 1080x1920). */
+  height?: number;
+  /** Seconds, for media with an end. */
+  duration?: number;
+  /** The stream is DRM protected; Magpie cannot save it. */
+  drm?: boolean;
+}
+
+/** A thumbnail capture's result: the frame, if one decoded, and what the capture learned on the way. */
+export interface Thumbnail {
+  frame: string | null;
+  info: MediaInfo;
+}
+
 /** A piece of media the sniffer saw a tab load. */
 export interface Candidate {
   id: string;
@@ -61,6 +81,8 @@ export interface Candidate {
   archived?: Archived;
   /** One frame of the stream as a small JPEG data URL, once captured. For a post, the URL of its preview image. */
   thumb?: string;
+  /** Quality, length and DRM, once the thumbnail capture has read the stream. */
+  info?: MediaInfo;
   /** The Reddit post this row is, with the files it saves. */
   post?: RedditPost;
   /** Set on one file of a post, a candidate the background makes for the engine. */
@@ -99,6 +121,8 @@ export interface Inspection {
   notes: string[];
   /** Media playlist without EXT-X-ENDLIST, or a dynamic MPD. Unknown for an HLS master. */
   live?: boolean;
+  /** Seconds of media, when the manifest says (a finished media playlist, a static MPD). Unknown for an HLS master. */
+  duration?: number;
   /**
    * For a master playlist: every variant and rendition playlist URL it lists.
    * For an MPD: rules that fold the player's own requests under it, so they
@@ -168,6 +192,7 @@ export type UiRequest =
   | { type: 'activeTab' }
   | { type: 'archive' }
   | { type: 'removeArchive'; id: string }
+  | { type: 'showFile'; file: string; folder: boolean }
   | { type: 'clearArchive' }
   /** Thumbnails for rows that arrived in a change event, which carries none. Answered with a ThumbMap. */
   | { type: 'thumbs'; jobs?: string[]; archive?: string[] }

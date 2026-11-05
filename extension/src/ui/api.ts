@@ -31,6 +31,8 @@ export const api = {
   archive: () => call<ArchiveEntry[]>({ type: 'archive' }),
   removeArchive: (id: string) => call<null>({ type: 'removeArchive', id }),
   clearArchive: () => call<null>({ type: 'clearArchive' }),
+  /** Opens the folder of a saved file and selects it. False when the browser no longer has it in its downloads. */
+  showFile: (file: string, folder: boolean) => call<boolean>({ type: 'showFile', file, folder }),
   thumbs: (ids: { jobs?: string[]; archive?: string[] }) => call<ThumbMap>({ type: 'thumbs', ...ids }),
   checkUpdate: () => call<null>({ type: 'checkUpdate' }),
 };

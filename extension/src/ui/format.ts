@@ -108,16 +108,14 @@ export function fmtDate(ms: number, locale?: string): string {
   return new Date(ms).toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** How long ago, short enough for a badge: "just now", "12m ago", "5h ago", "3d ago", then the date. */
+/** How long ago, short enough for a badge: "just now", "12m ago", "5h ago" the same day, then "yesterday" and "Nov 2" like History. */
 export function fmtAgo(ms: number, now = Date.now(), locale?: string): string {
   const mins = Math.floor(Math.max(0, now - ms) / 60_000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d ago`;
-  return fmtDate(ms, locale);
+  const day = fmtDay(ms, now, locale);
+  if (day === 'Today') return `${Math.floor(mins / 60)}h ago`;
+  return day === 'Yesterday' ? 'yesterday' : day;
 }
 
 /** "Oct 26, 2026, 10:42 AM", for tooltips. */
@@ -133,4 +131,97 @@ export function isWebUrl(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** "15.2 Mbps", "800 kbps": a bitrate short enough for a quality row. */
+export function fmtBitrate(bitsPerSec: number): string {
+  if (bitsPerSec >= 1_000_000) return `${(bitsPerSec / 1_000_000).toFixed(1)} Mbps`;
+  return `${Math.round(bitsPerSec / 1000)} kbps`;
+}
+
+const CODEC_NAMES: [RegExp, string][] = [
+  [/^(avc1|avc3)\b/i, 'H.264'],
+  [/^(hvc1|hev1)\b/i, 'HEVC'],
+  [/^av01\b/i, 'AV1'],
+  [/^(vp09|vp9)\b/i, 'VP9'],
+  [/^(vp08|vp8)\b/i, 'VP8'],
+  [/^mp4a\.40\.(2|5|29)\b/i, 'AAC'],
+  [/^mp4a\b/i, 'AAC'],
+  [/^ec-3\b/i, 'Dolby Digital Plus'],
+  [/^ac-3\b/i, 'Dolby Digital'],
+  [/^opus\b/i, 'Opus'],
+  [/^flac\b/i, 'FLAC'],
+];
+
+/** "H.264 · AAC" from an RFC 6381 codecs string like "avc1.640028,mp4a.40.2". Unknown codecs keep their own name. */
+export function codecNames(codecs: string | undefined): string {
+  if (!codecs) return '';
+  const names = codecs
+    .split(',')
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((c) => CODEC_NAMES.find(([re]) => re.test(c))?.[1] ?? c);
+  return [...new Set(names)].join(' · ');
+}
+
+const CONTAINERS: Record<string, string> = { ts: 'MPEG-TS', fmp4: 'fMP4', 'video/mp4': 'MP4', 'video/webm': 'WebM', 'audio/mp4': 'M4A', 'audio/mpeg': 'MP3' };
+
+/**
+ * What the quality sheet shows for one rendition: a short name ("1080p"), a
+ * tag ("4K", "HD"), a muted detail line, and the audio merged into it.
+ * Labels from the engine with no resolution keep their own words.
+ */
+export function describeVariant(v: { label: string; resolution?: string; bandwidth?: number; codecs?: string; audioLabel?: string; audioOnly?: boolean }): {
+  name: string;
+  tag: string;
+  detail: string;
+  audio: string;
+} {
+  const audio = v.audioLabel ?? '';
+  const rate = v.bandwidth ? fmtBitrate(v.bandwidth) : '';
+  const codecs = codecNames(v.codecs);
+  const [w, h] = (v.resolution ?? '').split('x').map(Number);
+  if (w && h) {
+    const p = Math.min(w, h);
+    const tag = p >= 2160 ? '4K' : p >= 1440 ? '2K' : p >= 1080 ? 'Full HD' : p >= 720 ? 'HD' : '';
+    return { name: `${p}p`, tag, detail: [`${w}×${h}`, rate, codecs].filter(Boolean).join(' · '), audio };
+  }
+  if (v.audioOnly) return { name: 'Audio only', tag: '', detail: [rate, codecs].filter(Boolean).join(' · '), audio };
+  const parts = v.label.split(' · ').map((p) => CONTAINERS[p.trim().toLowerCase()] ?? p.trim());
+  // A plain file ("video/mp4 · 412.0 MB"), a single media playlist ("102 segments · 10m 12s · fmp4"), a live one ("Live · ts").
+  if (/^\w+\/[\w.+-]+$/.test(v.label.split(' · ')[0] ?? '')) return { name: 'Original file', tag: '', detail: parts.join(' · '), audio };
+  if (parts[0] === 'Live') return { name: 'Live', tag: '', detail: parts.slice(1).join(' · '), audio };
+  if (/^\d+ segments$/.test(parts[0] ?? '')) return { name: 'Full stream', tag: '', detail: [...parts.slice(1), parts[0]].join(' · '), audio };
+  return { name: parts[0] ?? v.label, tag: '', detail: parts.slice(1).join(' · '), audio };
+}
+
+/** "Today", "Yesterday", "Oct 30", or "Oct 30, 2025" outside the current year. */
+export function fmtDay(ms: number, now = Date.now(), locale?: string): string {
+  const d = new Date(ms);
+  const n = new Date(now);
+  const midnight = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const days = Math.round((midnight(n) - midnight(d)) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric', ...(d.getFullYear() === n.getFullYear() ? {} : { year: 'numeric' }) });
+}
+
+/** The host of a URL without "www.", or the input when it is not a URL. */
+export function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+/** "~1.6 GB": what a rendition of `bitsPerSec` comes to over `seconds`, or '' when either is unknown. */
+export function fmtEstimate(bitsPerSec: number | undefined, seconds: number | undefined): string {
+  if (!bitsPerSec || !seconds) return '';
+  return `~${fmtBytes(Math.round((bitsPerSec * seconds) / 8))}`;
+}
+
+/** "2160p" from a shorter side in pixels. */
+export function fmtHeight(height: number | undefined): string {
+  return height ? `${height}p` : '';
 }
