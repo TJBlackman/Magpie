@@ -41,12 +41,11 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n, dot, on }: { n: number; dot?: boolean; on?: boolean }) {
+function Pill({ n }: { n: number }) {
   if (!n) return null;
   return (
     <span className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
       {n}
-      {dot && <span className={`pulse absolute -top-[5px] -right-[5px] size-[7px] rounded-full bg-live ring-[1.5px] ${on ? 'ring-panel3' : 'ring-panel'}`} role="img" aria-label="Recording" title="Recording" />}
     </span>
   );
 }
@@ -188,7 +187,7 @@ export function Popup() {
     return out;
   }, [shown, all]);
 
-  const tab = (v: View, label: string, pill: ReactNode, tip?: string) => (
+  const tab = (v: View, label: string, pill: ReactNode, tip?: string, dot?: boolean) => (
     <button
       type="button"
       role="tab"
@@ -197,7 +196,10 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
-      {label}
+      <span className="relative">
+        {dot && <span className="pulse absolute top-1/2 -left-3 size-1.5 -translate-y-1/2 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+        {label}
+      </span>
       {pill}
     </button>
   );
@@ -237,7 +239,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} dot={recording} on={view === 'jobs'} />
+            <Pill n={active.length} />
             {failed.length > 0 && (
               <span className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
@@ -245,14 +247,15 @@ export function Popup() {
               </span>
             )}
           </>,
-          failed.length ? `${failed.length} failed` : undefined,
+          [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
+          recording,
         )}
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
 
       <Panel shown={view === 'page'}>
         {candidates.length > 0 && (
-          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'} count={shown.length || undefined}>
+          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             {scope && !scope.all && (
               <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">

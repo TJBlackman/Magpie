@@ -148,9 +148,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Still on This page, so trying again gets a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'Still on This page, so a retry works.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page, then retry.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -206,7 +206,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               }}
             >
               <span className="pulse size-2 shrink-0 rounded-full bg-live" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-[12px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} · ${fmtBytes(job.bytes)}?`}</span>
+              <span className="min-w-0 flex-1 truncate text-[12px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} of recording?`}</span>
               <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>

@@ -23,7 +23,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`relative ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center bg-gradient-to-r from-transparent via-[#18202b] via-45% to-[#18202b] py-1 pl-6 ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (e.key !== 'Escape' || !open) return;
         e.stopPropagation();
@@ -33,17 +33,17 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        className="size-7"
+        className="size-8"
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
           setUp(!!r && r.top > window.innerHeight / 2);
           setOpen((o) => !o);
         }}
       >
-        <IconMore size={16} />
+        <IconMore size={18} />
       </IconButton>
       {open && (
-        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-56 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-52 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-1.5' : 'top-full mt-1.5'}`}>
           {items.map((it) => (
             <button
               key={it.label}
@@ -117,7 +117,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           {/* One "more" button on hover or keyboard focus: 28px, so the title keeps almost all its width. */}
           <RowMenu
             items={[
-              ...(page && isWebUrl(page) ? [{ label: 'Open the page it came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
+              ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
               { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id) },
             ]}
           />
