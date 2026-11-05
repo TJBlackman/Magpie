@@ -393,6 +393,8 @@ function start(c: Candidate, variantId: string): Result<Job> {
     url: v.uri,
     kind: c.kind,
     variantLabel: v.label,
+    // Like the engine: the rendition's height, else the one read from the decoded frame.
+    height: Number(short) || infoFor(c).height,
     state: willRun ? 'inspecting' : 'queued',
     segmentsTotal: c.kind === 'file' ? 0 : live ? 0 : 90 + Math.round(Math.random() * 300),
     segmentsDone: 0,

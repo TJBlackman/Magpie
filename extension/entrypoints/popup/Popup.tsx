@@ -290,7 +290,7 @@ export function Popup() {
             {scope && (view !== 'page' ? 'All sites' : scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
         </div>
-        {recordingJob && view !== 'jobs' && (
+        {recordingJob && view !== 'jobs' && !toast?.live && (
           <button
             type="button"
             onClick={() => setView('jobs')}

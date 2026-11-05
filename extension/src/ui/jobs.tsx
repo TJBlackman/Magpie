@@ -151,7 +151,8 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     <span className="min-w-0 flex-1 truncate" title={job.url}>
       {lead}
       {lead ? ' · ' : ''}
-      {job.live ? `Started ${new Date(job.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)}
+      {siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)}
+      {job.live ? ` · since ${new Date(job.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : ''}
     </span>
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.

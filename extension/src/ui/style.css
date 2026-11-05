@@ -26,7 +26,7 @@
   --color-err: #fb5a78;
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
   --color-btn: #1a2029;
-  --color-btn-edge: #64748b;
+  --color-btn-edge: #6e7d93;
   /* Buttons: the arrow, More, text actions and neutral buttons. Inputs and steppers keep btn-edge. */
   --color-ctl-edge: #6e7d93;
   /* Clickable cards on the page and rows in a sheet: 3.1:1 on their background. Hover is a step brighter. */
@@ -37,7 +37,7 @@
   --color-btn-hover: #222a35;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;
-  --color-accent-edge: #1e91a6;
+  --color-accent-edge: #1c9db3;
   /* The one selected state: a quality picked, the open tab, an open menu. The edge is 3:1 on every surface. */
   --color-sel-fill: #10222b;
   --color-sel-edge: #1c9db3;
