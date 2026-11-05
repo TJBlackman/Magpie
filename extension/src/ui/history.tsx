@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center bg-[linear-gradient(to_right,transparent,#18202b_20px)] pl-6 ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -108,6 +108,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
   const folder = !!entry.files;
   // "2160p · 1.4 GB": the quality from the file name Magpie gave it, and the size it saved.
   const facts = [qualityOfFile(entry.file), entry.bytes ? fmtBytes(entry.bytes) : ''].filter(Boolean).join(' · ');
+  const show = () => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing());
   return (
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
@@ -126,16 +127,18 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           )}
         </span>
       }
-      onOpen={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}
+      reserve
+      onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-mute transition-colors group-hover:text-text group-has-[>button:focus-visible]:text-text" aria-hidden="true">
+        <span className="flex size-9 shrink-0 items-center justify-center text-dim transition-colors group-hover:text-text group-has-[>button:focus-visible]:text-text" aria-hidden="true">
           <IconFolder size={16} />
         </span>
       }
       overlay={
         <RowMenu
           items={[
+            { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
             { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id) },
           ]}
@@ -149,7 +152,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
 export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse: () => void }) {
   if (!total) {
     return (
-      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={<Button size="md" onClick={onBrowse}>Go to This page</Button>}>
+      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={<Button tone="accent" size="md" onClick={onBrowse}>Show media on this page</Button>}>
         Finished downloads are listed here and marked on the page, so you never grab the same video twice.
       </Empty>
     );

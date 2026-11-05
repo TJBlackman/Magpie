@@ -82,7 +82,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+    <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[#2a3442]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -140,7 +140,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : (
     <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
       {lead}
-      {rendition ? '' : hostOf(job.url)}
+      {rendition ? '' : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)}
     </span>
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
@@ -148,7 +148,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     ? onRetry
       ? { hint: 'Its page is still open, so a retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page, then download it again from This page.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page so Magpie catches a fresh link, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -198,21 +198,25 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
           {discarding ? (
             <div
-              className="mt-2 flex min-h-8 items-center gap-2"
+              className="mt-2"
+              role="group"
+              aria-label="Discard the recording?"
               onKeyDown={(e) => {
                 if (e.key !== 'Escape') return;
                 e.stopPropagation();
                 setDiscarding(false);
               }}
             >
-              <span className="pulse size-2 shrink-0 rounded-full bg-live" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-[11.5px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} of recording?`}</span>
-              <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
-                Keep recording
-              </Button>
-              <Button tone="destroy" size="md" onClick={() => api.cancel(job.id)}>
-                Discard
-              </Button>
+              <p className="text-[12.5px] font-medium text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} of recording?`}</p>
+              <p className="mt-0.5 text-[11.5px] text-mute">Nothing is saved. The recording keeps running if you keep it.</p>
+              <div className="mt-2.5 flex justify-end gap-2">
+                <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
+                  Keep recording
+                </Button>
+                <Button tone="destroy" size="md" onClick={() => api.cancel(job.id)}>
+                  Discard
+                </Button>
+              </div>
             </div>
           ) : (
           <StatusLine

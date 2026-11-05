@@ -50,7 +50,7 @@ export function Button({
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover [&_svg]:text-live',
+    stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845] [&_svg]:text-live',
     destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
@@ -165,7 +165,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[:focus-visible]:border-edge3 has-[:focus-visible]:bg-[#18202b]' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -265,7 +265,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 /** The one switch look, 32 by 18: the list filter and every setting. */
 export function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#3d4b5d] ring-1 ring-btn-edge ring-inset'}`}>
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#4a586a] ring-1 ring-btn-edge ring-inset'}`}>
       <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
@@ -275,7 +275,7 @@ export function Toggle({ on }: { on: boolean }) {
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="mt-1 flex h-11 w-full shrink-0 items-center gap-3 rounded-xl px-3 text-left text-[12.5px] text-fg2 ring-1 ring-edge transition-colors ring-inset hover:bg-white/[0.03] hover:text-text">
+    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="flex h-11 w-full shrink-0 items-center gap-3 rounded-xl px-3 text-left text-[12.5px] text-fg2 ring-1 ring-edge transition-colors ring-inset hover:bg-white/[0.03] hover:text-text">
       <span className="flex-1">Show downloaded</span>
       {!shown && <span className="text-dim tabular-nums">{`${count} hidden`}</span>}
       <Toggle on={shown} />

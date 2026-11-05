@@ -6,7 +6,7 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconCheck, IconChevron, IconDownload, IconRedo, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconChevron, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { fmtClock, hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -41,25 +41,18 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-/** A tab's count. `failed` adds a red dot, or, with nothing else to count, becomes a red count of its own. */
+/** A tab's count, and beside it a red count of failures with its own mark, so the failure is not told by colour alone. */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
-  if (!n && !failed) return null;
-  if (!n)
-    return (
-      <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
-        {failed}
-      </span>
-    );
   return (
-    <span
-      role={failed ? 'img' : undefined}
-      aria-label={failed ? `${n}, ${failed} failed` : undefined}
-      title={failed ? `${failed} failed` : undefined}
-      className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors"
-    >
-      {n}
-      {failed > 0 && <span className="absolute -top-0.5 -right-0.5 size-[7px] rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
-    </span>
+    <>
+      {n > 0 && <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>}
+      {failed > 0 && (
+        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="-ml-0.5 inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[10.5px] font-semibold text-live-soft tabular-nums">
+          <IconError size={11} />
+          {failed}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -192,6 +185,12 @@ export function Popup() {
       row?.addEventListener('animationend', () => row.classList.remove('flash'), { once: true });
     });
   }, []);
+  // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
+  const quickStart = useCallback(async (c: Candidate) => {
+    const r = await api.start(c.id, 'best');
+    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Added to downloads', view: true });
+    else setSheetId(c.id);
+  }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; view?: boolean } | null>(null);
@@ -253,7 +252,7 @@ export function Popup() {
   return (
     <div data-popup-root className="relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(420px_220px_at_50%_-90px,rgba(34,211,238,.09),transparent_70%)]">
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-shine to-blue-500 text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#67e8f9] to-shine text-[#06121a] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_2px_8px_rgba(34,211,238,.18)]">
           <Logo />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
@@ -280,7 +279,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.3fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -292,15 +291,6 @@ export function Popup() {
       </div>
 
       <Panel shown={view === 'page'}>
-        {candidates.length > 0 && (
-          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
-            {scope && !scope.all && (
-              <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again.">
-                Clear list
-              </TextButton>
-            )}
-          </Section>
-        )}
         {shown.length === 0 ? (
           downloaded ? (
             <>
@@ -326,7 +316,7 @@ export function Popup() {
               }
               action={
                 scope && !scope.all ? (
-                  <Button size="md" onClick={() => void browser.tabs.reload(scope.tabId)} title="Reload the page, then press play">
+                  <Button tone="accent" size="md" onClick={() => void browser.tabs.reload(scope.tabId)} title="Reload the page, then press play">
                     <IconRedo size={14} />
                     Reload page
                   </Button>
@@ -337,7 +327,7 @@ export function Popup() {
             </Empty>
           )
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="mt-2 flex flex-col gap-2">
             {groups.map((g) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
@@ -351,18 +341,25 @@ export function Popup() {
                   </div>
                 )}
                 {g.list.map((c) => (
-                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} />
+                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
                 ))}
               </div>
             ))}
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+            {scope && !scope.all && (
+              <div className="-mr-2 -mt-1 flex justify-end">
+                <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again.">
+                  Clear list
+                </TextButton>
+              </div>
+            )}
           </div>
         )}
       </Panel>
 
       <Panel shown={view === 'jobs'}>
         {active.length === 0 && failed.length === 0 ? (
-          <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button size="md" onClick={() => setView('page')}>Go to This page</Button>}>
+          <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button tone="accent" size="md" onClick={() => setView('page')}>Show media on this page</Button>}>
             Pick a video to download and its progress shows up here.
           </Empty>
         ) : (
@@ -431,16 +428,17 @@ export function Popup() {
                 </IconButton>
               )}
             </div>
-            <Section title={q ? 'Matches' : 'Downloaded'} count={q ? matches.length : undefined}>
-              {!q && (
-              <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
-                Clear history
-              </ConfirmButton>
-              )}
-            </Section>
+            {q ? <Section title="Matches" count={matches.length} /> : <div className="h-3 shrink-0" />}
           </>
         )}
         <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={() => setView('page')} />
+        {archive.length > 0 && !q && (
+          <div className="-mr-2 mt-1 flex justify-end">
+            <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
+              Clear history
+            </ConfirmButton>
+          </div>
+        )}
       </Panel>
 
       <Toast message={toast?.text ?? null} action={toast?.view && view !== 'jobs' ? { label: 'View', onClick: () => (setView('jobs'), setToast(null)) } : undefined} />

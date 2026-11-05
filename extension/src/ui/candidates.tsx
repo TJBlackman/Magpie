@@ -48,7 +48,7 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   // nothing new. It also fills a line that would otherwise be empty.
   const host = hostOf(candidate.url);
   const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
-  let rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
+  let rest = candidate.info?.drm && !candidate.archived ? "Can't be saved" : [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
   if (!lead && !rest && !tagged) rest = host;
   return { lead, rest };
 }
@@ -118,7 +118,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       )}
       {candidate.archived && !inSheet && (
         <span data-testid="archived-badge" className="flex shrink-0 items-center gap-1 font-medium text-fg2" title={`Downloaded ${savedAs(candidate.archived)}`}>
-          <IconCheck size={13} className="text-saved" />
+          <IconCheckCircle size={13} className="text-saved" />
           Downloaded
         </span>
       )}
@@ -144,6 +144,31 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
 }
 
 /** The glyph at the right of a card. It says what opening the card leads to; a running job shows its progress instead. */
+/** Fresh media Magpie can save: one click on its arrow saves it at the best quality. Media already saved goes through the sheet, which says so. */
+function quickable(candidate: Candidate): boolean {
+  return !candidate.archived && !candidate.info?.drm && (candidate.kind !== 'post' || (candidate.post?.assets.length ?? 0) > 0);
+}
+
+/** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
+function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (candidate: Candidate) => void }) {
+  const files = candidate.post?.assets.length ?? 0;
+  const quality = fmtHeight(candidate.info?.height);
+  const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
+  const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={[label, size].filter(Boolean).join(', ')}
+      data-testid="quick"
+      onClick={() => onQuick(candidate)}
+      className={`absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg ring-inset transition-colors ${candidate.live ? 'text-live hover:bg-live/[0.12] hover:ring-1 hover:ring-live/45' : 'text-mute group-hover:text-text hover:!text-shine hover:bg-accent-fill hover:ring-1 hover:ring-accent-edge'}`}
+    >
+      {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
+    </button>
+  );
+}
+
 function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
   const box = 'flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150';
   if (job) {
@@ -161,7 +186,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     return <ProgressRing pct={job.pct} />;
   }
-  // At rest the square is only its glyph, so a list is not a column of buttons. Hovering or focusing the card turns it into the control.
+  // A card that can be saved in one click draws its own button over this slot (QuickAction); the slot keeps the room.
+  if (quickable(candidate)) return <span className="size-9 shrink-0" aria-hidden="true" />;
   const blocked = candidate.info?.drm && !candidate.archived;
   const cls = blocked
     ? 'text-dim ring-transparent'
@@ -184,7 +210,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -209,10 +235,11 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
                 ? 'Record this stream'
                 : candidate.kind === 'post'
                   ? 'Download every file of this post'
-                  : 'Choose a quality and download'
+                  : 'Choose a quality, or use the arrow to download the best one now'
       }
       dim={!!candidate.archived}
       action={<CardAction candidate={candidate} job={job} />}
+      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
     />
   );
 });
@@ -267,7 +294,7 @@ function ArchivedNote({ archived, onMissing }: { archived: Archived; onMissing: 
   return (
     <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Downloaded ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
-      <Button tone="default" size="md" className="mt-2.5 -mb-0.5 !bg-white/[0.06] !ring-white/[0.12] hover:!bg-white/[0.1]" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
+      <Button tone="accent" size="md" className="mt-2.5 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
         <IconFolder size={14} />
         Show in folder
       </Button>
@@ -382,9 +409,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         aria-label={`Download ${title}`}
         data-testid="sheet"
         {...dialog}
-        className="sheet-in outline-none absolute inset-x-0 bottom-0 z-20 flex max-h-[528px] flex-col rounded-t-[18px] border-t border-white/[0.09] bg-panel px-3.5 pt-2 pb-3.5 shadow-[0_-20px_50px_rgba(0,0,0,.6)]"
+        className="sheet-in outline-none absolute inset-x-0 bottom-0 z-20 flex max-h-[528px] flex-col rounded-t-[18px] border-t border-white/[0.09] bg-panel px-3.5 pt-3.5 pb-3.5 shadow-[0_-20px_50px_rgba(0,0,0,.6)]"
       >
-        <div className="mx-auto mb-2.5 h-1 w-9 shrink-0 rounded-full bg-edge3" />
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
@@ -392,7 +418,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-                {post ? postLabel(candidate) : hostOf(candidate.url)}
+                {post ? postLabel(candidate) : siteOf(hostOf(candidate.pageUrl)) || hostOf(candidate.url)}
               </span>
             </div>
           </div>
@@ -459,8 +485,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </div>
         )}
         {inspection && !error && (!post || files > 0) && (
-          <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
-            {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
+          <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
+            {candidate.live ? <span className="size-2.5 rounded-full bg-live ring-2 ring-[#ffd5dd]/60" aria-hidden="true" /> : <IconDownload size={17} />}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}

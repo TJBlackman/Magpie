@@ -379,7 +379,7 @@ function startPost(c: Candidate): Result<Job> {
 function start(c: Candidate, variantId: string): Result<Job> {
   if (c.kind === 'post') return startPost(c);
   const ins = state.inspections.get(c.id);
-  const v = ins?.variants.find((x) => x.id === variantId);
+  const v = variantId === 'best' ? (ins?.variants ?? variantsFor(c))[0] : ins?.variants.find((x) => x.id === variantId);
   if (!v) return err('Inspect the stream first.');
   const short = v.resolution?.split('x')[1];
   const live = !!c.live;
