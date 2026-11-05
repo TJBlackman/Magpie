@@ -13,6 +13,7 @@
  */
 import type { ArchiveEntry } from '../src/core/archive';
 import { pickThumbs, withoutThumb } from '../src/core/thumbs';
+import { paintScene } from './paint';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { UPDATE_KEY } from '../src/core/update';
 import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type MediaInfo, type Result, type UiRequest, type Variant } from '../src/core/types';
@@ -40,57 +41,9 @@ function hash(s: string): number {
   for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return h >>> 0;
 }
-const PALETTES: [string, string, string][] = [
-  ['#9fd0ff', '#f5e2c8', '#4b6b8a'],
-  ['#78c3f5', '#f8d9a8', '#1f6ea8'],
-  ['#ff9b6a', '#ffe0b3', '#d98a4a'],
-  ['#071633', '#12314f', '#0b1d2b'],
-  ['#bfe3c9', '#f1f7e8', '#2f6b3e'],
-  ['#ffb44f', '#ffe3a3', '#b58b3a'],
-  ['#cfe3f5', '#ffffff', '#9fb6c9'],
-  ['#4c5968', '#9aa6b2', '#5b6b3a'],
-];
-/** A 128 by 72 JPEG data URL of a sky, a horizon and sometimes a sun, the same for the same seed. */
+/** A frame for a title, painted like the footage it names (see paint.ts). */
 export function paintThumb(seed: string): string {
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 72;
-  const ctx = c.getContext('2d')!;
-  const h = hash(seed);
-  const [top, bottom, ground] = PALETTES[h % PALETTES.length]!;
-  const g = ctx.createLinearGradient(0, 0, 0, 72);
-  g.addColorStop(0, top);
-  g.addColorStop(1, bottom);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 128, 72);
-  if (h & 1) {
-    ctx.fillStyle = 'rgba(255,230,160,.9)';
-    ctx.beginPath();
-    ctx.arc(90 + (h % 24), 22, 8, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = ground;
-  ctx.beginPath();
-  ctx.moveTo(0, 72);
-  const shape = (h >> 4) % 3;
-  if (shape === 0) {
-    ctx.lineTo(0, 50);
-    ctx.lineTo(38, 24);
-    ctx.lineTo(64, 44);
-    ctx.lineTo(90, 18);
-    ctx.lineTo(128, 48);
-  } else if (shape === 1) {
-    ctx.lineTo(0, 46);
-    ctx.quadraticCurveTo(40, 30, 70, 46);
-    ctx.quadraticCurveTo(100, 60, 128, 42);
-  } else {
-    ctx.lineTo(0, 44);
-    for (let x = 0; x <= 128; x += 8) ctx.lineTo(x, 44 + ((x / 8) % 2 ? 3 : -3));
-  }
-  ctx.lineTo(128, 72);
-  ctx.closePath();
-  ctx.fill();
-  return c.toDataURL('image/jpeg', 0.7);
+  return paintScene(seed);
 }
 
 /* ---------- fake tabs and content ---------- */
