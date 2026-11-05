@@ -91,7 +91,7 @@ interface LiveOutput {
   /** Save the current file as a finished part and open the next one. */
   nextPart(): Promise<void>;
 }
-const LIVE_NOTE = 'Starts about 30 seconds back. Ends when you press "Stop and save", or when the stream ends.';
+const LIVE_NOTE = 'Starts about 30 seconds back. Ends when you press "Stop\u00a0and\u00a0save", or when the stream ends.';
 
 /**
  * Stop for a live recording: unlike cancel, the job finishes its current step,

@@ -36,7 +36,7 @@
   --color-btn-hover: #222a35;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;
-  --color-accent-edge: #177384;
+  --color-accent-edge: #1e91a6;
   /* The one selected state: a quality picked, the open tab, an open menu. The edge is 3:1 on every surface. */
   --color-sel-fill: #10222b;
   --color-sel-edge: #1c9db3;

@@ -365,7 +365,7 @@ export function Popup() {
                         <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
                       </div>
                     )}
-                    <CandidateCard candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} hero={!scope?.all && gi === 0 && ci === 0} />
+                    <CandidateCard candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} hero={gi === 0 && ci === 0} />
                   </Fragment>
                 ))}
               </div>

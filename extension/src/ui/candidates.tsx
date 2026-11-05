@@ -164,7 +164,7 @@ function quickText(candidate: Candidate): { what: string; size: string } {
 }
 
 /** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
-function QuickAction({ candidate, onQuick, onImage }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; onImage?: boolean }) {
+function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; lead?: boolean }) {
   const files = candidate.post?.assets.length ?? 0;
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
@@ -175,7 +175,7 @@ function QuickAction({ candidate, onQuick, onImage }: { candidate: Candidate; on
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute flex size-9 items-center justify-center rounded-full ring-1 transition-colors ring-inset hover:!ring-[#8796a9] active:bg-[#2c3644] ${onImage ? 'top-1/2 right-3 -translate-y-1/2 bg-[#0b1016]/55 text-text ring-white/45 backdrop-blur-sm hover:bg-[#0b1016]/85' : 'top-1/2 right-2.5 -translate-y-1/2 text-fg2 ring-ctl-edge group-hover:text-text group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:bg-[#232b36]'} ${candidate.live ? '' : 'hover:text-shine'}`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead && !candidate.live ? 'bg-accent-fill text-[#7ff0ff] ring-accent-edge hover:bg-[#163845] hover:!ring-shine/80 active:bg-shine/20' : `text-fg2 ring-ctl-edge group-hover:text-text group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -201,7 +201,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className="flex h-9 w-11 shrink-0 items-center justify-end gap-1 text-[11px] font-semibold text-live-soft tabular-nums" aria-hidden="true">
+        <span className="flex h-9 min-w-9 shrink-0 items-center justify-center text-[11px] font-semibold text-live-soft tabular-nums" aria-hidden="true">
           {fmtClock(job.elapsed ?? 0)}
         </span>
       );
@@ -258,10 +258,9 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
   if (hero && thumbs && candidate.thumb && !job && quickable(candidate))
     return (
-      <div {...attrs} className="card-surface group relative overflow-hidden rounded-[16px] border border-transparent outline-offset-2 outline-text transition-[border-color] duration-150 hover:z-10 hover:border-hover-edge has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
-        <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute inset-0 size-full scale-150 object-cover opacity-70 blur-2xl saturate-150" />
-        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,rgba(9,12,17,.62),rgba(9,12,17,.8)_60%,rgba(9,12,17,.86))]" />
-        <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 p-3 pr-16 text-left focus-visible:outline-none">
+      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent outline-offset-2 outline-text transition-[border-color] duration-150 hover:z-10 hover:border-hover-edge has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
+        <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute -top-6 -left-6 h-[calc(100%+48px)] w-1/2 object-cover opacity-55 mix-blend-screen blur-[28px] saturate-150 [mask-image:linear-gradient(90deg,#000_45%,transparent)]" />
+        <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
             <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
             {(duration || files > 1) && (
@@ -275,7 +274,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-fg2 [&_.quick-size]:hidden">{meta}</span>}
           </span>
         </button>
-        <QuickAction candidate={candidate} onQuick={onQuick} onImage />
+        <QuickAction candidate={candidate} onQuick={onQuick} lead />
       </div>
     );
   return (
@@ -319,7 +318,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
     );
   const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-ctl-edge bg-[#141a22] hover:border-hover-edge hover:bg-panel2';
   return (
-    <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
+    <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-11 w-full items-center gap-3 rounded-[10px] border px-3 py-1.5 text-left transition-colors ${shell}`}>
       {!single && (
         <span className={`flex size-[18px] shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? 'border-shine' : 'border-[#66768a]'}`}>
           <span className={`size-2 rounded-full bg-shine transition-transform ${on ? 'scale-100' : 'scale-0'}`} />

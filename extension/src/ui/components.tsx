@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
 import { IconAlert, IconCheck, IconError, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
@@ -117,6 +117,52 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 
   );
 }
 
+let measure: CanvasRenderingContext2D | null | undefined;
+/** How much of `text` fits `width` with an ellipsis after it, cut back past spaces and joining punctuation. */
+function fitLength(text: string, width: number, style: CSSStyleDeclaration): number {
+  measure ??= document.createElement('canvas').getContext('2d');
+  if (!measure) return text.length;
+  measure.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  measure.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing;
+  if (measure.measureText(text).width <= width) return text.length;
+  const trim = (s: string) => s.replace(/[\s,·:;–—-]+$/, '');
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (measure.measureText(`${trim(text.slice(0, mid))}…`).width <= width) lo = mid;
+    else hi = mid - 1;
+  }
+  return trim(text.slice(0, lo)).length;
+}
+
+/**
+ * One line of text cut to fit, with the ellipsis right after the last word or
+ * letter, never after a space. The cut part stays in the page for screen
+ * readers and search; CSS truncation still applies if the measure is off.
+ */
+export function FitText({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [cut, setCut] = useState(text.length);
+  useLayoutEffect(() => {
+    const box = ref.current?.parentElement;
+    if (!box || typeof ResizeObserver === 'undefined') return;
+    const run = () => setCut(fitLength(text, box.clientWidth - 1, getComputedStyle(box)));
+    run();
+    const watch = new ResizeObserver(run);
+    watch.observe(box);
+    return () => watch.disconnect();
+  }, [text]);
+  if (cut >= text.length) return <span ref={ref}>{text}</span>;
+  return (
+    <span ref={ref}>
+      {text.slice(0, cut)}
+      <span aria-hidden="true" className="after:content-['…']" />
+      <span className="sr-only">{text.slice(cut)}</span>
+    </span>
+  );
+}
+
 /**
  * One row, the same on This page, Downloads and History: tile, title, meta
  * line, action on the right, and anything extra (a progress bar) below.
@@ -162,7 +208,7 @@ export function MediaRow({
       {tile}
       <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : ''}`}>
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
-          {title}
+          {typeof title === 'string' ? <FitText text={title} /> : title}
         </div>
         {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
       </div>
@@ -190,7 +236,7 @@ export function MediaRow({
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-3.5 mb-2 flex h-8 items-center justify-between gap-2 first:mt-1.5">
+    <div className="mt-4 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
@@ -204,7 +250,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(34,211,238,.12),rgba(20,26,34,1)_70%)] text-mute ring-1 ring-edge ring-inset">{icon}</div>
+      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[linear-gradient(140deg,rgba(34,211,238,.16),rgba(129,140,248,.14))] text-[#7ff0ff] ring-1 ring-accent-edge ring-inset">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -293,7 +339,7 @@ export function Toast({ message, detail, actions = [], live }: { message: string
   if (!message) return null;
   return (
     <div role="status" className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),rgba(9,12,17,.92)_40%)] px-3.5 pt-6 pb-3">
-      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-[#4b5a6e] ring-inset">
+      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#123e4a] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>

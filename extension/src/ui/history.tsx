@@ -59,7 +59,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
         <IconMore size={20} />
       </IconButton>
       {open && (
-        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-card-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
           {items.map((it, i) => (
             <button
               key={it.label}
@@ -132,7 +132,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-dim" aria-hidden="true">
+        <span className="flex size-9 shrink-0 items-center justify-center text-dim group-focus-within:opacity-0 group-hover:opacity-0" aria-hidden="true">
           <IconFolder size={16} />
         </span>
       }
@@ -154,7 +154,7 @@ export const HistoryList = memo(function HistoryList({ entries, total, query, th
   if (!total) {
     return (
       <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={onBrowse ? <Button tone="accent" size="md" onClick={onBrowse}>{browseLabel}</Button> : undefined}>
-        Finished downloads are listed here and marked on the page, so you never grab the same video twice.
+        Finished downloads are listed here and marked on the page, so you can tell what you already have.
       </Empty>
     );
   }
