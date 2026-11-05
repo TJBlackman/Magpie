@@ -144,13 +144,13 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     </span>
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
-      <span data-testid="job-status" className="font-semibold">{statusText(job, pct)}</span>
+      <span data-testid="job-status" className="font-semibold text-text">{statusText(job, pct)}</span>
       {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
     <span className="min-w-0 flex-1 truncate" title={job.url}>
       {lead}
-      {rendition ? '' : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)}
+      {rendition ? '' : job.live ? `Live · started ${new Date(job.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)}
     </span>
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
@@ -175,7 +175,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
+          <IconButton label="Remove from the list" onClick={() => api.removeJob(job.id)} className="size-9">
             <IconX size={17} />
           </IconButton>
         ) : job.live ? (

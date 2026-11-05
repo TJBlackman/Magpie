@@ -8,7 +8,7 @@ export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'post';
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-white/[0.06] text-mute ring-white/[0.08]',
+    default: 'bg-[#1a2230] text-mute ring-white/[0.06]',
     shine: 'bg-shine/10 text-[#7ff0ff] ring-shine/25',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
     bad: 'bg-live/[0.13] text-live-soft ring-live/30',
@@ -70,7 +70,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
       : tone === 'danger'
         ? 'text-fg2 hover:bg-live/10 hover:text-live-soft'
         : active
-          ? 'bg-accent-fill text-shine ring-1 ring-accent-edge ring-inset'
+          ? 'bg-sel-fill text-shine ring-1 ring-sel-edge ring-inset'
           : framed
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';

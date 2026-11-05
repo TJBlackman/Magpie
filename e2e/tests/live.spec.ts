@@ -24,7 +24,7 @@ for (const churn of ['cachebust', 'msn']) {
 
 async function startRecording(popup: Page, prefix = '/live/', manifest = 'master.m3u8') {
   const sheet = await openCandidate(popup, [prefix, manifest]);
-  await expect(sheet).toContainText('Records from about 30 seconds back', { timeout: 15_000 });
+  await expect(sheet).toContainText('Starts about 30 seconds back', { timeout: 15_000 });
   const start = sheet.getByTestId('start');
   await expect(start).toHaveText('Start recording');
   await start.click();

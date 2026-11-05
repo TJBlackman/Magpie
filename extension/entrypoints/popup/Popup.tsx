@@ -46,19 +46,19 @@ function foundLabel(n: number): string {
   return n === 1 ? 'Show the one found on this page' : `Show the ${n} found on this page`;
 }
 
-/** A tab's count, tinted on the selected tab. A failure is a red dot on its corner, announced as "n failed"; with nothing else to count, a red count. */
+/** A tab's count, tinted on the selected tab, and a failure chip beside it: an alert mark and the number, announced as "n failed". */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
     <>
       {n > 0 && (
-        <span role={failed ? 'img' : undefined} aria-label={failed ? `${n}, ${failed} failed` : undefined} title={failed ? `${failed} failed` : undefined} className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+        <span className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
           {n}
-          {failed > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
         </span>
       )}
 
-      {!n && failed > 0 && (
-        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
+      {failed > 0 && (
+        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[10.5px] font-semibold text-live-soft tabular-nums">
+          <IconError size={11} />
           {failed}
         </span>
       )}
@@ -242,7 +242,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-accent-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -276,6 +276,7 @@ export function Popup() {
             type="button"
             onClick={() => setView('jobs')}
             title="Recording. Open Downloads"
+            aria-label={`Recording, ${fmtClock(recordingJob.duration ?? 0)}. Open Downloads`}
             className="flex h-7 items-center gap-1.5 rounded-full bg-panel3 pr-2.5 pl-2 text-[11.5px] font-semibold text-text ring-1 ring-edge3 transition-colors ring-inset hover:bg-btn-hover"
           >
             <span className="pulse size-2 rounded-full bg-live" />
@@ -289,7 +290,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.25fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -350,9 +351,9 @@ export function Popup() {
                 {scope?.all && (
                   <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
                     <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase ring-1 ring-edge2 ring-inset">{hostOf(g.page).slice(0, 1)}</span>
-                    <span className="min-w-0 flex-1 truncate">
+                    <span className="min-w-0 truncate">
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
-                      <span className="text-dim">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
+                      <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
                     </span>
                     <span className="shrink-0 text-dim tabular-nums">{g.list.length}</span>
                   </div>

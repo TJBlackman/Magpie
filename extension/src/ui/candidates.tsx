@@ -43,7 +43,8 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // The count of qualities tells that the card opens a choice; the arrow takes the best.
   const choice = candidate.info?.qualities && !candidate.archived ? `${candidate.info.qualities} qualities` : '';
-  const lead = [fmtHeight(candidate.info?.height), size, choice].filter(Boolean).join(' · ');
+  const unknown = fmtHeight(candidate.info?.height) && !size && !candidate.live && candidate.kind !== 'post' ? 'size unknown' : '';
+  const lead = [fmtHeight(candidate.info?.height), size || unknown, choice].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
@@ -165,8 +166,10 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       className={`quick tip absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-btn-edge transition-colors ring-inset hover:bg-[#2a3442] hover:text-text`}
     >
       {candidate.live ? (
-        <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current">
-          <span className="rec size-2 rounded-full bg-live" />
+        <span className="flex size-4 items-center justify-center">
+          <span className="flex size-3.5 items-center justify-center rounded-full ring-[1.5px] ring-current">
+            <span className="size-1.5 rounded-full bg-live" />
+          </span>
         </span>
       ) : (
         <IconDownload size={17} />
@@ -265,7 +268,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge2 bg-[#141a22] hover:border-edge3 hover:bg-panel2';
+  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-edge3 bg-[#141a22] hover:border-btn-edge hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -334,18 +337,18 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div>
+    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-edge3 ring-inset">
       <details className="group/files text-[12px] text-mute">
-        <summary className="-mx-1 flex h-9 cursor-pointer list-none items-center gap-2.5 rounded-lg px-1 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
+        <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
-          <span className="flex-1">{n === 1 ? `1 ${fileWord(variants, 1)}` : `${n} ${fileWord(variants, n)}, saved to one folder`}</span>
+          <span className="flex-1">{`${n} ${fileWord(variants, n)}`}</span>
           <span className="flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
             <span className="group-open/files:hidden">See files</span>
             <span className="hidden group-open/files:inline">Hide files</span>
             <IconChevron size={13} className="transition-transform group-open/files:rotate-90" />
           </span>
         </summary>
-        <ol className="mt-1 flex flex-col gap-px rounded-[10px] bg-[#141a22] p-1.5 ring-1 ring-edge2 ring-inset" data-testid="post-files">
+        <ol className="flex flex-col gap-px border-t border-edge2 p-1.5" data-testid="post-files">
           {variants.map((v, i) => (
             <li key={v.id} className="flex h-7 items-center gap-2.5 rounded-md px-1.5 hover:bg-white/[0.03]" title={v.uri}>
               <span className="w-5 shrink-0 text-right text-dim tabular-nums">{i + 1}</span>
@@ -472,7 +475,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           )}
           {candidate.archived && <ArchivedNote archived={candidate.archived} />}
           {inspection?.notes.filter((n) => !n.startsWith('Audio:')).map((n) => (
-            <Callout key={n} tone={/fail|cannot|can't|DRM|not hosted|nothing to save/i.test(n) ? 'warn' : 'info'}>
+            <Callout key={n} tone={/fail|cannot|can't|DRM|not hosted|nothing to save/i.test(n) ? 'warn' : 'info'} title={candidate.live && n.startsWith('Starts about') ? 'Records until you stop' : undefined}>
               {n}
             </Callout>
           ))}
@@ -501,7 +504,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {!post && inspection && footnote && !folded && <p className="text-[11.5px] text-pretty text-mute">{footnote}</p>}
+          {!post && inspection && footnote && !folded && <Callout tone="neutral">{footnote}</Callout>}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
@@ -524,18 +527,15 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         {inspection && !error && (!post || files > 0) && !folded && (
           <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current" aria-hidden="true">
-                <span className="size-2 rounded-full bg-current" />
+              <span className="flex size-4 items-center justify-center" aria-hidden="true">
+                <span className="flex size-3.5 items-center justify-center rounded-full ring-[1.5px] ring-current">
+                  <span className="size-1.5 rounded-full bg-current" />
+                </span>
               </span>
             ) : (
               <IconDownload size={17} />
             )}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
-          </Button>
-        )}
-        {error && (
-          <Button size="lg" onClick={onClose} className="mt-3 w-full">
-            Close
           </Button>
         )}
       </div>
