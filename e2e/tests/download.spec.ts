@@ -209,11 +209,11 @@ test('popup for one tab lists that tab only', async ({ magpie }) => {
   await playAndWait(page, '/hls-ts.html');
   const popup = await magpie.popupFor(page);
   await expect(popup.locator('[data-testid="candidate"]').first()).toBeVisible({ timeout: 15_000 });
-  await expect(popup.getByRole('button', { name: 'Clear found media' })).toBeVisible();
+  await expect(popup.getByRole('button', { name: 'Clear list' })).toBeVisible();
   await expect(popup.getByTestId('candidate-title')).toHaveText(['Harbor at Dusk']);
   // Opened as a page of its own, every tab is listed and grouped by page.
   const all = await magpie.popup();
-  await expect(all.getByRole('button', { name: 'Clear found media' })).toHaveCount(0);
+  await expect(all.getByRole('button', { name: 'Clear list' })).toHaveCount(0);
   await expect(all.getByTestId('candidate')).toHaveCount(2, { timeout: 15_000 });
   await expect(all.getByText('127.0.0.1/progressive.html')).toBeVisible();
 });

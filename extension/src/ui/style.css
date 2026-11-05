@@ -33,7 +33,7 @@
   /* Already downloaded: a caution, the only yellow in the popup. */
   --color-saved: #f2cc60;
   /* Errors use the same red, by its own name. A filled red button carries dark text at 6.3:1. */
-  --color-err: #fb5a78;
+  --color-err: #f87171;
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
   --color-btn: #282b2e;
   --color-btn-edge: #6e7279;

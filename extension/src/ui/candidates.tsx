@@ -1,9 +1,9 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
-import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing, textWidth } from './components';
+import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
 import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
@@ -163,11 +163,11 @@ export function leads(candidate: Candidate, thumbs: boolean, job?: CardJob): boo
 /** What one click on the arrow does, shown in place of the meta line while the arrow is hovered or focused. */
 function quickText(candidate: Candidate): { what: string; size: string } {
   const files = candidate.post?.assets.length ?? 0;
-  if (candidate.live) return { what: 'Record now', size: '' };
-  if (candidate.kind === 'post') return { what: `Download ${files} ${files === 1 ? 'file' : 'files'} now`, size: '' };
+  if (candidate.live) return { what: `Record${fmtHeight(candidate.info?.height) ? ` ${fmtHeight(candidate.info?.height)}` : ''}`, size: '' };
+  if (candidate.kind === 'post') return { what: `Download ${files} ${files === 1 ? 'file' : 'files'}`, size: '' };
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration) || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
-  return { what: `Download${quality ? ` ${quality}` : ''} now`, size };
+  return { what: `Download${quality ? ` ${quality}` : ''}`, size };
 }
 
 /** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
@@ -182,7 +182,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-live/50' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge'} ${candidate.live ? 'hover:!ring-live-soft hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-transparent group-hover:ring-live/50' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge'} ${candidate.live ? 'hover:!ring-live-soft hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
         <span className="size-3 rounded-full bg-live" />
@@ -219,7 +219,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
   if (quickable(candidate)) return <span className="size-9 shrink-0" aria-hidden="true" />;
   const blocked = candidate.info?.drm && !candidate.archived;
   return (
-    <span className={`${box} text-dim ring-transparent`} aria-hidden="true">
+    <span className={`${box} text-mute ring-transparent`} aria-hidden="true">
       {blocked ? null : <IconChevron size={16} />}
     </span>
   );
@@ -266,8 +266,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
   if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.6),rgba(96,165,250,.22)_45%,rgba(157,130,240,.5))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45),0_6px_22px_rgba(31,216,207,.13)] hover:[background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.9),rgba(96,165,250,.35)_45%,rgba(157,130,240,.75))_border-box] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(157,130,240,.2),transparent_60%)]" />
+      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.6),rgba(56,189,248,.2)_55%,rgba(31,216,207,.3))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45)] hover:[background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.9),rgba(56,189,248,.35)_55%,rgba(31,216,207,.5))_border-box] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(56,189,248,.12),transparent_60%)]" />
         <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.16)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
@@ -280,7 +280,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             <span className="font-display line-clamp-2 block text-[15.5px] leading-5 font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.45)]" data-testid="candidate-title" title={full}>
               {title}
             </span>
-            {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-fg2 [&_.quick-size]:hidden">{meta}</span>}
+            {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-fg2">{meta}</span>}
           </span>
         </button>
         <QuickAction candidate={candidate} onQuick={onQuick} lead />
@@ -361,56 +361,20 @@ function ArchivedNote({ archived }: { archived: Archived }) {
 
 /** "Downloads / Reddit / EarthPorn / name": folders quiet, the last part a step brighter, cut in the middle when long. */
 function SavePath({ path }: { path: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
   const cut = path.lastIndexOf('/');
-  const folders = cut >= 0 ? `${path.slice(0, cut).split('/').join(' / ')} / ` : '';
+  const folders = cut >= 0 ? path.slice(0, cut).split('/').join(' / ') : '';
   const name = path.slice(cut + 1);
-  const [shown, setShown] = useState(name);
-  useLayoutEffect(() => {
-    const box = ref.current;
-    if (!box || typeof ResizeObserver === 'undefined') return;
-    const run = () => {
-      const style = getComputedStyle(box);
-      const room = box.clientWidth - 1;
-      const fits = (n: string) => textWidth(folders + n, style) <= room;
-      if (fits(name)) return setShown(name);
-      if (!/\.\w+$/.test(name)) {
-        // A folder: keep its start and its end, cut between.
-        const mid = (n: number) => {
-          const head = name.slice(0, Math.ceil(n * 0.55)).replace(/[\s,·:;–—-]+$/, '');
-          const tail = name.slice(name.length - Math.floor(n * 0.45)).replace(/^[\s,·:;–—-]+/, '');
-          return `${head}…${tail}`;
-        };
-        let lo = 4;
-        let hi = name.length;
-        while (lo < hi) {
-          const m = (lo + hi + 1) >> 1;
-          if (fits(mid(m))) lo = m;
-          else hi = m - 1;
-        }
-        return setShown(mid(lo));
-      }
-      const suffix = /(?: \d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*\.\w+$/.exec(name)?.[0] ?? '';
-      const stem = name.slice(0, name.length - suffix.length);
-      const at = (k: number) => `${stem.slice(0, k).replace(/[\s,·:;–—-]+$/, '')}…${suffix}`;
-      let lo = 1;
-      let hi = stem.length;
-      while (lo < hi) {
-        const mid = (lo + hi + 1) >> 1;
-        if (fits(at(mid))) lo = mid;
-        else hi = mid - 1;
-      }
-      setShown(at(lo));
-    };
-    run();
-    const watch = new ResizeObserver(run);
-    watch.observe(box);
-    return () => watch.disconnect();
-  }, [folders, name]);
+  const suffix = /(?:\s\d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*(?:\.\w+)?$/.exec(name)?.[0] ?? '';
+  const stem = name.slice(0, name.length - suffix.length);
   return (
-    <span ref={ref} className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
-      {folders}
-      <span className="text-fg2">{shown}</span>
+    <span className="block min-w-0 flex-1">
+      <span className="block truncate">
+        <span className="text-dim">Saves to</span> {folders}
+      </span>
+      <span className="mt-0.5 line-clamp-2 break-words text-fg2">
+        {stem}
+        <span className="whitespace-nowrap">{suffix}</span>
+      </span>
     </span>
   );
 }
@@ -533,7 +497,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="font-display line-clamp-2 text-[16.5px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="font-display line-clamp-3 text-[16.5px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
@@ -598,7 +562,6 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex items-start gap-2 px-0.5 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
-            <span className="shrink-0 text-dim">Saves to</span>
             <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} />
           </div>
         )}

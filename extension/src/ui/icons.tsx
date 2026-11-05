@@ -271,13 +271,13 @@ export const Logo = ({ size = 22 }: { size?: number }) => {
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
       <defs>
         <linearGradient id={`${id}s`} x1="2" y1="22" x2="14" y2="10" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#8b7bff" />
-          <stop offset=".55" stopColor="#38bdf8" />
+          <stop offset="0" stopColor="#2f86d6" />
+          <stop offset=".55" stopColor="#2bc4d6" />
           <stop offset="1" stopColor="#52e7d7" />
         </linearGradient>
         <linearGradient id={`${id}c`} x1="20" y1="5" x2="9" y2="15" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#2a7f8c" />
-          <stop offset="1" stopColor="#4b43a6" />
+          <stop offset="0" stopColor="#1f8c87" />
+          <stop offset="1" stopColor="#1b4e6b" />
         </linearGradient>
       </defs>
       <path d="M10.4 14.6 L2.2 21.4 Q1.9 21.9 2.6 21.8 L4.2 21.2 L11.9 15.9 Z" fill={`url(#${id}s)`} />

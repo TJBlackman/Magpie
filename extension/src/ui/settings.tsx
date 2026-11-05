@@ -81,7 +81,7 @@ function Row({ label, htmlFor, control, children, whole }: { label: string; html
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
-      <h2 className="mb-2 px-0.5 text-[12.5px] font-semibold text-mute">{title}</h2>
+      <h2 className="mb-2 text-[12.5px] font-semibold text-mute">{title}</h2>
       <div className="card-surface divide-y divide-edge overflow-hidden rounded-[14px]">{children}</div>
     </section>
   );

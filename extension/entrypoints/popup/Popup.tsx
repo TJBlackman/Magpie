@@ -73,9 +73,8 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
       )}
 
       {failed > 0 && (
-        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-5 shrink-0 items-center gap-0.5 pl-0.5 text-[12px] leading-5 font-medium text-[#f5c76a] tabular-nums">
-          <IconError size={12} />
-          {failed}
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex size-4 shrink-0 items-center justify-center">
+          <span className="size-[7px] rounded-full bg-[#f2b84b]" />
         </span>
       )}
     </span>
@@ -223,13 +222,24 @@ export function Popup() {
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; detail?: string; view?: boolean; undo?: string; live?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ text: string; detail?: string; view?: boolean; undo?: string; live?: boolean; show?: { file: string; folder: boolean } } | null>(null);
+  const lastSaved = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const head = archive[0];
+    if (lastSaved.current === undefined) {
+      lastSaved.current = head?.id ?? '';
+      return;
+    }
+    if (!head || head.id === lastSaved.current) return;
+    lastSaved.current = head.id;
+    if (Date.now() - head.at < 15_000) setToast({ text: 'Saved', detail: head.title, show: { file: head.file, folder: !!head.files } });
+  }, [archive]);
   // A toast belongs to the moment: switching views clears it.
   useEffect(() => setToast(null), [view]);
   const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
   // A toast with an action stays 6 seconds, others 3.5; pointer or focus on it holds it.
   const [toastHeld, setToastHeld] = useState(false);
-  const toastFor = toast?.undo || toast?.view ? 6000 : 3500;
+  const toastFor = toast?.undo || toast?.view || toast?.show ? 6000 : 3500;
   useEffect(() => {
     if (!toast || toastHeld) return;
     const t = setTimeout(() => setToast(null), toastFor);
@@ -326,7 +336,7 @@ export function Popup() {
           <Pill n={active.length} failed={failed.length} />,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
         )}
-        {tab('history', 'History', <Pill n={archive.length} />)}
+        {tab('history', 'History', null)}
       </div>
 
       <Panel shown={view === 'page'}>
@@ -408,8 +418,8 @@ export function Popup() {
             )}
             {scope && !scope.all && (
               <div className="mt-3 flex justify-center">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'Found media cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg px-3 text-[12px] font-medium text-mute transition-colors hover:bg-white/[0.05] hover:text-text">
-                  Clear found media
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg px-3 text-[12px] font-medium text-mute transition-colors hover:bg-white/[0.05] hover:text-text">
+                  Clear list
                 </button>
               </div>
             )}
@@ -441,6 +451,7 @@ export function Popup() {
                   {settings && (
                     <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="inline-flex h-7 items-center rounded-md px-1.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.05] hover:text-text">
                       {`${settings.maxConcurrent} at a time`}
+                      <span className="ml-1.5 text-[#83f3e5]">Change</span>
                     </button>
                   )}
                 </Section>
@@ -510,6 +521,7 @@ export function Popup() {
         held={toastHeld}
         onHold={setToastHeld}
         actions={[
+          ...(toast?.show ? [{ label: 'Show in folder', onClick: () => (void api.showFile(toast.show!.file, toast.show!.folder), setToast(null)) }] : []),
           ...(toast?.undo ? [{ label: 'Undo', onClick: () => (void api.cancel(toast.undo!), setToast({ text: toast.live ? 'Recording discarded' : 'Download canceled' })) }] : []),
           ...(toast?.view && view !== 'jobs' ? [{ label: 'View', onClick: () => (setView('jobs'), setToast(null)) }] : []),
         ]}

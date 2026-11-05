@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[43px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[43px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40' : 'z-10'} flex`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -47,7 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        className={open ? 'size-8 !rounded-full' : 'size-8 !rounded-full !text-fg2 hover:!bg-white/[0.08]'}
+        className={open ? 'size-8 !rounded-full' : 'size-8 !rounded-full !text-dim group-hover:!text-fg2 hover:!bg-white/[0.08]'}
         ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
@@ -72,7 +72,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
               }}
               className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-live-soft' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
             >
-              <span className={it.danger ? 'text-live-soft' : 'text-mute'}>{it.icon}</span>
+              <span className={it.danger ? 'text-err' : 'text-mute'}>{it.icon}</span>
               {it.label}
             </button>
           ))}
@@ -131,12 +131,12 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-dim transition-colors group-hover:text-fg2" aria-hidden="true">
+        <span className="flex size-9 shrink-0 items-center justify-center text-mute transition-colors group-hover:text-fg2" aria-hidden="true">
           <IconFolder size={16} />
         </span>
       }
       inset
-      hoverReserve
+      reserve
       overlay={
         <RowMenu
           items={[

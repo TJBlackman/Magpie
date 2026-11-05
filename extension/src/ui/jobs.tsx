@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-0.5 h-1.5 rounded-full bg-[#64686e]">
+    <div className="mt-1 h-1 rounded-full bg-[#2c2f33]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -144,7 +144,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
     </span>
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
-      <span data-testid="job-status" className="font-semibold text-text">{statusText(job, pct)}</span>
+      <span data-testid="job-status" className="font-medium text-text">{statusText(job, pct)}</span>
       {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : '', siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
@@ -227,6 +227,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
                   Keep recording
                 </Button>
                 <Button tone="destroy" size="md" onClick={() => api.cancel(job.id)}>
+                  <IconTrash size={14} />
                   Discard
                 </Button>
               </div>

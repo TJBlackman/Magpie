@@ -51,9 +51,9 @@ export function Button({
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4ee2da] active:bg-[#19bfb7]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
-    accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
+    accent: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
     stop: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn [&>svg]:text-live',
-    destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
+    destroy: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-[#33242a] hover:ring-err/60 active:bg-btn [&>svg]:text-err',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -113,7 +113,7 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 
           <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
         )}
         {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
-        {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[10.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
+        {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[3px] px-[3px] text-[10px] leading-[13px] font-medium tabular-nums bg-black/70 text-text`}>{corner}</span>}
       </div>
     </div>
   );
@@ -226,21 +226,21 @@ export function MediaRow({
     <>
       {tile}
       <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : hoverReserve ? 'group-hover:pr-11 group-has-[:focus-visible]:pr-11' : ''}`}>
-        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
-          {typeof title === 'string' ? <FitText text={title} /> : title}
+        <div className={`line-clamp-2 text-[13px] leading-[17px] font-medium break-words transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
+          {title}
         </div>
         {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
       </div>
     </>
   );
   const root = inset
-    ? `group relative rounded-[12px] outline-offset-2 outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
+    ? `group relative rounded-[10px] outline-offset-2 outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
     : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
   const pad = inset ? 'px-[5px] py-2' : 'px-2.5 py-2.5';
   return (
     <div {...attrs} className={root}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className={`row-main flex w-full cursor-pointer items-center gap-3 text-left focus-visible:outline-none ${inset ? 'rounded-[12px]' : 'rounded-[14px]'} ${pad}`}>
+        <button type="button" onClick={onOpen} title={openTip} className={`row-main flex w-full cursor-pointer items-center gap-3 text-left focus-visible:outline-none ${inset ? 'rounded-[10px]' : 'rounded-[14px]'} ${pad}`}>
           {body}
           {action}
         </button>
@@ -382,7 +382,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#83f3e5] ring-1 ring-accent-edge ring-inset hover:bg-[#103a3e]' : 'bg-btn text-text ring-1 ring-[#80848b] ring-inset hover:bg-btn-hover hover:ring-[#90959b]'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors bg-btn text-text ring-1 ring-[#80848b] ring-inset hover:bg-btn-hover hover:ring-[#90959b]`}>
             {a.label}
           </button>
         ))}
