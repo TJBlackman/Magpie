@@ -224,13 +224,13 @@ body {
 
 /* A list that scrolls under a footer fades out instead of being cut mid line. */
 .fade-top {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, #000 16px);
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px);
 }
 .fade-bottom {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
 }
 .fade-both {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, #000 16px, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
 }
 
 /* Component classes live in a layer, so hover and focus utilities can still change them. */

@@ -269,7 +269,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[linear-gradient(140deg,rgba(34,211,238,.13),rgba(129,140,248,.11))] text-[#7ff0ff]" aria-hidden="true">{icon}</div>
+      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] border border-transparent text-[#7ff0ff] [background:linear-gradient(140deg,#16262c,#1a1d2a)_padding-box,linear-gradient(125deg,rgba(34,211,238,.6),rgba(96,165,250,.22)_45%,rgba(129,140,248,.5))_border-box]" aria-hidden="true">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -346,7 +346,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-medium text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:text-text hover:ring-[#90959b]">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -381,7 +381,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
 /** A line under the header when the website has a newer Magpie. Update opens the download page; X hides it until the next version. */
 export function UpdateBanner({ version, onGet, onDismiss }: { version: string; onGet: () => void; onDismiss: () => void }) {
   return (
-    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-[#181a1c] pr-1.5 pl-3 text-[12.5px]">
+    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-[#181a1c] pr-0 pl-3 text-[12.5px]">
       <IconUpdate size={16} className="shrink-0 text-shine" />
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out

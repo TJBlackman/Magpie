@@ -106,7 +106,7 @@ function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
   useEffect(measure, [shown, measure]);
   const fade = edges.top && edges.bottom ? 'fade-both' : edges.top ? 'fade-top' : edges.bottom ? 'fade-bottom' : '';
   return (
-    <div hidden={!shown} className="min-h-0 flex-1">
+    <div hidden={!shown} className={`min-h-0 flex-1 transition-shadow ${edges.top ? 'shadow-[inset_0_1px_0_rgba(255,255,255,.06)]' : ''}`}>
       <div ref={scroller} onScroll={measure} className={`h-full overflow-y-auto px-3.5 pb-[calc(16px+var(--toast-pad))] scroll-thin ${fade}`}>
         <div className="flex min-h-full flex-col">{children}</div>
       </div>
@@ -315,7 +315,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 ${shown.length || active.length || failed.length || archive.length ? 'grid-cols-[1fr_1.4fr_1fr]' : 'grid-cols-3'} gap-0.5 rounded-xl bg-panel/80 p-[3px] ring-1 ring-edge ring-inset`}>
+      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.4fr_1fr] gap-0.5 rounded-xl bg-panel/80 p-[3px] ring-1 ring-edge ring-inset`}>
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -432,7 +432,7 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <span className="flex items-center gap-2 text-[12px] text-mute">
+                    <span className="flex items-center gap-2 text-[12px] text-dim">
                       <label htmlFor="at-a-time">At a time</label>
                       <Stepper compact id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
                     </span>
