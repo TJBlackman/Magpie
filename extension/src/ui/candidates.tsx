@@ -1,8 +1,8 @@
 import { memo, useEffect, useState } from 'react';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
-import { describeVariant, fmtAgo, fmtBytes, fmtClock, fmtDateTime, fmtEstimate, fmtHeight, hostOf, sourceLabel } from './format';
-import { Badge, Button, Callout, IconButton, KindBadge, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
+import { describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
+import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
 import { IconCheck, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
 
 /** "yesterday at 9:19 PM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
@@ -30,10 +30,14 @@ function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }
   const lead = fmtHeight(candidate.info?.height) || (candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
+  // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says nothing new.
+  const host = hostOf(candidate.url);
+  const showHost = !lead || siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
+  const rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
   return (
     <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
       {lead && <span className="font-medium text-text/90 tabular-nums">{lead}</span>}
-      {`${lead ? ' · ' : ''}${hostOf(candidate.url)}${showFile ? ` · ${file}` : ''}`}
+      {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
 }
@@ -209,7 +213,7 @@ function VariantRow({ variant, on, single, duration, showAudio, onPick }: { vari
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="text-[14px] leading-5 font-semibold tabular-nums">{d.name}</span>
-          {d.tag && <Badge tone={on && !single ? 'shine' : 'default'}>{d.tag.toUpperCase()}</Badge>}
+          {d.tag && <Badge>{d.tag.toUpperCase()}</Badge>}
         </span>
         {(d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
       </span>
@@ -341,9 +345,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold">{title}</div>
+            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance">{title}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
-              <KindBadge kind={candidate.kind} />
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
                 {post ? postLabel(candidate) : hostOf(candidate.url)}

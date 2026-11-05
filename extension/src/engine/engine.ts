@@ -155,6 +155,17 @@ interface DashLivePlan {
   clockOffset: number;
 }
 
+/** Seconds of a finished media playlist, or undefined when it is live, unreadable or another master. */
+async function mediaLength(uri: string, allow: (url: string) => Promise<void>, signal: AbortSignal): Promise<number | undefined> {
+  try {
+    await allow(uri);
+    const media = parseHls(await fetchText(uri, signal), uri);
+    return media.kind === 'media' && media.endList ? media.totalDuration : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** 1080 from "1920x1080" and from "1080x1920"; 0 when there is no resolution. */
 function shorterSide(resolution: string | undefined): number {
   const [w, h] = (resolution ?? '').split('x').map(Number);
@@ -402,8 +413,13 @@ export class Engine {
       const playlist = parseHls(text, candidate.url);
       const notes: string[] = [];
       let variants: Variant[];
+      let length: Promise<number | undefined> = Promise.resolve(undefined);
       if (playlist.kind === 'master') {
         const sorted = [...playlist.variants].sort((a, b) => (b.bandwidth ?? 0) - (a.bandwidth ?? 0));
+        // The length, for size estimates in the sheet: every rendition is as long as the others, so the
+        // cheapest one is read, alongside the audio. A failure only leaves the length unknown.
+        const cheapest = sorted[sorted.length - 1];
+        if (cheapest && !candidate.live) length = mediaLength(cheapest.uri, allow, signal);
         // Each distinct audio playlist is read once, to tell whether it can be merged.
         const verdicts = new Map<string, Promise<string | null>>();
         const verdict = (uri: string) => {
@@ -463,6 +479,8 @@ export class Engine {
               children: [...playlist.variants.map((v) => v.uri), ...playlist.renditions.flatMap((r) => (r.uri ? [r.uri] : []))],
             }
           : { candidateId: candidate.id, kind: 'hls', variants, notes, live: !playlist.endList, ...(playlist.endList ? { duration: playlist.totalDuration } : {}) };
+      const seconds = await length;
+      if (seconds) inspection.duration = seconds;
       this.keepInspection(candidate.id, { candidate, inspection, media: playlist.kind === 'media' ? playlist : undefined });
       return ok(inspection);
     } catch (e) {

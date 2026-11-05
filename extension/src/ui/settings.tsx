@@ -31,7 +31,7 @@ function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, less
           if (e.key === 'Enter') onCommit();
           if (e.key === 'Escape') onDraft?.(null);
         }}
-        className="plain h-8 w-10 bg-transparent text-center text-[13px] font-semibold text-text tabular-nums outline-none"
+        className="plain h-8 w-9 bg-transparent text-center text-[13px] font-semibold text-text tabular-nums outline-none"
       />
       <button type="button" className={btn} onClick={() => onChange(value + 1)} disabled={value >= max} title={moreTitle} aria-label={moreTitle}>
         <IconPlus size={14} />
@@ -118,10 +118,10 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
               htmlFor="max-concurrent"
               control={<Stepper id="max-concurrent" testId="max-concurrent" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void update({ maxConcurrent: n })} lessTitle="One fewer" moreTitle="One more" />}
             >
-              How many run at once. The rest wait in line, in the order you clicked. Live recordings don't count. 2 or 3 fill a fast connection.
+              The rest wait in line. Live recordings don't count. 2 or 3 fill a fast connection.
             </Row>
             <Row label="Show thumbnails" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
-              A frame, the length and the best quality on each row, and a lock on copy protected video. Reads one small piece of each video, only while this popup is open.
+              A frame, length and quality on each row. Reads a small piece of each video while this popup is open.
             </Row>
           </Group>
           <Group title="History">
@@ -144,15 +144,15 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
                 />
               }
             >
-              Finished downloads to remember, so media you already saved is marked on the page. 0 turns history off. Lowering it drops the oldest at once.
+              Downloads to remember and mark on the page. 0 turns history off; lowering it drops the oldest.
             </Row>
             <Row label="Remember private windows" htmlFor="archive-private" control={<Switch id="archive-private" testId="archive-private" checked={settings.archivePrivate} onChange={(on) => void update({ archivePrivate: on })} />}>
-              Off: downloads from private windows leave history when the last private window closes.
+              Off: they leave history when the last private window closes.
             </Row>
           </Group>
           <Group title="Updates">
             <Row label="Tell me about new versions" htmlFor="update-check" control={<Switch id="update-check" testId="update-check" checked={settings.updateCheck} onChange={(on) => void update({ updateCheck: on })} />}>
-              Reads one version number from magpie.trevorblackman.dev at most every 12 hours. Sends nothing about you or your downloads.
+              Checks magpie.trevorblackman.dev twice a day at most. Sends nothing about you.
             </Row>
           </Group>
           <div className="mt-auto flex items-center justify-center gap-2 pt-1 text-[11.5px] text-dim">

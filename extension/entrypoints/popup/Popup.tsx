@@ -39,9 +39,8 @@ function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'l
   if (!n) return null;
   const cls = { default: 'pill bg-white/[0.08] text-mute', live: 'pill bg-live-solid text-white', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
   return (
-    <span aria-label={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
-      {tone === 'failed' && <span aria-hidden="true">!</span>}
-      {n}
+    <span aria-label={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 font-bold text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
+      {tone === 'failed' ? <span aria-hidden="true">!</span> : n}
     </span>
   );
 }
@@ -337,7 +336,7 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <Button tone="ghost" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once">
+                    <Button tone="ghost" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once" className="!text-dim hover:!text-text">
                       {`${settings.maxConcurrent} at a time`}
                     </Button>
                   )}

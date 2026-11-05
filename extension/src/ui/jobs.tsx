@@ -1,7 +1,7 @@
 import { useMemo, useRef, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
-import { fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
+import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
 import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
 import { IconError, IconExternal, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
@@ -43,7 +43,7 @@ function statusText(job: Job, pct: number | null): string {
     case 'downloading': {
       if (job.live) return `Recording ${fmtClock(job.duration ?? 0)} · ${fmtBytes(job.bytes)}`;
       const total = job.bytesTotal ?? (job.segmentsDone && job.segmentsTotal ? (job.bytes / job.segmentsDone) * job.segmentsTotal : 0);
-      const of = total ? `${fmtBytes(job.bytes)} of ${job.bytesTotal ? '' : '~'}${fmtBytes(total)}` : fmtBytes(job.bytes);
+      const of = total ? `${fmtBytes(job.bytes)} of ${job.bytesTotal ? fmtBytes(total) : fmtApprox(total)}` : fmtBytes(job.bytes);
       return pct === null ? of : `${of} · ${Math.floor(pct * 100)}%`;
     }
     default:
@@ -78,7 +78,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-rose-400/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+    <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -90,7 +90,7 @@ function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live'
 
 function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: ReactNode; left: string; right?: ReactNode; testId?: string }) {
   return (
-    <div className="mt-2 flex h-[18px] items-center gap-2 text-[11.5px] text-mute tabular-nums">
+    <div className="mt-2 flex h-5 items-center gap-2 text-[11.5px] text-mute tabular-nums">
       {chip}
       <span className="min-w-0 flex-1 truncate" data-testid={testId}>
         {left}
@@ -108,10 +108,10 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   const recording = !!job.live && job.state === 'downloading';
   const rendition = shortVariant(job.variantLabel);
   const chip = recording ? (
-    <Badge tone="bad">
-      <span className="pulse size-1.5 rounded-full bg-live" />
-      REC
-    </Badge>
+    <span className="relative flex size-2 shrink-0" aria-hidden="true">
+      <span className="ping absolute inline-flex size-full rounded-full bg-live/70" />
+      <span className="relative inline-flex size-2 rounded-full bg-live" />
+    </span>
   ) : STATE_CHIP[job.state] ? (
     <Badge tone={STATE_CHIP[job.state]!.tone}>{STATE_CHIP[job.state]!.label}</Badge>
   ) : null;
@@ -124,20 +124,14 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       meta={
         <>
           {job.group && <Badge>{`${job.group.index + 1} OF ${job.group.total}`}</Badge>}
-          <span className="min-w-0 flex-1 truncate" title={job.url}>
+          <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
             {rendition && <span className="font-medium text-text/90">{rendition}</span>}
-            {hostOf(job.url) && <span className={rendition ? 'text-dim' : ''}>{`${rendition ? ' · ' : ''}${hostOf(job.url)}`}</span>}
+            {`${rendition ? ' · ' : ''}${failed ? statusText(job, pct) || hostOf(job.url) : hostOf(job.url)}`}
           </span>
         </>
       }
       action={
         <>
-          {recording && (
-            <Button tone="default" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="text-[#ff9fb1] ring-live/30 hover:bg-live/15">
-              <IconStop size={12} />
-              Stop
-            </Button>
-          )}
           {failed ? (
             <IconButton label="Remove" framed onClick={() => api.removeJob(job.id)}>
               <IconX size={17} />
@@ -156,32 +150,41 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     >
       {!failed && !job.live && job.state !== 'queued' && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
       {failed ? (
-        <>
-          {job.error && (
-            <p className="-mt-0.5 flex gap-2 text-[12px] leading-[1.45] text-[#c9d2dd]" title={job.error}>
-              <IconError size={14} className="mt-0.5 shrink-0 text-live" />
-              <span className="line-clamp-2">{friendlyError(job.error)}</span>
-            </p>
-          )}
-          <div className="mt-2 flex items-center gap-2">
-            {onRetry ? (
-              <Button tone="default" onClick={onRetry} title="Open the quality sheet for this video again">
-                <IconRedo size={13} />
-                Try again
-              </Button>
-            ) : job.pageUrl ? (
-              <Button tone="default" onClick={() => openPage(job.pageUrl!)} title={`Open ${job.pageUrl} in a new tab`}>
-                <IconExternal size={13} />
-                Open the page
-              </Button>
-            ) : null}
-            <span className="min-w-0 flex-1 truncate text-right text-[11.5px] text-dim tabular-nums" data-testid="job-status">
-              {statusText(job, pct)}
-            </span>
-          </div>
-        </>
+        <div className="flex items-center gap-3">
+          <p className="flex min-w-0 flex-1 gap-2 text-[12px] leading-[1.45] text-[#c9d2dd]" title={job.error}>
+            <IconError size={14} className="mt-0.5 shrink-0 text-live" />
+            <span className="line-clamp-2">{friendlyError(job.error ?? 'The download stopped.')}</span>
+          </p>
+          {onRetry ? (
+            <Button tone="default" size="md" onClick={onRetry} title="Open the quality sheet for this video again">
+              <IconRedo size={13} />
+              Try again
+            </Button>
+          ) : job.pageUrl ? (
+            <Button tone="default" size="md" onClick={() => openPage(job.pageUrl!)} title={`Open ${job.pageUrl} in a new tab`}>
+              <IconExternal size={13} />
+              Open page
+            </Button>
+          ) : null}
+        </div>
       ) : (
-        <StatusLine chip={chip} left={statusText(job, pct)} right={<SpeedText job={job} rate={rate} />} />
+        <StatusLine
+          chip={chip}
+          left={statusText(job, pct)}
+          right={
+            recording ? (
+              <>
+                <SpeedText job={job} rate={rate} />
+                <Button tone="default" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="-my-1 !text-[#ff9fb1] ring-live/30 hover:bg-live/15">
+                  <IconStop size={12} />
+                  Stop
+                </Button>
+              </>
+            ) : (
+              <SpeedText job={job} rate={rate} />
+            )
+          }
+        />
       )}
       {job.note && (
         <div data-testid="job-note" className="mt-2">

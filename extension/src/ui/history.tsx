@@ -3,7 +3,7 @@ import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
 import { Empty, IconButton, MediaRow, MediaTile } from './components';
-import { IconFolder, IconHistory, IconSearch, IconX } from './icons';
+import { IconExternal, IconFolder, IconHistory, IconSearch, IconX } from './icons';
 
 /** The title with the part that matches the search marked. */
 function highlight(text: string, query: string): ReactNode {
@@ -40,36 +40,31 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       titleTip={entry.file}
       titleTestId="archive-title"
       meta={
-        <>
-          <span className="shrink-0" title={`Saved ${fmtDateTime(entry.at)}`}>
-            {fmtDay(entry.at)}
-          </span>
-          {facts && <span className="shrink-0 font-medium text-text/90 tabular-nums">{`· ${facts}`}</span>}
-          {page && <span className="shrink-0 text-dim">·</span>}
-          {page && isWebUrl(page) ? (
-            <a
-              href={page}
-              target="_blank"
-              rel="noreferrer"
-              title={`Open ${page} in a new tab`}
-              className="min-w-0 truncate rounded-sm text-dim underline-offset-2 transition-colors hover:text-shine hover:underline"
-              onClick={(e) => {
-                e.preventDefault();
-                openPage(page);
-              }}
-            >
-              {hostOf(page)}
-            </a>
-          ) : page ? (
-            <span className="min-w-0 truncate text-dim" title={page}>
-              {hostOf(page)}
-            </span>
-          ) : null}
-        </>
+        <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
+          {fmtDay(entry.at)}
+          {facts && <span className="font-medium text-text/90 tabular-nums">{` · ${facts}`}</span>}
+        </span>
       }
       action={
         <>
-          <span className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+          {/* Hover actions float over the end of the title, so the title has the whole row the rest of the time. */}
+          <span className="pointer-events-none absolute top-1/2 right-[52px] flex -translate-y-1/2 items-center gap-1 bg-gradient-to-r from-transparent via-[#18202b] via-30% to-[#18202b] py-1 pl-6 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
+            {page && isWebUrl(page) && (
+              <a
+                href={page}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open ${hostOf(page)}`}
+                title={`Open ${page} in a new tab`}
+                className="inline-flex size-8 items-center justify-center rounded-lg text-mute transition-colors hover:bg-white/[0.07] hover:text-text"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openPage(page);
+                }}
+              >
+                <IconExternal size={15} />
+              </a>
+            )}
             <IconButton label="Remove from history. The video shows as new again." onClick={() => void api.removeArchive(entry.id)}>
               <IconX size={16} />
             </IconButton>

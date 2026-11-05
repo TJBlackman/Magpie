@@ -1,11 +1,20 @@
 import type { MediaKind } from '../core/types';
 
-/** "412 MB", "6.5 MB", "1.74 GB": no trailing ".0". */
-export function fmtBytes(n: number): string {
+/** A size in the unit that fits, to `digits` significant figures: "601 MB", "56.3 MB", "1.74 GB". */
+function sized(n: number, digits: number): string {
   if (n < 1024) return `${Math.round(n)} B`;
-  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
-  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1).replace(/.0$/, '')} MB`;
-  return `${(n / 1024 ** 3).toFixed(2).replace(/.?0+$/, '')} GB`;
+  const [v, unit] = n < 1024 ** 2 ? [n / 1024, 'KB'] : n < 1024 ** 3 ? [n / 1024 ** 2, 'MB'] : [n / 1024 ** 3, 'GB'];
+  return `${Number(v.toPrecision(digits))} ${unit}`;
+}
+
+/** An exact size, three significant figures: "601 MB", "6.52 MB", "1.74 GB". */
+export function fmtBytes(n: number): string {
+  return sized(n, 3);
+}
+
+/** An estimated size, two significant figures and a tilde: "~740 MB", "~1.7 GB". */
+export function fmtApprox(n: number): string {
+  return `~${sized(n, 2)}`;
 }
 
 export function shortUrl(url: string): string {
@@ -59,8 +68,9 @@ export function nextRate(prev: RateSample | null, bytes: number, now: number): R
   return { t: now, b: bytes, rate: prev.rate ? prev.rate * 0.7 + sample * 0.3 : sample };
 }
 
+/** "9.5 MB/s": two figures, so the number does not flicker as it updates. */
 export function fmtRate(bytesPerSec: number): string {
-  return `${fmtBytes(Math.round(bytesPerSec))}/s`;
+  return `${sized(Math.round(bytesPerSec), 2)}/s`;
 }
 
 export function fmtEta(seconds: number): string {
@@ -219,10 +229,7 @@ export function hostOf(url: string): string {
 /** "~1.6 GB": what a rendition of `bitsPerSec` comes to over `seconds`, or '' when either is unknown. */
 export function fmtEstimate(bitsPerSec: number | undefined, seconds: number | undefined): string {
   if (!bitsPerSec || !seconds) return '';
-  // An estimate keeps two significant figures: "~740 MB", "~1.8 GB".
-  const bytes = (bitsPerSec * seconds) / 8;
-  const [n, unit] = bytes >= 1024 ** 3 ? [bytes / 1024 ** 3, 'GB'] : bytes >= 1024 ** 2 ? [bytes / 1024 ** 2, 'MB'] : [bytes / 1024, 'KB'];
-  return `~${Number(n.toPrecision(2))} ${unit}`;
+  return fmtApprox((bitsPerSec * seconds) / 8);
 }
 
 /** "2160p" from a shorter side in pixels. */
@@ -235,7 +242,7 @@ export function fmtHeight(height: number | undefined): string {
  * as the detail (a tooltip), since it names the status and the URL.
  */
 export function friendlyError(message: string): string {
-  if (/\b(401|403)\b/.test(message)) return 'The server refused the download. The link has probably expired: reload the page, then try again.';
+  if (/\b(401|403)\b/.test(message)) return 'The link expired. Open the page, play the video again, then try again.';
   if (/\b(404|410)\b/.test(message)) return 'The video is gone from the server. Reload the page, then try again.';
   if (/\b(429|5\d\d)\b/.test(message)) return 'The server is busy or failing. Try again in a moment.';
   if (/failed to fetch|networkerror|network error|connection/i.test(message)) return 'The connection dropped. Check your connection, then try again.';
@@ -246,4 +253,14 @@ export function friendlyError(message: string): string {
 /** "2160p" from a file name Magpie built, like "Aurora [2160p].mp4"; '' when it names none. */
 export function qualityOfFile(file: string): string {
   return /\[(\d{3,4}p)\]/.exec(file)?.[1] ?? '';
+}
+
+/** "wildframe.tv" for "cdn.wildframe.tv", "bbc.co.uk" for "media.bbc.co.uk": the site a host belongs to. */
+export function siteOf(host: string): string {
+  const parts = host.replace(/^www\./, '').split('.');
+  if (parts.length <= 2 || /^\d+$/.test(parts[parts.length - 1]!)) return parts.join('.');
+  const two = parts.slice(-2);
+  // Second level registries like co.uk, com.au, ne.jp keep a third label.
+  const keep = two[0]!.length <= 3 && two[1]!.length === 2 ? 3 : 2;
+  return parts.slice(-keep).join('.');
 }

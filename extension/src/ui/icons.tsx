@@ -215,6 +215,22 @@ export const IconExternal = (p: IconProps) => (
   </Icon>
 );
 
+export const IconEye = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+);
+
+export const IconEyeOff = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M10.6 5.6A9.7 9.7 0 0 1 12 5.5C18 5.5 21.5 12 21.5 12a17 17 0 0 1-3 3.8" />
+    <path d="M6.6 6.6A16.7 16.7 0 0 0 2.5 12S6 18.5 12 18.5a9.4 9.4 0 0 0 5.4-1.7" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+    <path d="m3 3 18 18" />
+  </Icon>
+);
+
 /** The magpie mark used in the header. */
 export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">

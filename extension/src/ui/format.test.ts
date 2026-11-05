@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codecNames, describeVariant, friendlyError, fmtAgo, fmtBitrate, fmtEstimate, fmtClock, fmtDate, fmtDay, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
+import { codecNames, describeVariant, friendlyError, fmtApprox, fmtBytes, fmtRate, siteOf, fmtAgo, fmtBitrate, fmtEstimate, fmtClock, fmtDate, fmtDay, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
 import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
@@ -153,9 +153,27 @@ describe('quality sheet labels', () => {
   });
 });
 
+describe('sizes', () => {
+  it('gives exact sizes three figures and estimates two', () => {
+    expect(fmtBytes(600.8 * 1024 * 1024)).toBe('601 MB');
+    expect(fmtBytes(6.523 * 1024 * 1024)).toBe('6.52 MB');
+    expect(fmtBytes(1.738 * 1024 ** 3)).toBe('1.74 GB');
+    expect(fmtBytes(412 * 1024 * 1024)).toBe('412 MB');
+    expect(fmtBytes(512)).toBe('512 B');
+    expect(fmtApprox(1.738 * 1024 ** 3)).toBe('~1.7 GB');
+    expect(fmtRate(9.52 * 1024 * 1024)).toBe('9.5 MB/s');
+  });
+  it('names the site a host belongs to', () => {
+    expect(siteOf('cdn.wildframe.tv')).toBe('wildframe.tv');
+    expect(siteOf('media.bbc.co.uk')).toBe('bbc.co.uk');
+    expect(siteOf('127.0.0.1')).toBe('127.0.0.1');
+    expect(siteOf('www.reddit.com')).toBe('reddit.com');
+  });
+});
+
 describe('friendlyError', () => {
   it('says what to do for refused, missing and dropped downloads', () => {
-    expect(friendlyError('HTTP 403 for https://cdn.example/seg-119.ts')).toMatch(/^The server refused the download/);
+    expect(friendlyError('HTTP 403 for https://cdn.example/seg-119.ts')).toMatch(/^The link expired/);
     expect(friendlyError('Server returned 404 for segment 3')).toMatch(/^The video is gone/);
     expect(friendlyError('TypeError: Failed to fetch')).toMatch(/^The connection dropped/);
     expect(friendlyError('No variant to download.')).toBe('No variant to download.');

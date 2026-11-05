@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconAlert, IconCheck, IconError, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
+import { IconAlert, IconCheck, IconError, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
 
 export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
@@ -67,7 +67,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
           ? 'bg-shine/10 text-shine'
           : 'text-mute hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04]';
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'bg-white/[0.03] ring-1 ring-white/[0.08] ring-inset' : ''} ${color} ${className}`}>
+    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-white/[0.05] ring-1 ring-white/[0.08] ring-inset' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -97,7 +97,7 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
   return (
     <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-50 saturate-[.3]' : ''}`} />
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-55 grayscale' : ''}`} />
       ) : (
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
@@ -146,7 +146,7 @@ export function MediaRow({
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
-        <div className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>
+        <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>
       </div>
     </>
   );
@@ -158,12 +158,12 @@ export function MediaRow({
           {action}
         </button>
       ) : (
-        <div className="flex items-center gap-3 p-2 pr-2">
+        <div className="flex items-center gap-3 p-2 pr-2.5">
           {body}
           <div className="flex shrink-0 items-center gap-1">{action}</div>
         </div>
       )}
-      {children && <div className="px-2.5 pt-0.5 pb-2.5">{children}</div>}
+      {children && <div className="px-2.5 pb-2.5">{children}</div>}
     </div>
   );
 }
@@ -171,7 +171,7 @@ export function MediaRow({
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-3 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
+    <div className="mt-3.5 mb-1.5 flex h-6 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
@@ -243,6 +243,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   if (!count) return null;
   return (
     <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Show media already in your history'}>
+      {shown ? <IconEyeOff size={14} /> : <IconEye size={14} />}
       {shown ? 'Hide downloaded' : `${count} downloaded`}
     </Button>
   );
@@ -254,7 +255,7 @@ export function Toast({ message, action }: { message: string | null; action?: { 
   return (
     <div role="status" className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center">
       <div className="rise-in pointer-events-auto flex h-10 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.6),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
-        <span className="flex size-[18px] items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300">
+        <span className="flex size-[18px] items-center justify-center rounded-full bg-shine/15 text-shine">
           <IconCheck size={12} />
         </span>
         {message}
@@ -276,7 +277,7 @@ export function UpdateBanner({ version, onGet, onDismiss }: { version: string; o
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
-      <Button tone="shine" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
+      <Button tone="default" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab" className="bg-shine/15 text-[#7ff0ff] ring-shine/30 hover:bg-shine/25">
         Get it
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>
