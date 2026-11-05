@@ -282,8 +282,10 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
       <div className="flex h-11 items-center gap-3 px-3 text-[12.5px]" title={folder}>
         <IconFolder size={16} className="shrink-0 text-mute" />
         <span className="shrink-0 text-mute">Save to</span>
-        <span className="min-w-0 flex-1 truncate text-right text-text/90" style={{ direction: 'rtl' }}>
-          <bdi>{folder}</bdi>
+        {/* The folder name truncates, never the place it goes. */}
+        <span className="flex min-w-0 flex-1 text-text/90">
+          <span className="shrink-0 text-mute">{folder.slice(0, folder.lastIndexOf('/') + 1)}</span>
+          <span className="truncate">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
         </span>
       </div>
       <details className="group/files text-[12px] text-mute">
