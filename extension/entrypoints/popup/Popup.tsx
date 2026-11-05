@@ -247,7 +247,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45),0_0_16px_rgba(34,211,238,.12)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45),-6px_0_18px_rgba(34,211,238,.12),6px_0_18px_rgba(129,140,248,.12)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -346,7 +346,7 @@ export function Popup() {
           )
         ) : (
           <div className="mt-2 flex flex-col gap-2">
-            {groups.map((g) => (
+            {groups.map((g, gi) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
                   <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
@@ -358,14 +358,14 @@ export function Popup() {
                     <span className="inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums">{g.list.length}</span>
                   </div>
                 )}
-                {g.list.map((c) => (
+                {g.list.map((c, ci) => (
                   <Fragment key={c.id}>
                     {c.id === firstArchived && (
                       <div className="mt-3 mb-0.5">
                         <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
                       </div>
                     )}
-                    <CandidateCard candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
+                    <CandidateCard candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} hero={!scope?.all && gi === 0 && ci === 0} />
                   </Fragment>
                 ))}
               </div>
@@ -374,7 +374,7 @@ export function Popup() {
             {scope && !scope.all && (
               <div className="mt-1 flex justify-center border-t border-edge pt-2">
                 <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#8796a9]">
-                  Clear list
+                  Clear detected media
                 </button>
               </div>
             )}

@@ -108,6 +108,13 @@ body {
   }
 }
 .bar-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.bar-sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
   background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.28) 50%, transparent 100%);
   background-size: 50% 100%;
   background-repeat: no-repeat;
@@ -221,8 +228,8 @@ body {
 
 /* A raised card: a soft vertical light, a hairline of top light, a shadow under it. */
 .card-surface {
-  background-image: linear-gradient(180deg, #151c26 0%, #11171f 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045), 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px rgb(0 0 0 / 0.18);
+  background-image: linear-gradient(180deg, #1a2230 0%, #131922 100%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.5), 0 6px 18px rgb(0 0 0 / 0.22);
 }
 }
 
@@ -246,7 +253,7 @@ input[type='number'].plain {
   .panel-in,
   .rise-in,
   .ping,
-  .bar-sheen {
+  .bar-sheen::after {
     animation: none;
   }
   * {

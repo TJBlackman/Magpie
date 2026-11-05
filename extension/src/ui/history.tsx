@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-2.5 -translate-y-1/2 items-center rounded-lg bg-[#18202b] ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-2.5 -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -47,7 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        framed={!open}
+        framed
         className={open ? 'size-9' : 'size-9 !text-fg2'}
         ref={trigger}
         onClick={() => {

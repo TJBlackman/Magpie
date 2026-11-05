@@ -48,7 +48,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#8796a9] active:bg-btn',
-    shine: 'bg-[linear-gradient(180deg,#4be3f6,#1fc9e4)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_18px_rgba(34,211,238,.24),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(180deg,#67e8f9,#2fd3ec)] active:bg-[linear-gradient(180deg,#22d3ee,#14bdd6)]',
+    shine: 'bg-[linear-gradient(105deg,#4be3f6_0%,#38bdf8_55%,#818cf8_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#67e8f9_0%,#56c8fa_55%,#939cfa_100%)] active:bg-[linear-gradient(105deg,#22d3ee_0%,#2aaef0_55%,#6f7cf3_100%)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
@@ -72,7 +72,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
       : tone === 'danger'
         ? 'text-mute hover:bg-[#1f2834] hover:text-live-soft'
         : active
-          ? 'bg-sel-fill text-shine ring-1 ring-sel-edge ring-inset'
+          ? '!bg-sel-fill text-shine ring-1 !ring-sel-edge ring-inset'
           : framed
             ? 'text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
@@ -292,10 +292,10 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, detail, actions = [], live }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
   if (!message) return null;
   return (
-    <div role="status" className="absolute inset-x-0 bottom-0 z-[15] px-3.5 pt-1 pb-3">
-      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-[#141a22] py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
-        <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
-          <IconCheck size={12} />
+    <div role="status" className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(9,12,17,0),rgba(9,12,17,.92)_40%)] px-3.5 pt-6 pb-3">
+      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-[#4b5a6e] ring-inset">
+        <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#123e4a] text-shine'}`}>
+          {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{message}</span>

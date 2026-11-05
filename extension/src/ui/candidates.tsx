@@ -164,7 +164,7 @@ function quickText(candidate: Candidate): { what: string; size: string } {
 }
 
 /** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
-function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (candidate: Candidate) => void }) {
+function QuickAction({ candidate, onQuick, onImage }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; onImage?: boolean }) {
   const files = candidate.post?.assets.length ?? 0;
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
@@ -175,7 +175,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-text ring-1 ring-ctl-edge transition-colors ring-inset group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:bg-[#232b36] hover:!ring-[#8796a9] active:bg-[#2c3644] ${candidate.live ? '' : 'hover:text-shine'}`}
+      className={`quick absolute flex size-9 items-center justify-center rounded-full ring-1 transition-colors ring-inset hover:!ring-[#8796a9] active:bg-[#2c3644] ${onImage ? 'top-1/2 right-3 -translate-y-1/2 bg-[#0b1016]/55 text-text ring-white/45 backdrop-blur-sm hover:bg-[#0b1016]/85' : 'top-1/2 right-2.5 -translate-y-1/2 text-fg2 ring-ctl-edge group-hover:text-text group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:bg-[#232b36]'} ${candidate.live ? '' : 'hover:text-shine'}`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -224,47 +224,70 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
   const files = candidate.post?.assets.length ?? 0;
+  const attrs = { 'data-testid': 'candidate', 'data-url': candidate.url, 'data-state': candidate.archived ? 'archived' : job ? 'queued' : 'fresh' };
+  const meta =
+    candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? (
+      <>
+        <span className="contents group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">
+          <Meta candidate={candidate} job={job} />
+        </span>
+        {!job && quickable(candidate) && (
+          <span className="hidden min-w-0 flex-1 truncate font-medium text-text group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
+            {quickText(candidate).what}
+            {quickText(candidate).size && <span className="quick-size font-normal text-mute">{` · ${quickText(candidate).size}`}</span>}
+          </span>
+        )}
+      </>
+    ) : undefined;
+  const openTip = candidate.archived
+    ? 'Already downloaded. Download it again'
+    : job
+      ? 'Already downloading. Show it in Downloads'
+      : candidate.info?.drm
+        ? "Copy protected (DRM). Magpie can't save it"
+        : candidate.live
+          ? 'Record this stream'
+          : candidate.kind === 'post'
+            ? 'Download every file of this post'
+            : 'Choose a quality, or use the arrow to download the best one now';
+  // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
+  if (hero && thumbs && candidate.thumb && !job && quickable(candidate))
+    return (
+      <div {...attrs} className="card-surface group relative overflow-hidden rounded-[16px] border border-transparent outline-offset-2 outline-text transition-[border-color] duration-150 hover:z-10 hover:border-hover-edge has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
+        <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="pointer-events-none absolute inset-0 size-full scale-150 object-cover opacity-70 blur-2xl saturate-150" />
+        <span className="pointer-events-none absolute inset-0 bg-[linear-gradient(100deg,rgba(9,12,17,.62),rgba(9,12,17,.8)_60%,rgba(9,12,17,.86))]" />
+        <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 p-3 pr-16 text-left focus-visible:outline-none">
+          <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
+            <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
+            {(duration || files > 1) && (
+              <span className="absolute right-1 bottom-1 rounded-[4px] bg-black/70 px-1 py-px text-[10.5px] leading-[13px] font-semibold text-text tabular-nums">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="font-display line-clamp-2 block text-[15.5px] leading-5 font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.45)]" data-testid="candidate-title" title={full}>
+              {title}
+            </span>
+            {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-fg2 [&_.quick-size]:hidden">{meta}</span>}
+          </span>
+        </button>
+        <QuickAction candidate={candidate} onQuick={onQuick} onImage />
+      </div>
+    );
   return (
     <MediaRow
-      attrs={{ 'data-testid': 'candidate', 'data-url': candidate.url, 'data-state': candidate.archived ? 'archived' : job ? 'queued' : 'fresh' }}
+      attrs={attrs}
       tile={<MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} corner={duration ? fmtClock(duration) : files > 1 ? <FileCount n={files} /> : undefined} />}
       title={title}
       titleTip={full}
       titleTestId="candidate-title"
-      meta={
-        candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? (
-          <>
-            <span className="contents group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">
-              <Meta candidate={candidate} job={job} />
-            </span>
-            {!job && quickable(candidate) && (
-              <span className="hidden min-w-0 flex-1 truncate font-medium text-text group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
-                {quickText(candidate).what}
-                {quickText(candidate).size && <span className="font-normal text-mute">{` · ${quickText(candidate).size}`}</span>}
-              </span>
-            )}
-          </>
-        ) : undefined
-      }
+      meta={meta}
       onOpen={() => onOpen(candidate, job?.id)}
-      openTip={
-        candidate.archived
-          ? 'Already downloaded. Download it again'
-          : job
-            ? 'Already downloading. Show it in Downloads'
-            : candidate.info?.drm
-              ? "Copy protected (DRM). Magpie can't save it"
-              : candidate.live
-                ? 'Record this stream'
-                : candidate.kind === 'post'
-                  ? 'Download every file of this post'
-                  : 'Choose a quality, or use the arrow to download the best one now'
-      }
+      openTip={openTip}
       dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
       overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
@@ -294,7 +317,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-row-edge bg-[#141a22] hover:border-hover-edge hover:bg-panel2';
+  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-ctl-edge bg-[#141a22] hover:border-hover-edge hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -363,7 +386,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-row-edge ring-inset transition-colors hover:ring-hover-edge">
+    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-ctl-edge ring-inset transition-colors hover:ring-hover-edge">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
@@ -530,12 +553,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {!post && inspection && footnote && !folded && (
-            <p className="flex gap-2 px-0.5 text-[12px] text-mute">
-              <IconInfo size={14} className="mt-px shrink-0" />
-              {footnote}
-            </p>
-          )}
+          {!post && inspection && footnote && !folded && <Callout tone="info">{footnote}</Callout>}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex items-start gap-2 px-0.5 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">

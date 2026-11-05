@@ -82,7 +82,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
       <h2 className="mb-2 text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">{title}</h2>
-      <div className="divide-y divide-edge overflow-hidden rounded-xl border border-edge bg-panel">{children}</div>
+      <div className="card-surface divide-y divide-edge overflow-hidden rounded-[14px]">{children}</div>
     </section>
   );
 }
