@@ -69,6 +69,20 @@ test('hls fmp4 master: quality picker, picks 480p', async ({ magpie }) => {
   expectFramesMatch(file, '480');
 });
 
+test("the card's arrow downloads the best quality in one click", async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/hls-fmp4.html');
+  const popup = await magpie.popup();
+  const row = popup.locator('[data-testid="candidate"][data-url*="/media/hls-fmp4/master.m3u8"]').first();
+  await row.getByTestId('quick').click();
+  // No sheet: the job starts at the top of the ladder, and a toast offers the way to it.
+  await expect(popup.getByTestId('sheet')).toHaveCount(0);
+  await expect(popup.getByRole('status').filter({ hasText: 'Added to downloads' })).toBeVisible();
+  // The test stream is short, so the job may be done before Downloads is looked at: history has the file.
+  await view(popup, 'History');
+  await expect(popup.locator('[data-testid="archive-entry"][data-file="Night Train, multi rendition [720p].mp4"]')).toHaveCount(1, { timeout: 30_000 });
+});
+
 test('hls aes-128: segments decrypted', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-aes.html');
