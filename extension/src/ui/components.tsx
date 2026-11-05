@@ -51,7 +51,7 @@ export function Button({
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
-    accent: 'text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-accent-fill',
+    accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     destroy: 'bg-[#d6304a] text-white font-semibold hover:bg-[#e13a55] active:bg-[#c02840]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
@@ -169,7 +169,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border bg-panel ${onOpen || hoverable ? 'border-edge2' : 'border-transparent'} outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-edge2 has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border bg-panel ${onOpen || hoverable ? 'border-edge3' : 'border-transparent'} outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-ctl-edge hover:bg-panel3 active:bg-panel2 has-[.row-main:focus-visible]:border-ctl-edge has-[.row-main:focus-visible]:bg-panel3 has-[.quick:hover]:border-edge3 has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-ctl-edge hover:bg-panel3 focus-within:border-ctl-edge focus-within:bg-panel3' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -236,7 +236,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-live/10 text-live-soft ring-live/45' : 'text-text ring-ctl-edge hover:bg-btn hover:ring-[#8796a9]'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-live/10 text-live-soft ring-live/45' : 'bg-btn text-text ring-ctl-edge hover:bg-btn-hover hover:ring-[#8796a9]'}`}>
       {children}
     </button>
   );
@@ -270,7 +270,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 export function Toggle({ on }: { on: boolean }) {
   return (
     <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#64748b]'}`}>
-      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
+      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(5,42,49,.55),0_1px_2px_rgba(0,0,0,.4)] transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
 }
@@ -281,7 +281,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn hover:ring-[#8796a9]">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#8796a9]">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -295,14 +295,14 @@ export function Toast({ message, detail, actions = [], live }: { message: string
     <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
       <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-1.5 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
-          {live ? <span className="pulse size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
+          <IconCheck size={12} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{message}</span>
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-accent-fill' : 'text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn hover:ring-[#8796a9]'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn-hover hover:ring-[#8796a9]'}`}>
             {a.label}
           </button>
         ))}

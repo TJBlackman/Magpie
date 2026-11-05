@@ -361,7 +361,7 @@ export function Popup() {
                 {g.list.map((c) => (
                   <Fragment key={c.id}>
                     {c.id === firstArchived && (
-                      <div className="-mb-1">
+                      <div className="mt-3 mb-0.5">
                         <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
                       </div>
                     )}
@@ -373,9 +373,8 @@ export function Popup() {
             {!showDownloaded && downloaded > 0 && <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />}
             {scope && !scope.all && (
               <div className="mt-1 flex justify-center border-t border-edge pt-2">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn hover:text-text hover:ring-[#8796a9]">
-                  <IconX size={13} />
-                  Clear this list
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#8796a9]">
+                  Clear list
                 </button>
               </div>
             )}
@@ -405,7 +404,7 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <span className="mr-2 flex items-center gap-2 text-[12px] text-mute">
+                    <span className="flex items-center gap-2 text-[12px] text-mute">
                       <label htmlFor="at-a-time">At a time</label>
                       <Stepper compact id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
                     </span>

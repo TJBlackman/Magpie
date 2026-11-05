@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[#2a3442]">
+    <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-[#3a485a]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (

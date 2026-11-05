@@ -43,8 +43,8 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // The count of qualities tells that the card opens a choice; the arrow takes the best.
   const choice = candidate.info?.qualities && !candidate.archived ? `${candidate.info.qualities} qualities` : '';
-  const single = fmtHeight(candidate.info?.height) && !size && !choice && !candidate.live && candidate.kind !== 'post' ? 'one quality' : '';
-  const lead = [fmtHeight(candidate.info?.height), size, choice || single].filter(Boolean).join(' · ');
+  const unknownSize = fmtHeight(candidate.info?.height) && !size && !candidate.live && candidate.kind !== 'post' ? 'size unknown' : '';
+  const lead = [fmtHeight(candidate.info?.height), size || unknownSize, choice].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
@@ -202,7 +202,6 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
     if (candidate.live)
       return (
         <span className="flex h-9 w-11 shrink-0 items-center justify-end gap-1 text-[11px] font-semibold text-live-soft tabular-nums" aria-hidden="true">
-          <span className="pulse size-1.5 rounded-full bg-live" />
           {fmtClock(job.elapsed ?? 0)}
         </span>
       );
@@ -330,12 +329,12 @@ function ArchivedNote({ archived }: { archived: Archived }) {
 
 /** "Downloads / Reddit / EarthPorn / name": folders quiet, the last part a step brighter, cut in the middle when long. */
 function SavePath({ path }: { path: string }) {
-  const cut = midTruncate(path.replace(/\//g, ' / '), 62);
-  const at = cut.lastIndexOf(' / ');
+  const parts = path.split('/');
+  const name = parts.pop() ?? '';
   return (
-    <span className="min-w-0 truncate">
-      {at >= 0 ? cut.slice(0, at + 3) : ''}
-      <span className="text-fg2">{at >= 0 ? cut.slice(at + 3) : cut}</span>
+    <span className="flex min-w-0 items-center">
+      <span className="shrink-0 whitespace-pre">{parts.map((p) => `${p} / `).join('')}</span>
+      <span className="min-w-0 truncate text-fg2">{name}</span>
     </span>
   );
 }
@@ -485,7 +484,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <Callout tone="neutral" icon={<IconLock size={15} />} testId="inspect-error">
+              <Callout tone="neutral" testId="inspect-error">
                 {error}
               </Callout>
             ) : (
@@ -549,7 +548,6 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <Button size="lg" className="flex-1" testId="start" onClick={() => setExpanded(true)} title="Pick a quality for a second copy">
               <IconDownload size={17} />
               Download again
-              <IconChevron size={14} className="rotate-90 text-mute" />
             </Button>
             <Button tone="shine" size="lg" className="flex-1" onClick={() => void api.showFile(candidate.archived!.file, !!candidate.archived!.files).then((r) => r.ok && !r.value && onMissing())}>
               <IconFolder size={16} />
