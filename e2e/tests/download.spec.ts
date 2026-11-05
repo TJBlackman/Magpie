@@ -74,6 +74,7 @@ test("the card's arrow downloads the best quality in one click", async ({ magpie
   await playAndWait(page, '/hls-fmp4.html');
   const popup = await magpie.popup();
   const row = popup.locator('[data-testid="candidate"][data-url*="/media/hls-fmp4/master.m3u8"]').first();
+  await expect(row).toBeVisible({ timeout: 15_000 });
   await row.getByTestId('quick').click();
   // No sheet: the job starts at the top of the ladder, and a toast offers the way to it.
   await expect(popup.getByTestId('sheet')).toHaveCount(0);
