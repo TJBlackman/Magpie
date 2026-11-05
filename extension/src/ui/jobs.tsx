@@ -144,7 +144,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
     </span>
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
-      <span data-testid="job-status" className="font-medium text-text">{statusText(job, pct)}</span>
+      <span data-testid="job-status" className="text-fg2">{statusText(job, pct)}</span>
       {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
@@ -183,6 +183,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
             {recover && (
               <button type="button" onClick={recover.run} title={recover.hint} className="inline-flex h-8 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10">
                 {recover.label}
+                {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
               </button>
             )}
             <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">

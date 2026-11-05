@@ -70,7 +70,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
                 setOpen(false);
                 it.run();
               }}
-              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#ff8b8b]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
+              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#ff8b8b]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-white/[0.12]' : ''}`}
             >
               <span className={it.danger ? 'text-err' : 'text-mute'}>{it.icon}</span>
               {it.label}
@@ -119,14 +119,10 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       titleTestId="archive-title"
       meta={
         <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
-          <span className="group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{fmtDay(entry.at)}</span>
+          {fmtDay(entry.at)}
+          {' · '}
           <span className="hidden font-medium text-text group-hover:inline group-has-[.row-main:focus-visible]:inline">{folder ? 'Show the folder' : 'Show in folder'}</span>
-          {facts && (
-            <>
-              {' · '}
-              <span className="tabular-nums">{facts}</span>
-            </>
-          )}
+          {facts && <span className="tabular-nums group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{facts}</span>}
         </span>
       }
       onOpen={show}

@@ -215,12 +215,12 @@ export function Popup() {
   // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
     const r = await api.start(c.id, 'best');
-    if (r.ok) setToast({ text: c.live ? 'Recording started' : r.value.state === 'queued' ? `Added to the queue${r.value.queuePosition ? `, #${r.value.queuePosition} in line` : ''}` : 'Download started', detail: c.pageTitle, view: true, undo: r.value.id, live: c.live });
+    if (r.ok) setToast({ queued: !c.live && r.value.state === 'queued', text: c.live ? 'Recording started' : r.value.state === 'queued' ? `Added to the queue${r.value.queuePosition ? `, #${r.value.queuePosition} in line` : ''}` : 'Download started', detail: c.pageTitle, view: true, undo: r.value.id, live: c.live });
     else setSheetId(c.id);
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; detail?: string; view?: boolean; undo?: string; live?: boolean; show?: { file: string; folder: boolean } } | null>(null);
+  const [toast, setToast] = useState<{ text: string; detail?: string; view?: boolean; undo?: string; live?: boolean; queued?: boolean; show?: { file: string; folder: boolean } } | null>(null);
   const lastSaved = useRef<string | undefined>(undefined);
   // Failures stay flagged on the tab until Downloads has been opened once since they happened.
   const [seenFailed, setSeenFailed] = useState<Set<string>>(() => new Set());
@@ -287,7 +287,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-[#6e7279]/70 bg-[#2c2f33] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-[#74787f] bg-[#2c2f33] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
@@ -457,7 +457,7 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="-mr-1.5 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change in Settings" aria-label={`${settings.maxConcurrent} downloads at a time. Change in Settings`} className="-mr-1.5 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
                       {`${settings.maxConcurrent} at a time`}
                       <IconChevron size={14} />
                     </button>
@@ -525,6 +525,7 @@ export function Popup() {
         message={toast?.text ?? null}
         detail={toast?.detail}
         live={toast?.live}
+        queued={toast?.queued}
         duration={toastFor}
         held={toastHeld}
         onHold={setToastHeld}

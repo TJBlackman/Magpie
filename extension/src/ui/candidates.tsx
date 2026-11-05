@@ -60,7 +60,7 @@ function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string;
         <span className="tabular-nums">
           {lead}
           {/* The count of qualities is the card's cue that a click opens the choice. */}
-          {/ qualities$/.test(lead) && <IconChevron size={11} className="-mt-px ml-0.5 inline opacity-70" />}
+          {!candidate.archived && !candidate.info?.drm && <IconChevron size={11} className="-mt-px ml-0.5 inline opacity-70" />}
         </span>
       )}
       {rest && `${lead ? ' · ' : ''}${rest}`}
@@ -321,7 +321,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
               </span>
             )}
           </span>
-          <span className="mt-2 block px-0.5">
+          <span className="mt-2 block">
             <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
               {title}
             </span>
@@ -398,8 +398,8 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   return (
-    <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={`In your downloads since ${when}`} testId="archived-note">
-      <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
+    <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={`Saved ${when}`} testId="archived-note">
+      <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''} in Downloads`}</span>
       <span className="block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
   );

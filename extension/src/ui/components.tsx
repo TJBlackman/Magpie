@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconAlert, IconCheck, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconLock, IconRadio, IconUpdate, IconX } from './icons';
+import { IconAlert, IconCheck, IconClock, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconLock, IconRadio, IconUpdate, IconX } from './icons';
 
 export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-[#2a2d31] text-mute ring-white/[0.06]',
+    default: 'bg-[#2a2d31] text-fg2 ring-white/[0.06]',
     shine: 'bg-shine/10 text-[#83f3e5] ring-shine/25',
     // Already saved: a neutral tag with a teal check. It is done, not a warning.
     saved: 'bg-[#2a2d31] text-fg2 [&>svg]:text-shine',
@@ -239,7 +239,7 @@ export function MediaRow({
   const root = inset
     ? `group relative rounded-[10px] outline-offset-[-2px] outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[[role=menu]]:z-30 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : hoverable ? 'hover:bg-row-hover focus-within:bg-row-hover' : ''}`
     : `card-surface group relative rounded-[14px] border border-transparent outline-offset-2 outline-text transition-[border-color,background-image] duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:[background-image:linear-gradient(180deg,#222529,#1d2023)] has-[.quick:hover]:border-transparent' : hoverable ? 'hover:border-hover-edge focus-within:border-hover-edge' : ''}`;
-  const pad = inset ? 'px-[5px] py-2' : 'px-2.5 py-2.5';
+  const pad = inset ? 'p-2' : 'px-2.5 py-2.5';
   return (
     <div {...attrs} className={root}>
       {onOpen ? (
@@ -254,7 +254,7 @@ export function MediaRow({
         </div>
       )}
       {overlay}
-      {children && <div className={inset ? 'px-[5px] pb-2' : 'px-2.5 pb-2.5'}>{children}</div>}
+      {children && <div className={inset ? 'px-2 pb-2' : 'px-2.5 pb-2.5'}>{children}</div>}
     </div>
   );
 }
@@ -362,7 +362,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate text-[13px] font-medium text-mute">
-        Already downloaded <span className="font-medium text-dim tabular-nums">{count}</span>
+        Already downloaded<span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>
       </span>
       <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="-mr-2.5 inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
         {shown ? 'Hide' : 'Show'}
@@ -372,13 +372,13 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 }
 
 /** A short message at the bottom of the popup that fades after a few seconds, with up to two actions; the last is the main one. */
-export function Toast({ message, detail, actions = [], live, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
+export function Toast({ message, detail, actions = [], live, queued, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; queued?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
   if (!message) return null;
   return (
     <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_28px)] px-3.5 pt-9 pb-3">
       <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-white/[0.07] ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#0d4041] text-shine'}`}>
-          {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
+          {live ? <span className="size-2 rounded-full bg-live" /> : queued ? <IconClock size={12} /> : <IconCheck size={12} />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-semibold">{message}</span>
