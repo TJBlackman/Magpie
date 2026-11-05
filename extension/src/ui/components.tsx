@@ -52,7 +52,7 @@ export function Button({
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-btn text-[#ff9fb1] ring-1 ring-inset ring-live/35 hover:bg-live/15',
+    stop: 'bg-live/[0.16] text-[#ffc2ce] ring-1 ring-inset ring-live/35 hover:bg-live/25',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -163,7 +163,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -183,12 +183,12 @@ export function MediaRow({
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-3.5 mb-2 flex h-8 items-center justify-between gap-2 first:mt-1.5">
+    <div className="mt-3.5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-panel2 [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:hover:bg-btn-hover">{children}</div>}
+      {children && <div className="-mr-2 flex shrink-0 items-center gap-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[12px] [&_button]:hover:bg-btn-hover">{children}</div>}
     </div>
   );
 }
@@ -254,10 +254,12 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : `${count} hidden. Click to show ${count === 1 ? 'it' : 'them'}`} className={shown ? '' : '!bg-accent-fill !text-[#7ff0ff] ring-1 ring-accent-edge ring-inset'}>
-      <IconEyeOff size={14} />
-      Hide downloaded
-    </Button>
+    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="inline-flex shrink-0 items-center gap-2 rounded-lg text-mute transition-colors hover:bg-btn-hover hover:text-text">
+      <span className={`relative h-3.5 w-6 shrink-0 rounded-full transition-colors ${shown ? 'bg-shine' : 'bg-[#334152] ring-1 ring-[#5f6e80] ring-inset'}`}>
+        <span className={`absolute top-0.5 left-0.5 size-2.5 rounded-full bg-white shadow transition-transform ${shown ? 'translate-x-2.5' : ''}`} />
+      </span>
+      Downloaded
+    </button>
   );
 }
 

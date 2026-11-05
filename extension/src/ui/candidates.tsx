@@ -32,7 +32,7 @@ function postLabel(candidate: Candidate): string {
 /** The quality or size, then the host when it is another site, then the file name before anything is known. */
 function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; rest: string } {
   const file = sourceLabel(candidate.url).split(' · ')[1];
-  const lead = fmtHeight(candidate.info?.height) || (candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
+  const lead = fmtHeight(candidate.info?.height) || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says
@@ -40,8 +40,7 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const host = hostOf(candidate.url);
   const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
   let rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
-  // A stream read without a resolution is a single media playlist: there is one quality.
-  if (!lead && !rest && !tagged) rest = host;
+  if (!lead && !rest && !tagged) rest = candidate.live ? host : 'Video';
   return { lead, rest };
 }
 
@@ -112,10 +111,11 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
           <Badge tone="saved">
             <IconCheck size={11} className="-ml-px" />
-            DOWNLOADED <span className="font-medium tracking-normal text-[#fde68a]/80">{fmtAgo(candidate.archived.at)}</span>
+            DOWNLOADED
           </Badge>
         </span>
       )}
+      {candidate.archived && !inSheet && <span className="shrink-0 text-mute">{fmtAgo(candidate.archived.at).replace(/^./, (ch) => ch.toUpperCase())}</span>}
     </>
   );
 }
@@ -138,31 +138,33 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
 
 /** The square at the right of a card. It says what opening the card leads to; a running job shows its progress instead. */
 function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
+  const box = 'flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150';
   if (job) {
     if (job.queued)
       return (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] text-mute ring-1 ring-white/[0.08] ring-inset" aria-hidden="true">
+        <span className={`${box} text-mute ring-transparent`} aria-hidden="true">
           <IconClock size={17} />
         </span>
       );
     if (candidate.live)
       return (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.12] text-live ring-1 ring-live/25 ring-inset" aria-hidden="true">
+        <span className={`${box} text-live ring-transparent`} aria-hidden="true">
           <IconRadio size={17} className="pulse" />
         </span>
       );
     return <ProgressRing pct={job.pct} />;
   }
+  // At rest the square is only its glyph, so a list is not a column of buttons. Hovering or focusing the card turns it into the control.
   const blocked = candidate.info?.drm && !candidate.archived;
   const cls = blocked
-    ? 'bg-transparent text-dim ring-transparent group-hover:text-mute'
+    ? 'text-dim ring-transparent'
     : candidate.archived
-      ? 'bg-white/[0.05] text-mute ring-white/[0.08] group-hover:bg-white/[0.09] group-hover:text-text'
+      ? 'text-dim ring-transparent group-hover:bg-btn group-hover:text-text group-hover:ring-btn-edge group-has-[:focus-visible]:bg-btn group-has-[:focus-visible]:ring-btn-edge'
       : candidate.live
-        ? 'bg-live/[0.12] text-live ring-live/25 group-hover:bg-live/[0.22]'
-        : 'bg-accent-fill text-shine ring-accent-edge group-hover:bg-[#163845] group-hover:text-[#7ff0ff] group-hover:ring-shine/60';
+        ? 'text-live ring-transparent group-hover:bg-live/[0.14] group-hover:ring-live/35 group-has-[:focus-visible]:bg-live/[0.14] group-has-[:focus-visible]:ring-live/35'
+        : 'text-shine ring-transparent group-hover:bg-accent-fill group-hover:text-[#7ff0ff] group-hover:ring-accent-edge group-has-[:focus-visible]:bg-accent-fill group-has-[:focus-visible]:ring-accent-edge';
   return (
-    <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150 ${cls}`} aria-hidden="true">
+    <span className={`${box} ${cls}`} aria-hidden="true">
       {blocked ? <IconLock size={16} /> : candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
     </span>
   );
@@ -221,7 +223,7 @@ function shortName(v: Variant): string {
  */
 function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPick }: { variant: Variant; on: boolean; single: boolean; duration?: number; showAudio: boolean; hideCodecs: boolean; onPick: () => void }) {
   const d = describeVariant(variant);
-  if (hideCodecs) d.detail = d.detail.replace(` · ${codecNames(variant.codecs)}`, '');
+  if (hideCodecs) d.detail = d.detail.replace(new RegExp(` · ${codecNames(variant.codecs).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`), '');
   const size = fmtEstimate(variant.bandwidth, duration);
   if (single)
     return (
@@ -279,7 +281,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Variant[] }) {
   const n = variants.length;
   const where = candidate.post?.subreddit ? `Reddit/${candidate.post.subreddit}` : 'Reddit';
-  const folder = candidate.post ? postPath(candidate.post) : where;
+  const folder = candidate.post?.assets.length ? postPath(candidate.post) : where;
   return (
     <div className="divide-y divide-edge overflow-hidden rounded-[10px] ring-1 ring-edge ring-inset">
       {/* Where it goes: the folder this post gets, and under it the place that folder lives. */}
@@ -364,7 +366,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const drm = !!error && /DRM|copy protected/i.test(error);
   // Codecs every quality shares are said once, under the list.
   const codecSet = new Set(variants.map((v) => codecNames(v.codecs)));
-  const sharedCodecs = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
+  const shared = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
+  const sharedCodecs = shared && !/^H\.264( · AAC)?$/.test(shared) ? shared : '';
   const otherLanguages = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
   const footnote = [sharedCodecs, sharedAudio ? `${sharedAudio} audio${otherLanguages ? ' only' : ''}` : ''].filter(Boolean).join(' · ');
 
@@ -398,10 +401,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <p className="flex gap-2 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
-                <IconLock size={15} className="mt-0.5 shrink-0 text-mute" />
+              <Callout tone="neutral" icon={<IconLock size={15} />} title="Protected video" testId="inspect-error">
                 {error}
-              </p>
+              </Callout>
             ) : (
               <Callout tone="error" title="Magpie can’t save this one" testId="inspect-error">
                 {error}
@@ -420,12 +422,12 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               {n}
             </Callout>
           ))}
-          {inspection && post && <PostFiles candidate={candidate} variants={variants} />}
+          {inspection && post && files > 0 && <PostFiles candidate={candidate} variants={variants} />}
           {inspection && !post && !(candidate.live && single) && (
             <ul className="flex flex-col gap-2">
               {variants.map((v) => (
                 <li key={v.id}>
-                  <VariantRow variant={v} on={v.id === variantId} single={single} duration={duration} showAudio={!sharedAudio} hideCodecs={!!sharedCodecs} onPick={() => setVariantId(v.id)} />
+                  <VariantRow variant={v} on={v.id === variantId} single={single} duration={duration} showAudio={!sharedAudio} hideCodecs={codecSet.size === 1} onPick={() => setVariantId(v.id)} />
                 </li>
               ))}
             </ul>
@@ -433,7 +435,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           {footnote && <p className="text-[11.5px] text-pretty text-mute">{`${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase())}</p>}
         </div>
         {error && (
-          <Button size="lg" onClick={onClose} className="mt-3 w-full">
+          <Button tone="ghost" size="lg" onClick={onClose} className="mt-2 w-full">
             Close
           </Button>
         )}

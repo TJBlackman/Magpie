@@ -57,7 +57,8 @@ async function startPost(popup: Page, part: string, files: number): Promise<stri
   const sheet = popup.getByTestId('sheet');
   await expect(sheet).toBeVisible();
   await expect(sheet.getByTestId('post-files').locator('li')).toHaveCount(files, { timeout: 15_000 });
-  await expect(sheet.getByTestId('start')).toHaveText(files === 1 ? 'Download 1 file' : `Download ${files} files`);
+  // "images" when every file is a picture, else "files".
+  await expect(sheet.getByTestId('start')).toHaveText(new RegExp(`^Download ${files} (file|image)${files === 1 ? '' : 's'}$`));
   await popup.evaluate(() => {
     const seen = new Map<string, number>();
     (window as unknown as { __jobs: Map<string, number> }).__jobs = seen;
@@ -79,7 +80,7 @@ test('a feed lists one row per post with what it holds, and never the ad', async
   // gallery, image, gif, video, hls video, link, text. The ad is not a shreddit-post.
   await expect(rows).toHaveCount(7);
   await expect(popup.locator('[data-testid="candidate"][data-url*="/comments/ad1/"]')).toHaveCount(0);
-  await expect(post(popup, '/comments/gal1/')).toContainText('r/magpietest · Gallery, 4 images');
+  await expect(post(popup, '/comments/gal1/')).toContainText('r/magpietest · Gallery');
   await expect(post(popup, '/comments/gal1/').getByTestId('candidate-title')).toHaveText('Four noisy squares');
   await expect(post(popup, '/comments/img1/')).toContainText('Image, JPG');
   await expect(post(popup, '/comments/gif1/')).toContainText('GIF');

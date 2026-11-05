@@ -6,8 +6,8 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconCheck, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
-import { hostOf, jobProgress, shortUrl } from '../../src/ui/format';
+import { IconAlert, IconCheck, IconDownload, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { fmtClock, hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
 
@@ -130,8 +130,11 @@ export function Popup() {
   const active = jobs.filter((j) => j.state !== 'error');
   const failed = jobs.filter((j) => j.state === 'error');
   const recordings = active.filter((j) => j.live && j.state !== 'queued');
-  const running = active.filter((j) => j.state !== 'queued' && !j.live);
-  const waiting = active.filter((j) => j.state === 'queued');
+  // A post's files stay together: the post counts as running while any of its files runs.
+  const busyGroups = new Set(active.filter((j) => j.group && j.state !== 'queued').map((j) => j.group!.id));
+  const runs = (j: Job) => (j.group ? busyGroups.has(j.group.id) : j.state !== 'queued');
+  const running = active.filter((j) => runs(j) && !j.live);
+  const waiting = active.filter((j) => !runs(j) && !j.live);
   // Candidates with a job waiting or running: the card on This page steps back and shows the progress. A post's files point back at the post's card.
   const byCard = useMemo(() => cardJobs(active), [active]);
   // The files of one post are one row on Downloads; the others stay rows of their own.
@@ -153,7 +156,8 @@ export function Popup() {
     }
     return out;
   };
-  const recording = active.some((j) => j.live && j.state !== 'queued');
+  const recordingJob = active.find((j) => j.live && j.state !== 'queued');
+  const recording = !!recordingJob;
   const thumbs = settings?.thumbnails ?? true;
   const update = useUpdate(settings?.updateCheck ?? false);
 
@@ -221,7 +225,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-[#3d4b5d] ring-inset [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -250,6 +254,17 @@ export function Popup() {
             {scope && (scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
         </div>
+        {recordingJob && (
+          <button
+            type="button"
+            onClick={() => setView('jobs')}
+            title="Recording. Open Downloads"
+            className="flex h-7 items-center gap-1.5 rounded-full bg-live/[0.14] pr-2.5 pl-2 text-[11.5px] font-semibold text-[#ffc2ce] ring-1 ring-live/35 transition-colors ring-inset hover:bg-live/25"
+          >
+            <span className="pulse size-2 rounded-full bg-live" />
+            REC <span className="font-medium tabular-nums">{fmtClock(recordingJob.duration ?? 0)}</span>
+          </button>
+        )}
         <IconButton label="Settings" onClick={() => setSettingsOpen(true)} active={settingsOpen}>
           <IconSettings size={18} />
         </IconButton>
@@ -263,10 +278,10 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} rec={recording} on={view === 'jobs'} margin />
+            <Pill n={active.length} />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
-                <IconError size={13} />
+                <IconAlert size={13} />
                 {failed.length}
               </span>
             )}

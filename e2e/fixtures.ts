@@ -164,7 +164,8 @@ export async function playAndWait(page: Page, path: string) {
 
 /** Switch the popup to one of its three tabs. The other two stay mounted but hidden. */
 export async function view(popup: Page, name: View) {
-  await popup.getByRole('tab', { name }).click();
+  // Opened as a page of its own, the popup names its first tab "All tabs".
+  await popup.getByRole('tab', { name: name === 'This page' ? /^(This page|All tabs)/ : name }).click();
 }
 
 /** Open the popup's settings panel. */

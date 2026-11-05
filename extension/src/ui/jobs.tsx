@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
-import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
+import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
 import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
-import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconX } from './icons';
+import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
  * Smoothed bytes per second for an active job, from the byte counts it reports.
@@ -142,7 +142,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : (
     <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
       {lead}
-      {`${rendition ? ' · ' : ''}${hostOf(job.url)}`}
+      {`${rendition ? ' · ' : ''}${job.pageUrl && siteOf(hostOf(job.url)) === siteOf(hostOf(job.pageUrl)) && rendition ? '' : hostOf(job.url)}`.replace(/ · $/, '')}
     </span>
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
@@ -173,7 +173,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
-              <IconX size={17} />
+              <IconTrash size={16} />
             </IconButton>
           )
         ) : (
@@ -210,7 +210,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>
-              <Button tone="live" size="md" onClick={() => api.cancel(job.id)} className="!bg-[#be123c] !text-white hover:!bg-[#d1164a]">
+              <Button tone="live" size="md" onClick={() => api.cancel(job.id)}>
                 Discard
               </Button>
             </div>
@@ -224,7 +224,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
                   <SpeedText job={job} rate={rate} />
                   <Button tone="stop" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
                     <IconStop size={12} />
-                    Stop
+                    Stop and save
                   </Button>
                 </>
               ) : (

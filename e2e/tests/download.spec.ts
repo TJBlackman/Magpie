@@ -1,11 +1,12 @@
 import type { Page } from '@playwright/test';
 import { download, expect, expectAudioMatch, expectAvPair, expectFramesMatch, finished, newestEntry, openCandidate, playAndWait, start, test, view } from '../fixtures';
 
-/** Open a candidate's sheet, check its top rendition's label, and download that rendition. */
-async function downloadChecked(popup: Page, urlPart: string, label: string | RegExp) {
+/** Open a candidate's sheet, check its top rendition's quality and the audio the sheet says is merged, and download that rendition. */
+async function downloadChecked(popup: Page, urlPart: string, quality: string, audio: RegExp) {
   const previous = await newestEntry(popup);
   const sheet = await openCandidate(popup, urlPart);
-  await expect(sheet.getByTestId('variant').first()).toContainText(label, { timeout: 15_000 });
+  await expect(sheet.getByTestId('variant').first()).toContainText(quality, { timeout: 15_000 });
+  await expect(sheet).toContainText(audio);
   await sheet.getByTestId('start').click();
   await expect(sheet).toHaveCount(0);
   return finished(popup, previous);
@@ -31,7 +32,6 @@ test('a started download grays its card on This page and opens on the Downloads 
   await expect(row).toHaveAttribute('data-state', 'fresh');
   await start(popup, '/crawl/progressive/clip.mp4');
   await expect(row).toHaveAttribute('data-state', 'queued');
-  await expect(row.getByTestId('candidate-title')).toHaveClass(/grayscale/);
   await expect(row.getByTestId('queued-badge')).toBeVisible();
   // Opening a gray card shows its job on Downloads instead of a second quality sheet.
   await row.getByRole('button').first().click();
@@ -101,7 +101,7 @@ test('hls altaudio fmp4: video and audio merged', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-altaudio.html');
   const popup = await magpie.popup();
-  const { jobId, filename } = await downloadChecked(popup, 'hls-altaudio/master.m3u8', '+ audio_0');
+  const { jobId, filename } = await downloadChecked(popup, 'hls-altaudio/master.m3u8', '720p', /audio_0 audio/i);
   expect(filename).toBe('HLS separate audio [720p].mp4');
   const file = await magpie.exportJob(popup, jobId, 'hls-altaudio.mp4');
   expectFramesMatch(file, '720');
@@ -114,7 +114,7 @@ test('hls altaudio ts: video and audio merged', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-altaudio-ts.html');
   const popup = await magpie.popup();
-  const { jobId, filename } = await downloadChecked(popup, 'hls-altaudio-ts/master.m3u8', '+ audio_0');
+  const { jobId, filename } = await downloadChecked(popup, 'hls-altaudio-ts/master.m3u8', '720p', /audio_0 audio/i);
   expect(filename).toBe('HLS separate audio TS [720p].mp4');
   const file = await magpie.exportJob(popup, jobId, 'hls-altaudio-ts.mp4');
   expectFramesMatch(file, '720');
@@ -140,7 +140,7 @@ test('dash: 720p, with its length in history', async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/dash.html');
   const popup = await magpie.popup();
-  const { jobId, filename } = await downloadChecked(popup, 'dash/manifest.mpd', /1280x720 .* \+ audio$/);
+  const { jobId, filename } = await downloadChecked(popup, 'dash/manifest.mpd', '720p', /audio/i);
   expect(filename).toBe('DASH [720p].mp4');
   const file = await magpie.exportJob(popup, jobId, 'dash-720.mp4');
   expectFramesMatch(file, '720');

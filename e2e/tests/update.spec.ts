@@ -37,7 +37,7 @@ test('a newer version on the website shows a line until it is closed', async ({ 
   await expect(banner).toHaveCount(0);
   expect(await stored(magpie.worker, 'updateDismissed')).toBe('99.0.0');
   await popup.reload();
-  await expect(popup.getByRole('tab', { name: 'This page' })).toBeVisible();
+  await expect(popup.getByRole('tab', { name: /^(This page|All tabs)/ })).toBeVisible();
   await expect(banner).toHaveCount(0);
 
   // The next release brings it back.
@@ -55,7 +55,7 @@ test('a newer version on the website shows a line until it is closed', async ({ 
   await expect(banner).toHaveCount(0);
   await store(magpie.worker, { update: { checkedAt: 0, ok: true, latest: '99.1.0' } });
   await popup.reload();
-  await expect(popup.getByRole('tab', { name: 'This page' })).toBeVisible();
+  await expect(popup.getByRole('tab', { name: /^(This page|All tabs)/ })).toBeVisible();
   await popup.waitForTimeout(1000);
   expect(requests).toBe(2);
   expect(await stored(magpie.worker, 'update')).toMatchObject({ checkedAt: 0 });
@@ -66,7 +66,7 @@ test('the installed version or an older one on the website shows nothing', async
   await expect.poll(() => stored(magpie.worker, 'update'), { timeout: 30_000 }).toBeTruthy();
   await store(magpie.worker, { update: { checkedAt: Date.now(), ok: true, latest: installed } });
   const popup = await magpie.popup();
-  await expect(popup.getByRole('tab', { name: 'This page' })).toBeVisible();
+  await expect(popup.getByRole('tab', { name: /^(This page|All tabs)/ })).toBeVisible();
   await popup.waitForTimeout(500);
   await expect(popup.getByTestId('update')).toHaveCount(0);
 });
