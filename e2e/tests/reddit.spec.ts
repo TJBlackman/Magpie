@@ -82,7 +82,7 @@ test('a feed lists one row per post with what it holds, and never the ad', async
   await expect(popup.locator('[data-testid="candidate"][data-url*="/comments/ad1/"]')).toHaveCount(0);
   await expect(post(popup, '/comments/gal1/')).toContainText('r/magpietest · Gallery');
   await expect(post(popup, '/comments/gal1/').getByTestId('candidate-title')).toHaveText('Four noisy squares');
-  await expect(post(popup, '/comments/img1/')).toContainText('Image, JPG');
+  await expect(post(popup, '/comments/img1/')).toContainText('JPG image');
   await expect(post(popup, '/comments/gif1/')).toContainText('GIF');
   await expect(post(popup, '/comments/vid1/')).toContainText('Video 720p');
   await expect(post(popup, '/comments/hls1/')).toContainText('Video');
