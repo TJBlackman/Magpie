@@ -7,7 +7,7 @@ import { IconButton } from './components';
 import { useDialogFocus } from './focus';
 import { IconBack, IconCheck, IconMinus, IconPlus, Logo } from './icons';
 
-function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId }: { id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
+export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId }: { id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
   const btn = 'flex size-8 items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30';
   return (
     <div className="flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-btn-edge ring-inset focus-within:ring-shine/70">

@@ -5,7 +5,8 @@ import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, Te
 import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidates';
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
-import { SettingsPanel } from '../../src/ui/settings';
+import { SettingsPanel, Stepper } from '../../src/ui/settings';
+import { MAX_CONCURRENT_LIMIT } from '../../src/core/settings';
 import { IconCheck, IconChevron, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { fmtClock, hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
@@ -198,7 +199,7 @@ export function Popup() {
   // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
     const r = await api.start(c.id, 'best');
-    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Added to downloads', view: true, undo: r.value.id, live: c.live });
+    if (r.ok) setToast({ text: `${c.live ? 'Recording' : 'Downloading'} ${c.pageTitle || 'the video'}`, view: true, undo: r.value.id, live: c.live });
     else setSheetId(c.id);
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
@@ -346,7 +347,7 @@ export function Popup() {
                 <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
               </div>
             )}
-            {groups.map((g) => (
+            {groups.map((g, gi) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
                   <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
@@ -358,8 +359,8 @@ export function Popup() {
                     <span className="shrink-0 text-dim tabular-nums">{g.list.length}</span>
                   </div>
                 )}
-                {g.list.map((c) => (
-                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
+                {g.list.map((c, ci) => (
+                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tipBelow={gi === 0 && ci === 0} />
                 ))}
               </div>
             ))}
@@ -396,10 +397,10 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <TextButton onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once, in Settings">
-                      {`${settings.maxConcurrent} at a time`}
-                      <IconChevron size={12} className="rotate-90" />
-                    </TextButton>
+                    <span className="mr-2 flex items-center gap-2 text-[12px] text-mute">
+                      <label htmlFor="at-a-time">At a time</label>
+                      <Stepper id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
+                    </span>
                   )}
                 </Section>
                 <div className="flex flex-col gap-2">
@@ -480,7 +481,7 @@ export function Popup() {
             if (retryOf) void api.removeJob(retryOf);
             setRetryOf(null);
             setSheetId(null);
-            setToast({ text: sheet.live ? 'Recording started' : 'Added to downloads', view: true, undo: jobId, live: sheet.live });
+            setToast({ text: `${sheet.live ? 'Recording' : 'Downloading'} ${sheet.pageTitle || 'the video'}`, view: true, undo: jobId, live: sheet.live });
           }}
         />
       )}

@@ -237,6 +237,16 @@ body {
   transition: opacity 0.12s;
   z-index: 30;
 }
+.tip-below::after {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+.tip-below::before {
+  bottom: auto;
+  top: calc(100% - 4px);
+  border-top-color: transparent;
+  border-bottom-color: var(--color-panel3);
+}
 .tip:hover::after,
 .tip:hover::before {
   opacity: 1;

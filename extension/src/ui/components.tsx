@@ -51,7 +51,7 @@ export function Button({
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
+    destroy: 'bg-[#d6304a] text-white font-semibold hover:bg-[#e13a55] active:bg-[#c02840]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -68,14 +68,14 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
     tone === 'live'
       ? 'text-live hover:bg-live/10'
       : tone === 'danger'
-        ? 'text-fg2 hover:bg-live/10 hover:text-live-soft'
+        ? 'text-mute hover:bg-[#1f2834] hover:text-live-soft'
         : active
           ? 'bg-sel-fill text-shine ring-1 ring-sel-edge ring-inset'
           : framed
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-btn-edge ring-inset hover:!bg-[#2a3442]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-edge3 ring-inset hover:!bg-[#232b36] hover:ring-[#8796a9]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -167,7 +167,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[:focus-visible]:border-edge3 has-[:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-transparent has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-transparent has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -221,7 +221,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
-    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#141a22] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ring-1 ring-edge2 ring-inset ${cls}`}>
+    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#141a22] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
       <div className="min-w-0 text-pretty">
         {title && <div className="mb-0.5 font-semibold text-text">{title}</div>}

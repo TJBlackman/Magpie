@@ -132,7 +132,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-mute" aria-hidden="true">
+        <span className="flex size-9 shrink-0 items-center justify-center text-dim" aria-hidden="true">
           <IconFolder size={16} />
         </span>
       }

@@ -4,7 +4,7 @@ import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconCheckCircle, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
 
@@ -97,7 +97,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
           {candidate.live && !job.queued ? (
             <Badge tone="bad">
               <span className="pulse size-1.5 rounded-full bg-live" />
-              REC
+              RECORDING
             </Badge>
           ) : (
             <Badge tone="shine">{job.queued ? 'QUEUED' : job.pct === null ? 'DOWNLOADING' : `${Math.floor(job.pct * 100)}%`}</Badge>
@@ -151,7 +151,7 @@ function quickable(candidate: Candidate): boolean {
 }
 
 /** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
-function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (candidate: Candidate) => void }) {
+function QuickAction({ candidate, onQuick, below }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; below?: boolean }) {
   const files = candidate.post?.assets.length ?? 0;
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
@@ -163,7 +163,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       data-tip={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick tip absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-btn-edge transition-colors ring-inset hover:bg-[#2a3442] hover:text-text`}
+      className={`quick tip ${below ? 'tip-below' : ''} absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-edge3 transition-colors ring-inset hover:bg-[#232b36] hover:text-text hover:ring-[#8796a9] active:bg-[#2c3644]`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -212,7 +212,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, tipBelow }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; tipBelow?: boolean }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -241,7 +241,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       }
       dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
-      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
+      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} below={tipBelow} /> : undefined}
     />
   );
 });
@@ -268,7 +268,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-edge3 bg-[#141a22] hover:border-btn-edge hover:bg-panel2';
+  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-transparent bg-[#141a22] hover:border-edge3 hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -484,7 +484,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <ul
               role="radiogroup"
               aria-label="Quality"
-              className="flex flex-col gap-2"
+              className="flex flex-col gap-1.5"
               onKeyDown={(e) => {
                 // Arrow keys move the choice and the focus together, like any radio group.
                 if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -504,7 +504,12 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {!post && inspection && footnote && !folded && <Callout tone="neutral">{footnote}</Callout>}
+          {!post && inspection && footnote && !folded && (
+            <p className="flex gap-2 px-0.5 text-[12px] text-mute">
+              <IconInfo size={14} className="mt-px shrink-0" />
+              {footnote}
+            </p>
+          )}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">

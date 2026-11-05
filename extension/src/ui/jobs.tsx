@@ -175,17 +175,17 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" onClick={() => api.removeJob(job.id)} className="size-9">
+          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
             <IconX size={17} />
           </IconButton>
         ) : job.live ? (
           discarding ? null : (
-            <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
+            <IconButton label="Discard the recording" tone="danger" className="size-9" onClick={() => setDiscarding(true)}>
               <IconX size={17} />
             </IconButton>
           )
         ) : (
-          <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
+          <IconButton label="Cancel" tone="danger" className="size-9" onClick={() => api.cancel(job.id)}>
             <IconX size={17} />
           </IconButton>
         )
@@ -290,7 +290,7 @@ export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
         </>
       }
       action={
-        <IconButton label="Cancel" tone="danger" framed onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
+        <IconButton label="Cancel" tone="danger" className="size-9" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
           <IconX size={17} />
         </IconButton>
       }
