@@ -196,10 +196,8 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
-      <span className="relative">
-        {dot && <span className="pulse absolute top-1/2 -left-3 size-1.5 -translate-y-1/2 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
-        {label}
-      </span>
+      {dot && <span className="pulse size-1.5 shrink-0 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+      {label}
       {pill}
     </button>
   );
@@ -398,7 +396,7 @@ export function Popup() {
                 </IconButton>
               )}
             </div>
-            <Section title={q ? 'Matches' : 'Downloaded'} count={q ? matches.length : archive.length}>
+            <Section title={q ? 'Matches' : 'Downloaded'} count={q ? matches.length : undefined}>
               {!q && (
               <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
                 Clear history

@@ -23,7 +23,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center bg-gradient-to-r from-transparent via-[#18202b] via-45% to-[#18202b] py-1 pl-6 ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[54px] z-20 -translate-y-1/2 items-center bg-gradient-to-r from-transparent via-[#18202b] via-45% to-[#18202b] py-1 pl-6 ${open ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (e.key !== 'Escape' || !open) return;
         e.stopPropagation();
@@ -33,7 +33,8 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        className="size-8"
+        framed={!open}
+        className="size-9"
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
           setUp(!!r && r.top > window.innerHeight / 2);

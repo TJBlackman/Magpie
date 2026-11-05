@@ -248,7 +248,7 @@ export function fmtHeight(height: number | undefined): string {
  */
 export function friendlyError(message: string): string {
   if (/\b(401|403)\b/.test(message)) return 'The link expired.';
-  if (/\b(404|410)\b/.test(message)) return 'This link stopped working.';
+  if (/\b(404|410)\b/.test(message)) return 'The link stopped working.';
   if (/\b(429|5\d\d)\b/.test(message)) return 'The server is busy. Try again soon.';
   if (/failed to fetch|networkerror|network error|connection/i.test(message)) return 'The connection dropped.';
   if (/timed? ?out|timeout/i.test(message)) return 'The server stopped answering.';

@@ -174,7 +174,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
 export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void }) {
-  const title = candidate.pageTitle || sourceLabel(candidate.url);
+  const full = candidate.pageTitle || sourceLabel(candidate.url);
+  const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
   const files = candidate.post?.assets.length ?? 0;
   return (
@@ -182,7 +183,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       attrs={{ 'data-testid': 'candidate', 'data-url': candidate.url, 'data-state': candidate.archived ? 'archived' : job ? 'queued' : 'fresh' }}
       tile={<MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} corner={duration ? fmtClock(duration) : files > 1 ? <FileCount n={files} /> : undefined} />}
       title={title}
-      titleTip={title}
+      titleTip={full}
       titleTestId="candidate-title"
       meta={candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? <Meta candidate={candidate} job={job} /> : undefined}
       onOpen={() => onOpen(candidate, job?.id)}
@@ -392,11 +393,17 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </IconButton>
         </div>
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
-          {error && (
-            <Callout tone={drm ? 'neutral' : 'error'} icon={drm ? <IconLock size={15} /> : undefined} title={drm ? undefined : 'Magpie can’t save this one'} testId="inspect-error">
-              {error}
-            </Callout>
-          )}
+          {error &&
+            (drm ? (
+              <p className="flex gap-2.5 px-1 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
+                <IconLock size={15} className="mt-0.5 shrink-0 text-mute" />
+                {error}
+              </p>
+            ) : (
+              <Callout tone="error" title="Magpie can’t save this one" testId="inspect-error">
+                {error}
+              </Callout>
+            ))}
           {!inspection && !error && (
             <div aria-busy="true" className="flex flex-col gap-1.5">
               <div className="skeleton h-[50px] rounded-[10px]" />
@@ -422,6 +429,11 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           )}
           {footnote && <p className="text-[11.5px] text-pretty text-mute">{`${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase())}</p>}
         </div>
+        {error && (
+          <Button size="lg" onClick={onClose} className="mt-3 w-full">
+            Close
+          </Button>
+        )}
         {inspection && !error && (!post || files > 0) && (
           <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">
             {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}

@@ -148,9 +148,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Still on This page, so a retry works.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'Still on This page. Try again for a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page, then retry.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -210,7 +210,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>
-              <Button tone="live" size="md" onClick={() => api.cancel(job.id)} className="!bg-[#be123c] hover:!bg-[#d1164a]">
+              <Button tone="live" size="md" onClick={() => api.cancel(job.id)} className="!bg-[#be123c] !text-white hover:!bg-[#d1164a]">
                 Discard
               </Button>
             </div>
@@ -222,7 +222,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               recording ? (
                 <>
                   <SpeedText job={job} rate={rate} />
-                  <Button tone="stop" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="!h-8">
+                  <Button tone="stop" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="!h-9">
                     <IconStop size={12} />
                     Stop
                   </Button>
