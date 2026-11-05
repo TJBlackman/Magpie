@@ -41,9 +41,14 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n }: { n: number }) {
+function Pill({ n, dot, on }: { n: number; dot?: boolean; on?: boolean }) {
   if (!n) return null;
-  return <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>;
+  return (
+    <span className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+      {n}
+      {dot && <span className={`pulse absolute -top-0.5 -right-0.5 size-2 rounded-full bg-live ring-2 ${on ? 'ring-panel3' : 'ring-panel'}`} role="img" aria-label="Recording" title="Recording" />}
+    </span>
+  );
 }
 
 function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
@@ -152,6 +157,8 @@ export function Popup() {
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<{ text: string; view?: boolean } | null>(null);
+  // A toast belongs to the moment: switching views clears it.
+  useEffect(() => setToast(null), [view]);
   const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
   useEffect(() => {
     if (!toast) return;
@@ -181,7 +188,7 @@ export function Popup() {
     return out;
   }, [shown, all]);
 
-  const tab = (v: View, label: string, pill: ReactNode, tip?: string, dot?: boolean) => (
+  const tab = (v: View, label: string, pill: ReactNode, tip?: string) => (
     <button
       type="button"
       role="tab"
@@ -190,10 +197,7 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
-      <span className="relative">
-        {label}
-        {dot && <span className="pulse absolute top-0 -left-2.5 size-1.5 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
-      </span>
+      {label}
       {pill}
     </button>
   );
@@ -233,7 +237,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} />
+            <Pill n={active.length} dot={recording} on={view === 'jobs'} />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
@@ -242,7 +246,6 @@ export function Popup() {
             )}
           </>,
           failed.length ? `${failed.length} failed` : undefined,
-          recording,
         )}
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
@@ -312,7 +315,7 @@ export function Popup() {
             {!showDownloaded && downloaded > 0 && (
               <div className="mt-1 flex items-center justify-center gap-1 text-[12px] text-dim">
                 {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden`}
-                <button type="button" onClick={toggleDownloaded} className="h-8 rounded-lg px-2 font-semibold text-shine transition-colors hover:bg-shine/10">
+                <button type="button" onClick={toggleDownloaded} className="ml-1 h-8 rounded-lg bg-panel2 px-3 font-semibold text-shine transition-colors hover:bg-shine/10">
                   Show
                 </button>
               </div>
@@ -324,7 +327,7 @@ export function Popup() {
       <Panel shown={view === 'jobs'}>
         {active.length === 0 && failed.length === 0 ? (
           <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button size="md" onClick={() => setView('page')}>Go to This page</Button>}>
-            Pick a video on this page to see its progress here.
+            Pick a video to download and its progress shows up here.
           </Empty>
         ) : (
           <>
@@ -362,8 +365,8 @@ export function Popup() {
                   </Button>
                 </Section>
                 <div className="flex flex-col gap-2">
-                  {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
+                  {failed.map((j, i) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} compact={i > 0} />
                   ))}
                 </div>
               </>

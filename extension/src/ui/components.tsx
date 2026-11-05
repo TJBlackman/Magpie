@@ -51,7 +51,7 @@ export function Button({
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
-    accent: 'bg-shine/15 text-[#7ff0ff] ring-1 ring-inset ring-shine/30 hover:bg-shine/25',
+    accent: 'bg-shine/[0.12] text-[#7ff0ff] ring-1 ring-inset ring-shine/35 hover:bg-shine/20',
     stop: 'bg-btn text-[#ff9fb1] ring-1 ring-inset ring-live/35 hover:bg-live/15',
     live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
   }[tone];
@@ -109,7 +109,6 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
       {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
-      {muted && <span className="absolute right-1 bottom-1 flex size-4 items-center justify-center rounded-full bg-saved text-ink shadow-[0_1px_3px_rgba(0,0,0,.5)]"><IconCheck size={11} /></span>}
       {corner && <span className="absolute right-0.5 bottom-0.5 rounded-[4px] bg-black/75 px-1 py-px text-[9.5px] leading-[13px] font-semibold text-white tabular-nums">{corner}</span>}
     </div>
   );
@@ -186,7 +185,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-white/[0.04] [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:hover:bg-white/[0.08]">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-panel2 [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:hover:bg-btn-hover">{children}</div>}
     </div>
   );
 }
@@ -252,9 +251,9 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] ring-1 ring-shine/40 ring-inset'}>
-      {shown ? <IconEyeOff size={14} /> : <IconEye size={14} />}
-      {shown ? 'Hide downloaded' : `${count} downloaded`}
+    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : `${count} hidden. Click to show ${count === 1 ? 'it' : 'them'}`} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] ring-1 ring-shine/35 ring-inset'}>
+      <IconEyeOff size={14} />
+      Hide downloaded
     </Button>
   );
 }

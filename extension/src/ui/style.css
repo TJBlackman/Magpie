@@ -46,18 +46,23 @@ body {
   font-size: 13px;
 }
 
-/* One focus ring everywhere: 2px accent, offset, only for the keyboard. */
-:where(button, a, input, summary, [tabindex]):focus-visible {
-  /* Light, so it never merges with a cyan selected border. */
-  outline: 2px solid var(--color-text);
-  outline-offset: 2px;
-}
-:where(input[type='search'], input[type='number']):focus-visible {
-  outline: none;
-}
-
-p {
-  text-wrap: pretty;
+/*
+ * Base rules live in the base layer. Tailwind's utilities sit in a later
+ * layer, so a component can still change a focus ring or wrapping; an
+ * unlayered rule here would beat every utility and draw a second ring.
+ */
+@layer base {
+  /* One focus ring everywhere: 2px, light so it never merges with a cyan selected border, offset, keyboard only. */
+  :where(button, a, input, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: 2px;
+  }
+  :where(input[type='search'], input[type='number']):focus-visible {
+    outline: none;
+  }
+  p {
+    text-wrap: pretty;
+  }
 }
 
 ::selection {
@@ -182,7 +187,7 @@ p {
 
 /* A list that scrolls under a footer fades out instead of being cut mid line. */
 .fade-top {
-  mask-image: linear-gradient(to bottom, transparent 0, #000 12px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 20px);
 }
 .fade-bottom {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
