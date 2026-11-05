@@ -3,7 +3,7 @@ import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
-import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
+import { Badge, Button, Callout, Glow, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
 import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
@@ -264,7 +264,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(157,130,240,.2),transparent_60%)]" />
         <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
-          <img src={candidate.thumb} alt="" aria-hidden="true" draggable={false} className="ambient pointer-events-none absolute top-[calc(50%-46px)] left-0 h-[92px] w-[150px] max-w-none rounded-2xl object-cover opacity-50 blur-[14px] saturate-150" />
+          <Glow thumb={candidate.thumb} className="top-[calc(50%-38px)] left-1.5 h-[76px] w-[134px] opacity-50 blur-[16px]" />
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
             <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
             {(duration || files > 1) && (
@@ -494,7 +494,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         className="sheet-in outline-none absolute inset-x-0 bottom-0 z-20 flex max-h-[528px] flex-col rounded-t-[18px] border-t border-white/[0.09] bg-panel px-3.5 pt-3.5 pb-3.5 shadow-[0_-20px_50px_rgba(0,0,0,.6)]"
       >
         <div className="mb-3 flex items-start gap-3">
-          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
+          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="font-display line-clamp-2 text-[16.5px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">

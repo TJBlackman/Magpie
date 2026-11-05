@@ -48,7 +48,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
-    shine: 'bg-[linear-gradient(105deg,#52e7d7_0%,#38bdf8_55%,#9d82f0_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#6cebdd_0%,#36cfe3_55%,#ac94f3_100%)] active:bg-[linear-gradient(105deg,#1fd8cf_0%,#2aaef0_55%,#8e71eb_100%)]',
+    shine: 'bg-[linear-gradient(105deg,#52e7d7_0%,#38bdf8_55%,#8b7bff_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#6cebdd_0%,#36cfe3_55%,#ac94f3_100%)] active:bg-[linear-gradient(105deg,#1fd8cf_0%,#2aaef0_55%,#8e71eb_100%)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
@@ -98,16 +98,66 @@ export function LiveBadge() {
   );
 }
 
+const glowCache = new Map<string, string | null>();
+
+/**
+ * A frame's strongest colour, for the light it casts: the average of its most
+ * saturated quarter, kept below full brightness. A frame too grey to have one
+ * (fog, snow, overcast) casts none, since a grey glow only reads as haze.
+ */
+function glowOf(img: HTMLImageElement): string | null {
+  const c = document.createElement('canvas');
+  c.width = 32;
+  c.height = 18;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, 32, 18);
+  const d = ctx.getImageData(0, 0, 32, 18).data;
+  const px: number[][] = [];
+  for (let i = 0; i < d.length; i += 4) {
+    const [r, g, b] = [d[i]!, d[i + 1]!, d[i + 2]!];
+    px.push([Math.max(r, g, b) - Math.min(r, g, b), r, g, b]);
+  }
+  px.sort((a, b) => b[0]! - a[0]!);
+  const top = px.slice(0, px.length >> 2);
+  const avg = (k: number) => top.reduce((s, p) => s + p[k]!, 0) / top.length;
+  if (avg(0) < 60) return null;
+  const rgb = [avg(1), avg(2), avg(3)];
+  const scale = Math.min(1, 190 / Math.max(...rgb));
+  return `rgb(${rgb.map((v) => Math.round(v * scale)).join(' ')})`;
+}
+
+/** The light a frame casts on its row, like a video player's ambient mode: one colour, softly blurred, held inside the row. */
+export function Glow({ thumb, className }: { thumb?: string; className: string }) {
+  const [color, setColor] = useState(() => (thumb ? (glowCache.get(thumb) ?? null) : null));
+  useEffect(() => {
+    if (!thumb) return setColor(null);
+    if (glowCache.has(thumb)) return setColor(glowCache.get(thumb) ?? null);
+    let live = true;
+    const img = new Image();
+    img.onload = () => {
+      const c = glowOf(img);
+      glowCache.set(thumb, c);
+      if (live) setColor(c);
+    };
+    img.src = thumb;
+    return () => {
+      live = false;
+    };
+  }, [thumb]);
+  if (!color) return null;
+  return <span aria-hidden="true" className={`ambient pointer-events-none absolute rounded-xl ${className}`} style={{ background: color }} />;
+}
+
 /**
  * The 16:9 slot at the left of every row: a frame of the stream once one is
  * captured, else an icon on a quiet gradient. Live streams pulse either way.
  * `corner` is drawn over the bottom right, like a length on a video player.
  */
-export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
+export function MediaTile({ kind, live, thumb, muted, corner, glow = true, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; glow?: boolean; className?: string }) {
   return (
     <div className={`relative ${className} shrink-0`}>
-      {/* Ambient light: the frame's own colours, blurred, glow softly around it, so a list takes on the colours of its videos. */}
-      {thumb && !muted && <img src={thumb} alt="" aria-hidden="true" draggable={false} className="ambient pointer-events-none absolute top-[-5px] left-[-7px] h-[calc(100%+10px)] w-[calc(100%+14px)] max-w-none rounded-xl object-cover opacity-45 blur-[9px] saturate-150" />}
+      {glow && !muted && <Glow thumb={thumb} className="-inset-1 opacity-45 blur-[10px]" />}
       <div className={`relative size-full overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
         {thumb ? (
           <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
@@ -376,7 +426,7 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
           </button>
         ))}
         {/* How long the toast stays: a line that drains, and waits while the pointer or focus is on the toast. */}
-        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#1fd8cf,#9d82f0)] opacity-70" style={{ animationDuration: `${duration + 250}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
+        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#1fd8cf,#8b7bff)] opacity-70" style={{ animationDuration: `${duration + 250}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
       </div>
     </div>
   );

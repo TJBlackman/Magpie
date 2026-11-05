@@ -90,9 +90,9 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 
 /** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
-  const color = { shine: 'bg-[linear-gradient(90deg,#1fd8cf,#60a5fa_65%,#9d82f0)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
+  const color = { shine: 'bg-[linear-gradient(90deg,#1fd8cf,#4aa3f8_60%,#8b7bff)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-0.5 h-1.5 rounded-full bg-[#43474c]">
+    <div className="mt-0.5 h-1.5 rounded-full bg-[#4f5359]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -166,7 +166,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
-      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
+      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} glow={job.state === 'downloading' || job.state === 'muxing' || job.state === 'saving'} />}
       title={job.title || job.filename}
       titleTip={job.filename}
       meta={
