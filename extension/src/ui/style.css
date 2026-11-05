@@ -15,8 +15,8 @@
   --color-mute: #a2a6ab;
   --color-dim: #85898e;
   /* Accent and its ink, for text on a solid accent. */
-  --color-shine: #22d3ee;
-  --color-shine-ink: #052a31;
+  --color-shine: #1fd8cf;
+  --color-shine-ink: #042b2a;
   /* The one red: live, recording, failures and destructive actions. `live-soft` is its text on dark surfaces. */
   --color-live: #fb5a78;
   --color-live-soft: #ff9fb1;
@@ -36,11 +36,11 @@
   --color-hover-edge: #868a91;
   --color-btn-hover: #323539;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
-  --color-accent-fill: #112831;
-  --color-accent-edge: #1c9db3;
+  --color-accent-fill: #0e292c;
+  --color-accent-edge: #16a19c;
   /* The one selected state: a quality picked, the open tab, an open menu. The edge is 3:1 on every surface. */
-  --color-sel-fill: #10222b;
-  --color-sel-edge: #1c9db3;
+  --color-sel-fill: #0d2327;
+  --color-sel-edge: #16a19c;
 
   --font-sans: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, 'Inter', Roboto, sans-serif;
 }

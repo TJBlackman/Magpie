@@ -90,7 +90,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 
 /** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
-  const color = { shine: 'bg-[linear-gradient(90deg,#22d3ee,#60a5fa_65%,#818cf8)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
+  const color = { shine: 'bg-[linear-gradient(90deg,#1fd8cf,#60a5fa_65%,#9d82f0)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
     <div className="mt-0.5 h-1.5 rounded-full bg-[#43474c]">
       {pct === null ? (

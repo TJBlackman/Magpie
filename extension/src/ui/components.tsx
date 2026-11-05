@@ -9,7 +9,7 @@ export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'po
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
     default: 'bg-[#202226] text-mute ring-white/[0.06]',
-    shine: 'bg-shine/10 text-[#7ff0ff] ring-shine/25',
+    shine: 'bg-shine/10 text-[#83f3e5] ring-shine/25',
     // Already downloaded: the one yellow, tinted like LIVE is tinted red.
     saved: 'bg-[#2a2618] text-[#f2cc60]',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
@@ -48,11 +48,11 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
-    shine: 'bg-[linear-gradient(105deg,#4be3f6_0%,#38bdf8_55%,#818cf8_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#67e8f9_0%,#56c8fa_55%,#939cfa_100%)] active:bg-[linear-gradient(105deg,#22d3ee_0%,#2aaef0_55%,#6f7cf3_100%)]',
+    shine: 'bg-[linear-gradient(105deg,#52e7d7_0%,#38bdf8_55%,#9d82f0_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_6px_20px_rgba(56,189,248,.26),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#6cebdd_0%,#36cfe3_55%,#ac94f3_100%)] active:bg-[linear-gradient(105deg,#1fd8cf_0%,#2aaef0_55%,#8e71eb_100%)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
-    accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
+    accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
+    stop: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
     destroy: 'bg-[#c8283f] text-white font-semibold hover:bg-[#d6304a] active:bg-[#b52238]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
@@ -269,7 +269,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] border border-transparent text-[#7ff0ff] [background:linear-gradient(140deg,#16262c,#1a1d2a)_padding-box,linear-gradient(125deg,rgba(34,211,238,.6),rgba(96,165,250,.22)_45%,rgba(129,140,248,.5))_border-box]" aria-hidden="true">{icon}</div>
+      <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] border border-transparent text-[#83f3e5] [background:linear-gradient(140deg,#152728,#1e1c29)_padding-box,linear-gradient(125deg,rgba(31,216,207,.6),rgba(96,165,250,.22)_45%,rgba(157,130,240,.5))_border-box]" aria-hidden="true">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -335,7 +335,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 export function Toggle({ on }: { on: boolean }) {
   return (
     <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#6e737a]'}`}>
-      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(5,42,49,.55),0_1px_2px_rgba(0,0,0,.4)] transition-transform ${on ? 'translate-x-3.5' : ''}`} />
+      <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow-[0_0_0_1px_rgba(4,43,42,.55),0_1px_2px_rgba(0,0,0,.4)] transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
 }
@@ -357,9 +357,9 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, detail, actions = [], live, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
   if (!message) return null;
   return (
-    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#090c11_22px)] px-3.5 pt-6 pb-3">
+    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_22px)] px-3.5 pt-6 pb-3">
       <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-ctl-edge ring-inset">
-        <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#123e4a] text-shine'}`}>
+        <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#0d4041] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>
         <span className="min-w-0 flex-1">
@@ -367,12 +367,12 @@ export function Toast({ message, detail, actions = [], live, duration, held, onH
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn-hover hover:ring-[#90959b]'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#83f3e5] ring-1 ring-accent-edge ring-inset hover:bg-[#103a3e]' : 'bg-btn text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn-hover hover:ring-[#90959b]'}`}>
             {a.label}
           </button>
         ))}
         {/* How long the toast stays: a line that drains, and waits while the pointer or focus is on the toast. */}
-        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#22d3ee,#818cf8)] opacity-70" style={{ animationDuration: `${duration + 250}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
+        {duration && <span key={String(held)} aria-hidden="true" className="toast-drain absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(90deg,#1fd8cf,#9d82f0)] opacity-70" style={{ animationDuration: `${duration + 250}ms`, animationPlayState: held ? 'paused' : 'running' }} />}
       </div>
     </div>
   );

@@ -267,7 +267,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -285,9 +285,9 @@ export function Popup() {
   };
 
   return (
-    <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(34,211,238,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(99,102,241,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
+    <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(31,216,207,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(133,90,231,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#67e8f9] to-shine text-[#0e1113] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)]">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-br from-[#6cebdd] to-shine text-[#0e1113] shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)]">
           <Logo />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
