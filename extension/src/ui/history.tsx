@@ -109,7 +109,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
   const title = entry.title || entry.file;
   const folder = !!entry.files;
   // "2160p · 1.4 GB": the quality from the file name Magpie gave it, and the size it saved.
-  const facts = [qualityOfFile(entry.file), entry.bytes ? fmtBytes(entry.bytes) : ''].filter(Boolean).join(' · ');
+  const facts = [entry.bytes ? fmtBytes(entry.bytes) : '', qualityOfFile(entry.file)].filter(Boolean).join(' · ');
   const show = () => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing());
   return (
     <MediaRow

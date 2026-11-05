@@ -78,7 +78,7 @@ test("the card's arrow downloads the best quality in one click", async ({ magpie
   await row.getByTestId('quick').click();
   // No sheet: the job starts at the top of the ladder, and a toast offers the way to it.
   await expect(popup.getByTestId('sheet')).toHaveCount(0);
-  await expect(popup.getByRole('status').filter({ hasText: 'Downloading Night Train' })).toBeVisible();
+  await expect(popup.getByRole('status').filter({ hasText: 'Download started' })).toBeVisible();
   // The test stream is short, so the job may be done before Downloads is looked at: history has the file.
   await view(popup, 'History');
   await expect(popup.locator('[data-testid="archive-entry"][data-file="Night Train, multi rendition [720p].mp4"]')).toHaveCount(1, { timeout: 30_000 });

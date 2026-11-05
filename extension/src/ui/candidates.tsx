@@ -109,12 +109,12 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
           <LiveBadge />
         </span>
       )}
-      {candidate.info?.drm && !candidate.archived && !inSheet && (
+      {candidate.info?.drm && !candidate.archived && (
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
           <Badge>PROTECTED</Badge>
         </span>
       )}
-      {candidate.archived && !inSheet && (
+      {candidate.archived && (
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
           <Badge>
             <IconCheck size={11} className="-ml-px text-saved" />
@@ -150,8 +150,18 @@ function quickable(candidate: Candidate): boolean {
   return !candidate.archived && !candidate.info?.drm && (candidate.kind !== 'post' || (candidate.post?.assets.length ?? 0) > 0);
 }
 
+/** What one click on the arrow does, shown in place of the meta line while the arrow is hovered or focused. */
+function quickText(candidate: Candidate): string {
+  const files = candidate.post?.assets.length ?? 0;
+  if (candidate.live) return 'Record now';
+  if (candidate.kind === 'post') return `Download ${files} ${files === 1 ? 'file' : 'files'} now`;
+  const quality = fmtHeight(candidate.info?.height);
+  const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration) || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
+  return [`Download${quality ? ` ${quality}` : ''} now`, size].filter(Boolean).join(' · ');
+}
+
 /** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
-function QuickAction({ candidate, onQuick, below }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; below?: boolean }) {
+function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (candidate: Candidate) => void }) {
   const files = candidate.post?.assets.length ?? 0;
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
@@ -160,10 +170,9 @@ function QuickAction({ candidate, onQuick, below }: { candidate: Candidate; onQu
     <button
       type="button"
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
-      data-tip={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick tip ${below ? 'tip-below' : ''} absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-edge3 transition-colors ring-inset hover:bg-[#232b36] hover:text-text hover:ring-[#8796a9] active:bg-[#2c3644]`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-edge2 transition-colors ring-inset group-hover:ring-edge3 hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -212,7 +221,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, tipBelow }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; tipBelow?: boolean }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -224,7 +233,20 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       title={title}
       titleTip={full}
       titleTestId="candidate-title"
-      meta={candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? <Meta candidate={candidate} job={job} /> : undefined}
+      meta={
+        candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? (
+          <>
+            <span className="contents group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">
+              <Meta candidate={candidate} job={job} />
+            </span>
+            {!job && quickable(candidate) && (
+              <span className="hidden min-w-0 flex-1 truncate font-medium text-[#7ff0ff] group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
+                {quickText(candidate)}
+              </span>
+            )}
+          </>
+        ) : undefined
+      }
       onOpen={() => onOpen(candidate, job?.id)}
       openTip={
         candidate.archived
@@ -241,7 +263,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       }
       dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
-      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} below={tipBelow} /> : undefined}
+      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : undefined}
     />
   );
 });
@@ -337,7 +359,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-edge3 ring-inset">
+    <div className="rounded-[10px] bg-[#141a22]">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />

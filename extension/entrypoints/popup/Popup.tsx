@@ -136,7 +136,10 @@ export function Popup() {
   // Derived lists are memoized: the popup re-renders with every progress event while something downloads.
   const fresh = useMemo(() => candidates.filter((c) => !c.archived), [candidates]);
   const downloaded = candidates.length - fresh.length;
-  const shown = showDownloaded ? candidates : fresh;
+  const shown = useMemo(() => {
+    const rank = (c: Candidate) => (c.archived || c.info?.drm ? 1 : 0);
+    return [...(showDownloaded ? candidates : fresh)].sort((a, b) => rank(a) - rank(b));
+  }, [showDownloaded, candidates, fresh]);
 
   const jobs = useJobs();
   const active = jobs.filter((j) => j.state !== 'error');
@@ -199,12 +202,12 @@ export function Popup() {
   // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
     const r = await api.start(c.id, 'best');
-    if (r.ok) setToast({ text: `${c.live ? 'Recording' : 'Downloading'} ${c.pageTitle || 'the video'}`, view: true, undo: r.value.id, live: c.live });
+    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Download started', detail: c.pageTitle, view: true, undo: r.value.id, live: c.live });
     else setSheetId(c.id);
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; view?: boolean; undo?: string; live?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ text: string; detail?: string; view?: boolean; undo?: string; live?: boolean } | null>(null);
   // A toast belongs to the moment: switching views clears it.
   useEffect(() => setToast(null), [view]);
   const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
@@ -347,7 +350,7 @@ export function Popup() {
                 <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
               </div>
             )}
-            {groups.map((g, gi) => (
+            {groups.map((g) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
                   <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
@@ -359,8 +362,8 @@ export function Popup() {
                     <span className="shrink-0 text-dim tabular-nums">{g.list.length}</span>
                   </div>
                 )}
-                {g.list.map((c, ci) => (
-                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tipBelow={gi === 0 && ci === 0} />
+                {g.list.map((c) => (
+                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
                 ))}
               </div>
             ))}
@@ -398,8 +401,8 @@ export function Popup() {
                 <Section title="Downloading" count={running.length}>
                   {settings && (
                     <span className="mr-2 flex items-center gap-2 text-[12px] text-mute">
-                      <label htmlFor="at-a-time">At a time</label>
-                      <Stepper id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
+                      <label htmlFor="at-a-time">Max at once</label>
+                      <Stepper compact id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
                     </span>
                   )}
                 </Section>
@@ -463,6 +466,7 @@ export function Popup() {
 
       <Toast
         message={toast?.text ?? null}
+        detail={toast?.detail}
         live={toast?.live}
         actions={[
           ...(toast?.undo ? [{ label: 'Undo', onClick: () => (void api.cancel(toast.undo!), setToast({ text: toast.live ? 'Recording discarded' : 'Download canceled' })) }] : []),
@@ -481,7 +485,7 @@ export function Popup() {
             if (retryOf) void api.removeJob(retryOf);
             setRetryOf(null);
             setSheetId(null);
-            setToast({ text: `${sheet.live ? 'Recording' : 'Downloading'} ${sheet.pageTitle || 'the video'}`, view: true, undo: jobId, live: sheet.live });
+            setToast({ text: sheet.live ? 'Recording started' : 'Download started', detail: sheet.pageTitle, view: true, undo: jobId, live: sheet.live });
           }}
         />
       )}

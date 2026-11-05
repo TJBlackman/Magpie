@@ -288,7 +288,7 @@ function infoFor(c: Candidate): MediaInfo {
   const qualities = variants.filter((v) => v.resolution).length;
   return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}), ...(bitrate ? { bitrate } : {}), ...(qualities > 1 ? { qualities } : {}) };
 }
-const LIVE_NOTE = 'Starts about 30 seconds back and runs until you press Stop and save or the stream ends.';
+const LIVE_NOTE = 'Starts about 30 seconds back. Stops when you press Stop and save, or when the stream ends.';
 const fmtBytes = (n: number) => (n < 1024 ** 3 ? `${(n / MB).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);
 
 function variantsFor(c: Candidate): Variant[] {

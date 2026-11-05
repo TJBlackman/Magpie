@@ -31,6 +31,10 @@ export const test = base.extend<{ magpie: Magpie }>({
     });
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker');
+    // A fresh install only learns the worker's listeners once its script has run; a page loaded
+    // before that loses its first requests. An evaluate runs after the script's top level, so
+    // past it the request listener is registered.
+    await worker.evaluate(() => true);
     const extensionId = new URL(worker.url()).host;
 
     const magpie: Magpie = {

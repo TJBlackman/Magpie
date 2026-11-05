@@ -75,7 +75,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-edge3 ring-inset hover:!bg-[#232b36] hover:ring-[#8796a9]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-edge2 ring-inset group-hover:ring-edge3 hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -167,7 +167,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-transparent has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-transparent has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -287,15 +287,18 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 }
 
 /** A short message at the bottom of the popup that fades after a few seconds, with up to two actions; the last is the main one. */
-export function Toast({ message, actions = [], live }: { message: string | null; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
+export function Toast({ message, detail, actions = [], live }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean }) {
   if (!message) return null;
   return (
     <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
-      <div className="rise-in flex h-11 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
+      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-1.5 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
           {live ? <span className="pulse size-2 rounded-full bg-live" /> : <IconCheck size={12} />}
         </span>
-        <span className="min-w-0 flex-1 truncate">{message}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-semibold">{message}</span>
+          {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
+        </span>
         {actions.map((a, i) => (
           <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-btn-edge ring-inset hover:bg-btn-hover'}`}>
             {a.label}
@@ -314,7 +317,7 @@ export function UpdateBanner({ version, onGet, onDismiss }: { version: string; o
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
-      <Button tone="accent" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
+      <Button tone="shine" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
         Update
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>
