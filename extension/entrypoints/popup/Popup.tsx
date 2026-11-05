@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
 import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, Section, TextButton, Toast, UpdateBanner } from '../../src/ui/components';
@@ -137,9 +137,10 @@ export function Popup() {
   const fresh = useMemo(() => candidates.filter((c) => !c.archived), [candidates]);
   const downloaded = candidates.length - fresh.length;
   const shown = useMemo(() => {
-    const rank = (c: Candidate) => (c.archived || c.info?.drm ? 1 : 0);
+    const rank = (c: Candidate) => (c.archived ? 2 : c.info?.drm ? 1 : 0);
     return [...(showDownloaded ? candidates : fresh)].sort((a, b) => rank(a) - rank(b));
   }, [showDownloaded, candidates, fresh]);
+  const firstArchived = shown.find((c) => c.archived)?.id;
 
   const jobs = useJobs();
   const active = jobs.filter((j) => j.state !== 'error');
@@ -246,7 +247,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 flex-auto items-center justify-center gap-1.5 rounded-[9px] px-3 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-sel-fill font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-sel-edge ring-inset [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -294,7 +295,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.25fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 flex shrink-0 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -345,16 +346,11 @@ export function Popup() {
           )
         ) : (
           <div className="mt-2 flex flex-col gap-2">
-            {downloaded > 0 && (
-              <div className="-mb-1">
-                <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
-              </div>
-            )}
             {groups.map((g) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
                   <div className="mt-3 mb-0.5 flex items-center gap-2 text-[11.5px]" title={g.page}>
-                    <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase ring-1 ring-edge2 ring-inset">{hostOf(g.page).slice(0, 1)}</span>
+                    <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase">{hostOf(g.page).slice(0, 1)}</span>
                     <span className="min-w-0 truncate">
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
@@ -363,10 +359,18 @@ export function Popup() {
                   </div>
                 )}
                 {g.list.map((c) => (
-                  <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
+                  <Fragment key={c.id}>
+                    {c.id === firstArchived && (
+                      <div className="-mb-1">
+                        <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+                      </div>
+                    )}
+                    <CandidateCard candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
+                  </Fragment>
                 ))}
               </div>
             ))}
+            {!showDownloaded && downloaded > 0 && <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />}
             {scope && !scope.all && (
               <div className="-mr-2 -mt-1 flex justify-end">
                 <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again.">
@@ -401,8 +405,8 @@ export function Popup() {
                 <Section title="Downloading" count={running.length}>
                   {settings && (
                     <span className="mr-2 flex items-center gap-2 text-[12px] text-mute">
-                      <label htmlFor="at-a-time">Max at once</label>
-                      <Stepper compact id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
+                      <label htmlFor="at-a-time">At a time</label>
+                      <Stepper id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
                     </span>
                   )}
                 </Section>

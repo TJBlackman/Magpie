@@ -7,10 +7,10 @@ import { IconButton } from './components';
 import { useDialogFocus } from './focus';
 import { IconBack, IconCheck, IconMinus, IconPlus, Logo } from './icons';
 
-export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId, compact }: { compact?: boolean; id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
-  const btn = `flex ${compact ? 'size-7' : 'size-8'} items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30`;
+export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId }: { id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
+  const btn = `flex size-7 items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30`;
   return (
-    <div className={`flex shrink-0 items-center overflow-hidden rounded-lg ring-inset focus-within:ring-1 focus-within:ring-shine/70 ${compact ? 'bg-[#141a22]' : 'bg-btn ring-1 ring-btn-edge'}`}>
+    <div className="flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-btn-edge ring-inset outline-offset-2 outline-text focus-within:outline-2">
       <button type="button" className={btn} onClick={() => onChange(value - 1)} disabled={value <= min} title={lessTitle} aria-label={lessTitle}>
         <IconMinus size={14} />
       </button>
@@ -32,7 +32,7 @@ export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommi
           if (e.key === 'Enter') onCommit();
           if (e.key === 'Escape') onDraft?.(null);
         }}
-        className={`plain bg-transparent text-center font-semibold text-text tabular-nums outline-none ${compact ? 'h-7 w-6 text-[12.5px]' : 'h-8 w-9 text-[13px]'}`}
+        className="plain h-7 w-8 bg-transparent text-center text-[13px] font-semibold text-text tabular-nums outline-none"
       />
       <button type="button" className={btn} onClick={() => onChange(value + 1)} disabled={value >= max} title={moreTitle} aria-label={moreTitle}>
         <IconPlus size={14} />
@@ -45,7 +45,7 @@ function Switch({ id, testId, checked, onChange }: { id: string; testId: string;
   return (
     <span className="relative -m-2 inline-flex shrink-0 p-2">
       <input id={id} data-testid={testId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-      <span className="block h-[18px] w-8 rounded-full bg-[#5b6a7f] transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
+      <span className="block h-[18px] w-8 rounded-full bg-[#64748b] transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
       <span className="pointer-events-none absolute top-[11px] left-[11px] size-3 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-3.5" />
     </span>
   );

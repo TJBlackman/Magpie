@@ -27,7 +27,7 @@ function postLabel(candidate: Candidate): string {
   const p = candidate.post;
   const from = p?.subreddit ? `r/${p.subreddit}` : p?.author ? `u/${p.author}` : '';
   // "Gallery, 12 images" loses its count when the frame already shows it.
-  const kind = (p?.assets.length ?? 0) > 1 ? p?.summary?.replace(/, \d+ \w+$/, '') : p?.summary;
+  const kind = ((p?.assets.length ?? 0) > 1 ? p?.summary?.replace(/, \d+ \w+$/, '') : p?.summary)?.replace(/^(Image|Video|GIF), (\w+)$/, (_, what: string, ext: string) => `${ext} ${what.toLowerCase()}`);
   return [from, kind].filter(Boolean).join(' · ');
 }
 
@@ -43,8 +43,7 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // The count of qualities tells that the card opens a choice; the arrow takes the best.
   const choice = candidate.info?.qualities && !candidate.archived ? `${candidate.info.qualities} qualities` : '';
-  const unknown = fmtHeight(candidate.info?.height) && !size && !candidate.live && candidate.kind !== 'post' ? 'size unknown' : '';
-  const lead = [fmtHeight(candidate.info?.height), size || unknown, choice].filter(Boolean).join(' · ');
+  const lead = [fmtHeight(candidate.info?.height), size, choice].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
@@ -111,7 +110,10 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       )}
       {candidate.info?.drm && !candidate.archived && (
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
-          <Badge>PROTECTED</Badge>
+          <Badge>
+            <IconLock size={10} />
+            PROTECTED
+          </Badge>
         </span>
       )}
       {candidate.archived && (
@@ -198,7 +200,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className={`${box} text-mute ring-transparent`} aria-hidden="true">
+        <span className={`${box} text-dim ring-transparent`} aria-hidden="true">
           <IconChevron size={16} />
         </span>
       );
@@ -290,7 +292,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-transparent bg-[#141a22] hover:border-edge3 hover:bg-panel2';
+  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-edge2 bg-[#141a22] hover:border-edge3 hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -316,7 +318,7 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   return (
-    <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Downloaded ${when}`} testId="archived-note">
+    <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Saved ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
       <span className="block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
@@ -359,7 +361,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="rounded-[10px] bg-[#141a22]">
+    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-edge2 ring-inset transition-colors hover:ring-edge3">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
@@ -480,7 +482,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <Callout tone="neutral" icon={<IconLock size={15} />} title="Protected video" testId="inspect-error">
+              <Callout tone="neutral" icon={<IconLock size={15} />} testId="inspect-error">
                 {error}
               </Callout>
             ) : (

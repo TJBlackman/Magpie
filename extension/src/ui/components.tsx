@@ -15,7 +15,7 @@ export function Badge({ children, tone = 'default', className = '' }: { children
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
     post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
   }[tone];
-  return <span className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] leading-none font-semibold tracking-[0.04em] ring-1 ring-inset ${cls} ${className}`}>{children}</span>;
+  return <span className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] leading-none font-semibold tracking-[0.04em] ${cls} ${className}`}>{children}</span>;
 }
 
 export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop' | 'destroy';
@@ -103,7 +103,7 @@ export function LiveBadge() {
  */
 export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w-16' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
   return (
-    <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
+    <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
         <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
       ) : (
@@ -167,7 +167,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-transparent has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-edge has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -202,7 +202,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute ring-1 ring-edge2 ring-inset">{icon}</div>
+      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -267,7 +267,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 /** The one switch look, 32 by 18: the list filter and every setting. */
 export function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#5b6a7f]'}`}>
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#64748b]'}`}>
       <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
@@ -300,7 +300,7 @@ export function Toast({ message, detail, actions = [], live }: { message: string
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-btn-edge ring-inset hover:bg-btn-hover'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'text-fg2 hover:bg-white/[0.06] hover:text-text'}`}>
             {a.label}
           </button>
         ))}
@@ -312,12 +312,12 @@ export function Toast({ message, detail, actions = [], live }: { message: string
 /** A line under the header when the website has a newer Magpie. Update opens the download page; X hides it until the next version. */
 export function UpdateBanner({ version, onGet, onDismiss }: { version: string; onGet: () => void; onDismiss: () => void }) {
   return (
-    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-gradient-to-r from-shine/[0.13] to-indigo-400/[0.08] pr-1.5 pl-3 text-[12.5px] ring-1 ring-shine/25 ring-inset">
+    <div role="status" data-testid="update" className="mx-3.5 mb-2.5 flex h-11 items-center gap-2.5 rounded-xl bg-[#141a22] pr-1.5 pl-3 text-[12.5px]">
       <IconUpdate size={16} className="shrink-0 text-shine" />
       <span className="min-w-0 flex-1 truncate text-mute">
         <b className="font-semibold text-text">Magpie {version}</b> is out
       </span>
-      <Button tone="shine" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
+      <Button tone="accent" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
         Update
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>
