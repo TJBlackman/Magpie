@@ -48,12 +48,12 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
-    shine: 'bg-[linear-gradient(105deg,#45d3c8_0%,#33b3e6_55%,#7d74f4_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.32),0_4px_12px_rgba(0,0,0,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#55e0d5_0%,#43c2f0_55%,#8d85fa_100%)] active:bg-[linear-gradient(105deg,#3cc7bc_0%,#2ba6db_55%,#736ae8_100%)]',
+    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4ee2da] active:bg-[#19bfb7]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
-    stop: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
-    destroy: 'bg-[#c8283f] text-white font-semibold hover:bg-[#d6304a] active:bg-[#b52238]',
+    stop: 'text-live-soft ring-1 ring-inset ring-live/50 hover:bg-live/10 hover:ring-live-soft active:bg-live/20',
+    destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -120,6 +120,14 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 
 }
 
 let measure: CanvasRenderingContext2D | null | undefined;
+/** The width of `text` in the font of `style`, in CSS px. */
+export function textWidth(text: string, style: CSSStyleDeclaration): number {
+  measure ??= document.createElement('canvas').getContext('2d');
+  if (!measure) return 0;
+  measure.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  measure.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing;
+  return measure.measureText(text).width;
+}
 /** How much of `text` fits `width` with an ellipsis after it, cut back past spaces and joining punctuation. */
 function fitLength(text: string, width: number, style: CSSStyleDeclaration): number {
   measure ??= document.createElement('canvas').getContext('2d');
@@ -347,7 +355,9 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   if (!count) return null;
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
-      <span className="min-w-0 truncate">{`${count} already downloaded`}</span>
+      <span className="min-w-0 truncate text-[12.5px] font-semibold text-mute">
+        Already downloaded <span className="font-medium text-dim tabular-nums">{count}</span>
+      </span>
       <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
         {shown ? 'Hide' : 'Show'}
       </button>

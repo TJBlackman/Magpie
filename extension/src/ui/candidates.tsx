@@ -1,9 +1,9 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
-import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
+import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing, textWidth } from './components';
 import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
@@ -182,12 +182,10 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-accent-fill text-[#83f3e5] ring-accent-edge hover:bg-[#13605c] hover:text-white hover:!ring-shine active:bg-shine/30' : `text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge ${candidate.live ? 'hover:!ring-live-soft/80 hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-live/50' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge'} ${candidate.live ? 'hover:!ring-live-soft hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
-        <span className="flex size-[13px] items-center justify-center rounded-full ring-[1.5px] ring-current">
-          <span className="size-1.5 rounded-full bg-live" />
-        </span>
+        <span className="size-3 rounded-full bg-live" />
       ) : (
         <IconDownload size={lead ? 19 : 17} />
       )}
@@ -328,7 +326,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'bg-sel-fill' : 'hover:bg-panel2';
+  const shell = on ? 'bg-[#0f2f2e] ring-1 ring-inset ring-shine/45' : 'hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-10 w-full items-center gap-3 rounded-[7px] px-2 py-1 text-left transition-colors ${shell}`}>
       {!single && (
@@ -338,7 +336,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
       )}
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={`text-[14px] leading-5 tabular-nums ${on ? 'font-medium text-text' : 'font-medium text-fg2'}`}>{d.name}</span>
+          <span className={`text-[13.5px] leading-5 tabular-nums ${on ? 'font-medium text-text' : 'font-medium text-fg2'}`}>{d.name}</span>
           {d.tag && <Badge>{d.tag.toUpperCase()}</Badge>}
         </span>
         {!size && (d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
@@ -363,13 +361,40 @@ function ArchivedNote({ archived }: { archived: Archived }) {
 
 /** "Downloads / Reddit / EarthPorn / name": folders quiet, the last part a step brighter, cut in the middle when long. */
 function SavePath({ path }: { path: string }) {
-  const parts = path.split('/');
-  const name = parts.pop() ?? '';
-  // The whole path, on up to two lines that break between words: nothing is cut out of it.
+  const ref = useRef<HTMLSpanElement>(null);
+  const cut = path.lastIndexOf('/');
+  const folders = cut >= 0 ? `${path.slice(0, cut).split('/').join(' / ')} / ` : '';
+  const name = path.slice(cut + 1);
+  const [shown, setShown] = useState(name);
+  useLayoutEffect(() => {
+    const box = ref.current;
+    if (!box || typeof ResizeObserver === 'undefined') return;
+    const run = () => {
+      const style = getComputedStyle(box);
+      const room = box.clientWidth - 1;
+      const fits = (n: string) => textWidth(folders + n, style) <= room;
+      if (fits(name)) return setShown(name);
+      const suffix = /(?: \d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*\.\w+$/.exec(name)?.[0] ?? '';
+      const stem = name.slice(0, name.length - suffix.length);
+      const at = (k: number) => `${stem.slice(0, k).replace(/[\s,·:;–—-]+$/, '')}…${suffix}`;
+      let lo = 1;
+      let hi = stem.length;
+      while (lo < hi) {
+        const mid = (lo + hi + 1) >> 1;
+        if (fits(at(mid))) lo = mid;
+        else hi = mid - 1;
+      }
+      setShown(at(lo));
+    };
+    run();
+    const watch = new ResizeObserver(run);
+    watch.observe(box);
+    return () => watch.disconnect();
+  }, [folders, name]);
   return (
-    <span className="line-clamp-2 min-w-0 break-words [text-wrap:pretty]">
-      {parts.map((p) => `${p} / `).join('')}
-      <span className="text-fg2">{name}</span>
+    <span ref={ref} className="min-w-0 flex-1 overflow-hidden whitespace-nowrap">
+      {folders}
+      <span className="text-fg2">{shown}</span>
     </span>
   );
 }
@@ -576,15 +601,16 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         {inspection && !error && (!post || files > 0) && !folded && (
           <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="flex size-4 items-center justify-center" aria-hidden="true">
-                <span className="flex size-3.5 items-center justify-center rounded-full ring-[1.5px] ring-current">
-                  <span className="size-1.5 rounded-full bg-current" />
-                </span>
-              </span>
+              <span className="size-3 rounded-full bg-live ring-2 ring-[#062b29]" aria-hidden="true" />
             ) : (
               <IconDownload size={17} />
             )}
             {candidate.live ? (short || fmtHeight(candidate.info?.height) ? `Record ${short || fmtHeight(candidate.info?.height)}` : 'Start recording') : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
+          </Button>
+        )}
+        {error && (
+          <Button size="lg" className="mt-3 w-full" onClick={onClose} testId="sheet-close">
+            Close
           </Button>
         )}
       </div>

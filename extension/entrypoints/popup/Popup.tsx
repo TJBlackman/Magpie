@@ -67,15 +67,14 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
     <span className="inline-flex h-5 translate-y-px items-center gap-1">
       {n > 0 && (
-        <span className="pill relative inline-flex h-5 min-w-[22px] shrink-0 items-center justify-center rounded-full px-1.5 text-[11.5px] leading-5 font-semibold tabular-nums transition-colors">
+        <span className="pill relative inline-flex h-5 shrink-0 items-center text-[12px] leading-5 font-medium tabular-nums transition-colors">
           {n}
         </span>
       )}
 
       {failed > 0 && (
-        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[11.5px] leading-5 font-semibold text-live-soft tabular-nums">
-          <IconError size={11} />
-          {failed}
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex size-5 shrink-0 items-center justify-center">
+          <span className="size-2 rounded-full bg-live" />
         </span>
       )}
     </span>
@@ -268,7 +267,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#2a2d31] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:bg-transparent [&_.pill]:text-dim [&_[data-chip]]:bg-transparent'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#2a2d31] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
@@ -318,7 +317,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.4fr_1fr] gap-0.5 rounded-xl bg-panel/80 p-[3px]`}>
+      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel/80 p-[3px]`}>
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={candidates.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -407,10 +406,9 @@ export function Popup() {
               </div>
             )}
             {scope && !scope.all && (
-              <div className="mt-2 flex items-center justify-between gap-3 pt-1">
-                <span className="min-w-0 text-[11.5px] text-dim">Saved files and History stay.</span>
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
-                  Clear this list
+              <div className="mt-3 flex justify-end">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'Found media cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
+                  Clear found media
                 </button>
               </div>
             )}

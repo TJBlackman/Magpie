@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[43px] -translate-y-1/2 items-center rounded-full ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-[43px] -translate-y-1/2 items-center rounded-full pl-6 [background:linear-gradient(90deg,transparent,var(--color-row-hover)_24px)] ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -47,8 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        framed
-        className={open ? 'size-8' : 'size-8 !text-fg2'}
+        className={open ? 'size-8 !rounded-full' : 'size-8 !rounded-full !text-fg2 hover:!bg-white/[0.08]'}
         ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
@@ -137,11 +136,9 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
         </span>
       }
       inset
-      reserve
       overlay={
         <RowMenu
           items={[
-            { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
             { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}
