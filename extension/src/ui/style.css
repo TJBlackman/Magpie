@@ -27,6 +27,8 @@
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
   --color-btn: #1a2029;
   --color-btn-edge: #606f82;
+  /* Buttons: the arrow, More, text actions and neutral buttons. Inputs and steppers keep btn-edge. */
+  --color-ctl-edge: #4b5a6f;
   --color-btn-hover: #222a35;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;
@@ -210,6 +212,9 @@ input[type='number'].plain::-webkit-outer-spin-button,
 input[type='number'].plain::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
+}
+input.plain::selection {
+  background: transparent;
 }
 input[type='number'].plain {
   -moz-appearance: textfield;

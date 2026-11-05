@@ -236,7 +236,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               recording ? (
                 <>
                   <Button tone="stop" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
-                    <IconStop size={12} />
+                    <IconStop size={15} />
                     Stop and save
                   </Button>
                 </>

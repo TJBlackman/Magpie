@@ -43,7 +43,8 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // The count of qualities tells that the card opens a choice; the arrow takes the best.
   const choice = candidate.info?.qualities && !candidate.archived ? `${candidate.info.qualities} qualities` : '';
-  const lead = [fmtHeight(candidate.info?.height), size, choice].filter(Boolean).join(' · ');
+  const single = fmtHeight(candidate.info?.height) && !size && !choice && !candidate.live && candidate.kind !== 'post' ? 'one quality' : '';
+  const lead = [fmtHeight(candidate.info?.height), size, choice || single].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
@@ -118,8 +119,8 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       )}
       {candidate.archived && (
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
-          <Badge>
-            <IconCheck size={11} className="-ml-px text-saved" />
+          <Badge tone="saved">
+            <IconCheck size={11} className="-ml-px" />
             DOWNLOADED
           </Badge>
         </span>
@@ -153,13 +154,13 @@ function quickable(candidate: Candidate): boolean {
 }
 
 /** What one click on the arrow does, shown in place of the meta line while the arrow is hovered or focused. */
-function quickText(candidate: Candidate): string {
+function quickText(candidate: Candidate): { what: string; size: string } {
   const files = candidate.post?.assets.length ?? 0;
-  if (candidate.live) return 'Record now';
-  if (candidate.kind === 'post') return `Download ${files} ${files === 1 ? 'file' : 'files'} now`;
+  if (candidate.live) return { what: 'Record now', size: '' };
+  if (candidate.kind === 'post') return { what: `Download ${files} ${files === 1 ? 'file' : 'files'} now`, size: '' };
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration) || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
-  return [`Download${quality ? ` ${quality}` : ''} now`, size].filter(Boolean).join(' · ');
+  return { what: `Download${quality ? ` ${quality}` : ''} now`, size };
 }
 
 /** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
@@ -174,7 +175,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-edge2 transition-colors ring-inset group-hover:ring-edge3 hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -200,8 +201,9 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className={`${box} text-dim ring-transparent`} aria-hidden="true">
-          <IconChevron size={16} />
+        <span className="flex h-9 w-11 shrink-0 items-center justify-end gap-1 text-[11px] font-semibold text-live-soft tabular-nums" aria-hidden="true">
+          <span className="pulse size-1.5 rounded-full bg-live" />
+          {fmtClock(job.elapsed ?? 0)}
         </span>
       );
     return <ProgressRing pct={job.pct} />;
@@ -242,8 +244,9 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
               <Meta candidate={candidate} job={job} />
             </span>
             {!job && quickable(candidate) && (
-              <span className="hidden min-w-0 flex-1 truncate font-medium text-[#7ff0ff] group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
-                {quickText(candidate)}
+              <span className="hidden min-w-0 flex-1 truncate font-medium text-text group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
+                {quickText(candidate).what}
+                {quickText(candidate).size && <span className="font-normal text-mute">{` · ${quickText(candidate).size}`}</span>}
               </span>
             )}
           </>
@@ -538,7 +541,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
             <IconFolder size={13} className="shrink-0" />
-            <SavePath path={`Downloads/${post ? saveAs.replace(/ \[\w+\](?=\.\w+$|$)/, '') : saveAs}`} />
+            <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} />
           </div>
         )}
         {inspection && !error && folded && (
@@ -546,6 +549,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <Button size="lg" className="flex-1" testId="start" onClick={() => setExpanded(true)} title="Pick a quality for a second copy">
               <IconDownload size={17} />
               Download again
+              <IconChevron size={14} className="rotate-90 text-mute" />
             </Button>
             <Button tone="shine" size="lg" className="flex-1" onClick={() => void api.showFile(candidate.archived!.file, !!candidate.archived!.files).then((r) => r.ok && !r.value && onMissing())}>
               <IconFolder size={16} />

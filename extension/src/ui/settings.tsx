@@ -7,10 +7,10 @@ import { IconButton } from './components';
 import { useDialogFocus } from './focus';
 import { IconBack, IconCheck, IconMinus, IconPlus, Logo } from './icons';
 
-export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId }: { id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
-  const btn = `flex size-7 items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30`;
+export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId, compact }: { compact?: boolean; id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
+  const btn = `flex ${compact ? 'h-6 w-7' : 'size-7'} items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30`;
   return (
-    <div className="flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-btn-edge ring-inset outline-offset-2 outline-text focus-within:outline-2">
+    <div className={`flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-inset outline-offset-2 outline-text focus-within:outline-2 ${compact ? 'ring-edge2' : 'ring-btn-edge'}`}>
       <button type="button" className={btn} onClick={() => onChange(value - 1)} disabled={value <= min} title={lessTitle} aria-label={lessTitle}>
         <IconMinus size={14} />
       </button>
@@ -32,7 +32,7 @@ export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommi
           if (e.key === 'Enter') onCommit();
           if (e.key === 'Escape') onDraft?.(null);
         }}
-        className="plain h-7 w-8 bg-transparent text-center text-[13px] font-semibold text-text tabular-nums outline-none"
+        className={`plain bg-transparent text-center tabular-nums outline-none ${compact ? 'h-6 w-6 text-[13px] font-medium text-fg2' : 'h-7 w-8 text-[13px] font-semibold text-text'}`}
       />
       <button type="button" className={btn} onClick={() => onChange(value + 1)} disabled={value >= max} title={moreTitle} aria-label={moreTitle}>
         <IconPlus size={14} />

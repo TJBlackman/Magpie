@@ -52,7 +52,7 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
     <>
       {n > 0 && (
-        <span className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+        <span className="pill relative inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
           {n}
         </span>
       )}
@@ -273,7 +273,7 @@ export function Popup() {
         <div className="min-w-0 flex-1 leading-tight">
           <div className="text-[14px] font-semibold tracking-[0.01em]">Magpie</div>
           <div className="truncate text-[11.5px] text-mute" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
-            {scope && (scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
+            {scope && (view !== 'page' ? 'All sites' : scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
         </div>
         {recordingJob && view !== 'jobs' && (
@@ -372,10 +372,11 @@ export function Popup() {
             ))}
             {!showDownloaded && downloaded > 0 && <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />}
             {scope && !scope.all && (
-              <div className="-mr-2 -mt-1 flex justify-end">
-                <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again.">
-                  Clear detected media
-                </TextButton>
+              <div className="mt-1 flex justify-center border-t border-edge pt-2">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[12px] font-semibold text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn hover:text-text hover:ring-[#8796a9]">
+                  <IconX size={13} />
+                  Clear this list
+                </button>
               </div>
             )}
           </div>
@@ -406,7 +407,7 @@ export function Popup() {
                   {settings && (
                     <span className="mr-2 flex items-center gap-2 text-[12px] text-mute">
                       <label htmlFor="at-a-time">At a time</label>
-                      <Stepper id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
+                      <Stepper compact id="at-a-time" testId="at-a-time" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void saveSettings({ ...settings, maxConcurrent: n })} lessTitle="One fewer at a time" moreTitle="One more at a time" />
                     </span>
                   )}
                 </Section>

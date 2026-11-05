@@ -3,13 +3,15 @@ import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
 import { IconAlert, IconCheck, IconError, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
 
-export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'post';
+export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
     default: 'bg-[#1a2230] text-mute ring-white/[0.06]',
     shine: 'bg-shine/10 text-[#7ff0ff] ring-shine/25',
+    // Already downloaded: the one yellow, tinted like LIVE is tinted red.
+    saved: 'bg-[#2a2618] text-[#f2cc60]',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
     bad: 'bg-live/[0.13] text-live-soft ring-live/30',
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
@@ -45,11 +47,11 @@ export function Button({
   autoFocus?: boolean;
 }) {
   const cls = {
-    default: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover active:bg-btn',
+    default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#8796a9] active:bg-btn',
     shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
-    accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
+    accent: 'text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-accent-fill',
     stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     destroy: 'bg-[#d6304a] text-white font-semibold hover:bg-[#e13a55] active:bg-[#c02840]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
@@ -75,7 +77,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-edge2 ring-inset group-hover:ring-edge3 hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-ctl-edge ring-inset hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -167,7 +169,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-edge has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border bg-panel ${onOpen || hoverable ? 'border-edge2' : 'border-transparent'} outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[.row-main:focus-visible]:border-edge3 has-[.row-main:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-edge2 has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -193,7 +195,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="-mr-2 flex shrink-0 items-center gap-1">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-1">{children}</div>}
     </div>
   );
 }
@@ -234,7 +236,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-semibold transition-colors ${armed ? 'bg-live/10 text-live-soft' : 'text-fg2 hover:bg-panel3 hover:text-text'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-live/10 text-live-soft ring-live/45' : 'text-text ring-ctl-edge hover:bg-btn hover:ring-[#8796a9]'}`}>
       {children}
     </button>
   );
@@ -277,9 +279,9 @@ export function Toggle({ on }: { on: boolean }) {
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <div className="-mr-2 flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
+    <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn hover:ring-[#8796a9]">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -300,7 +302,7 @@ export function Toast({ message, detail, actions = [], live }: { message: string
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'text-fg2 hover:bg-white/[0.06] hover:text-text'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-accent-fill' : 'text-text ring-1 ring-ctl-edge ring-inset hover:bg-btn hover:ring-[#8796a9]'}`}>
             {a.label}
           </button>
         ))}
