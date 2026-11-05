@@ -279,7 +279,7 @@ function captureThumbs(list: Candidate[]) {
 /** What the engine's thumbnail capture learns about a stream: best quality, length, DRM. */
 function infoFor(c: Candidate): MediaInfo {
   if (c.id === 'c13') return { drm: true };
-  if (c.kind === 'file') return {};
+  if (c.kind === 'file') return { height: 1080 };
   const variants = variantsFor(c);
   // A single playlist states no resolution; the capture reads it from the decoded frame.
   const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0))) || (c.url.endsWith('playlist.m3u8') ? 1080 : 0);

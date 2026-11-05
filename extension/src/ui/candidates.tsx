@@ -117,14 +117,12 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
         </span>
       )}
       {candidate.archived && !inSheet && (
-        <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
-          <Badge tone="saved">
-            <IconCheck size={11} className="-ml-px" />
-            DOWNLOADED
-          </Badge>
+        <span data-testid="archived-badge" className="flex shrink-0 items-center gap-1 font-medium text-fg2" title={`Downloaded ${savedAs(candidate.archived)}`}>
+          <IconCheck size={13} className="text-saved" />
+          Downloaded
         </span>
       )}
-      {candidate.archived && !inSheet && <span className="shrink-0 text-mute">{fmtAgo(candidate.archived.at).replace(/^./, (ch) => ch.toUpperCase())}</span>}
+      {candidate.archived && !inSheet && <span className="-ml-0.5 shrink-0 text-mute">{fmtAgo(candidate.archived.at)}</span>}
     </>
   );
 }
@@ -206,7 +204,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
           : job
             ? 'Already downloading. Show it in Downloads'
             : candidate.info?.drm
-              ? 'Copy protected (DRM). Magpie can’t save it'
+              ? "Copy protected (DRM). Magpie can't save it"
               : candidate.live
                 ? 'Record this stream'
                 : candidate.kind === 'post'
@@ -369,7 +367,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const otherLanguages = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
   const footnote = [
     sharedCodecs ? `${single ? '' : 'Every quality: '}${sharedCodecs}.` : '',
-    sharedAudio ? `Includes ${sharedAudio} audio${otherLanguages ? '. Other languages can’t be picked yet' : ''}.` : '',
+    sharedAudio ? `Includes ${sharedAudio} audio${otherLanguages ? ". Other languages can't be picked yet" : ''}.` : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -409,7 +407,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
                 {error}
               </Callout>
             ) : (
-              <Callout tone="error" title="Magpie can’t save this one" testId="inspect-error">
+              <Callout tone="error" title="Magpie can't save this one" testId="inspect-error">
                 {error}
               </Callout>
             ))}

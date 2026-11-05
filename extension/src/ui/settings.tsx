@@ -10,7 +10,7 @@ import { IconBack, IconCheck, IconMinus, IconPlus, Logo } from './icons';
 function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId }: { id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
   const btn = 'flex size-8 items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30';
   return (
-    <div className="flex shrink-0 items-center overflow-hidden rounded-lg bg-ink ring-1 ring-edge2 ring-inset focus-within:ring-shine/70">
+    <div className="flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-btn-edge ring-inset focus-within:ring-shine/70">
       <button type="button" className={btn} onClick={() => onChange(value - 1)} disabled={value <= min} title={lessTitle} aria-label={lessTitle}>
         <IconMinus size={14} />
       </button>
@@ -52,12 +52,25 @@ function Switch({ id, testId, checked, onChange }: { id: string; testId: string;
 }
 
 /** One setting: label and a line or two of explanation on the left, its control on the right. */
-function Row({ label, htmlFor, control, children }: { label: string; htmlFor: string; control: ReactNode; children: ReactNode }) {
+function Row({ label, htmlFor, control, children, whole }: { label: string; htmlFor: string; control: ReactNode; children: ReactNode; whole?: boolean }) {
+  const text = (
+    <>
+      <span className="block text-[13px] leading-5 font-semibold text-text">{label}</span>
+      <span className="mt-0.5 block text-[11.5px] leading-[1.45] text-pretty text-mute">{children}</span>
+    </>
+  );
+  // A switch row is one label: anywhere on it flips the switch.
+  if (whole)
+    return (
+      <label htmlFor={htmlFor} className="flex cursor-pointer items-center gap-4 px-3.5 py-3 transition-colors hover:bg-white/[0.02]">
+        <span className="min-w-0 flex-1">{text}</span>
+        {control}
+      </label>
+    );
   return (
     <div className="flex items-center gap-4 px-3.5 py-3">
       <label htmlFor={htmlFor} className="min-w-0 flex-1 cursor-pointer">
-        <span className="block text-[13px] leading-5 font-semibold text-text">{label}</span>
-        <span className="mt-0.5 block text-[11.5px] leading-[1.45] text-pretty text-mute">{children}</span>
+        {text}
       </label>
       {control}
     </div>
@@ -122,7 +135,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
             >
               The rest wait in line. Live recordings don't count. 2 or 3 fill a fast connection.
             </Row>
-            <Row label="Show thumbnails" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
+            <Row whole label="Show thumbnails" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
               A frame, length and quality on each row. Reads a small piece of each video while this popup is open.
             </Row>
           </Group>
@@ -148,12 +161,12 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
             >
               Downloads to remember and mark on the page. 0 turns it off.
             </Row>
-            <Row label="Remember private windows" htmlFor="archive-private" control={<Switch id="archive-private" testId="archive-private" checked={settings.archivePrivate} onChange={(on) => void update({ archivePrivate: on })} />}>
+            <Row whole label="Remember private windows" htmlFor="archive-private" control={<Switch id="archive-private" testId="archive-private" checked={settings.archivePrivate} onChange={(on) => void update({ archivePrivate: on })} />}>
               When off, downloads from private windows leave History once the last private window closes.
             </Row>
           </Group>
           <Group title="Updates">
-            <Row label="Tell me about new versions" htmlFor="update-check" control={<Switch id="update-check" testId="update-check" checked={settings.updateCheck} onChange={(on) => void update({ updateCheck: on })} />}>
+            <Row whole label="Tell me about new versions" htmlFor="update-check" control={<Switch id="update-check" testId="update-check" checked={settings.updateCheck} onChange={(on) => void update({ updateCheck: on })} />}>
               Checks magpie.trevorblackman.dev twice a day at most. Sends nothing about you.
             </Row>
           </Group>

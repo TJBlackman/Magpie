@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[54px] flex -translate-y-1/2 items-center ${open ? 'z-40' : 'z-10'}`}
+      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center bg-[linear-gradient(to_right,transparent,#18202b_20px)] pl-6 ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -47,7 +47,6 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        framed={!open}
         className="size-9"
         ref={trigger}
         onClick={() => {
@@ -127,7 +126,6 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           )}
         </span>
       }
-      reserve
       onOpen={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={

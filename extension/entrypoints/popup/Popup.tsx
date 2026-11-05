@@ -6,7 +6,7 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconCheck, IconChevron, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconChevron, IconDownload, IconRedo, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { fmtClock, hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -41,16 +41,24 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-/** A tab's count. While something records, the count wears the live colour and a ring, and says so. */
-function Pill({ n, rec, on, margin }: { n: number; rec?: boolean; on?: boolean; margin?: boolean }) {
-  if (!n) return null;
+/** A tab's count. `failed` adds a red dot, or, with nothing else to count, becomes a red count of its own. */
+function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
+  if (!n && !failed) return null;
+  if (!n)
+    return (
+      <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
+        {failed}
+      </span>
+    );
   return (
     <span
-      aria-label={rec ? `${n}, recording` : undefined}
-      title={rec ? 'Recording' : undefined}
-      className={`pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors ${margin ? 'mx-[3px]' : ''} ${rec ? (on ? 'shadow-[0_0_0_1.5px_var(--color-panel3),0_0_0_2.5px_var(--color-live)]' : 'shadow-[0_0_0_1.5px_var(--color-panel),0_0_0_2.5px_var(--color-live)]') : ''}`}
+      role={failed ? 'img' : undefined}
+      aria-label={failed ? `${n}, ${failed} failed` : undefined}
+      title={failed ? `${failed} failed` : undefined}
+      className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors"
     >
       {n}
+      {failed > 0 && <span className="absolute -top-0.5 -right-0.5 size-[7px] rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
     </span>
   );
 }
@@ -225,7 +233,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-[#3d4b5d] ring-inset [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-btn-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -259,7 +267,7 @@ export function Popup() {
             type="button"
             onClick={() => setView('jobs')}
             title="Recording. Open Downloads"
-            className="flex h-7 items-center gap-1.5 rounded-full bg-live/[0.12] pr-2.5 pl-2 text-[11.5px] font-semibold text-[#ff9fb1] ring-1 ring-live/45 transition-colors ring-inset hover:bg-live/20"
+            className="flex h-7 items-center gap-1.5 rounded-full bg-panel3 pr-2.5 pl-2 text-[11.5px] font-semibold text-text ring-1 ring-edge3 transition-colors ring-inset hover:bg-btn-hover"
           >
             <span className="pulse size-2 rounded-full bg-live" />
             REC <span className="font-medium tabular-nums">{fmtClock(recordingJob.duration ?? 0)}</span>
@@ -272,20 +280,12 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.35fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
           'Downloads',
-          <>
-            <Pill n={active.length} />
-            {failed.length > 0 && (
-              <span className="inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-err/[0.14] pr-1.5 pl-1 text-[10.5px] font-semibold text-err tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
-                <IconError size={12} />
-                {failed.length}
-              </span>
-            )}
-          </>,
+          <Pill n={active.length} failed={failed.length} />,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
         )}
         {tab('history', 'History', <Pill n={archive.length} />)}
@@ -295,17 +295,20 @@ export function Popup() {
         {candidates.length > 0 && (
           <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
             {scope && !scope.all && (
-              <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again." label="Clear list">
-                Clear
+              <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again.">
+                Clear list
               </TextButton>
             )}
           </Section>
         )}
         {shown.length === 0 ? (
           downloaded ? (
-            <Empty icon={<IconCheck size={24} />} title="Everything here is already downloaded" action={<Button size="md" onClick={toggleDownloaded}>Show downloaded</Button>}>
-              Show downloaded media to get it again.
-            </Empty>
+            <>
+              <Empty icon={<IconCheck size={24} />} title="Everything here is already downloaded">
+                Turn on Show downloaded below to get it again.
+              </Empty>
+              <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+            </>
           ) : (
             <Empty
               icon={<IconVideo size={24} />}
@@ -379,11 +382,10 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once" className="mr-2 inline-flex h-7 items-center gap-1.5 rounded-lg pr-1.5 pl-2 text-[12px] font-medium text-fg2 ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover hover:text-text">
-                      <IconSliders size={13} className="text-mute" />
+                    <TextButton onClick={() => setSettingsOpen(true)} title="Change how many downloads run at once, in Settings">
                       {`${settings.maxConcurrent} at a time`}
-                      <IconChevron size={13} className="rotate-90 text-mute" />
-                    </button>
+                      <IconChevron size={12} className="rotate-90" />
+                    </TextButton>
                   )}
                 </Section>
                 <div className="flex flex-col gap-2">
@@ -402,8 +404,8 @@ export function Popup() {
             {failed.length > 0 && (
               <>
                 <Section title="Failed" count={failed.length}>
-                  <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list" label="Clear failed downloads">
-                    Clear
+                  <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                    Clear failed
                   </TextButton>
                 </Section>
                 <div className="flex flex-col gap-2">
@@ -431,8 +433,8 @@ export function Popup() {
             </div>
             <Section title={q ? 'Matches' : 'Downloaded'} count={q ? matches.length : undefined}>
               {!q && (
-              <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are." label="Clear history">
-                Clear
+              <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">
+                Clear history
               </ConfirmButton>
               )}
             </Section>

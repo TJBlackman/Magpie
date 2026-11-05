@@ -80,7 +80,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 
 /** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
-  const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-err/80', idle: 'bg-edge3' }[tone];
+  const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
     <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
       {pct === null ? (
@@ -127,7 +127,12 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     <Badge tone={STATE_CHIP[job.state]!.tone}>{STATE_CHIP[job.state]!.label}</Badge>
   ) : null;
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
-  const meta = queued ? (
+  const meta = failed ? (
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-live-soft" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`} data-testid="job-error">
+      <IconError size={13} className="shrink-0 text-live" />
+      <span className="min-w-0 truncate">{friendlyError(job.error ?? 'The download stopped.')}</span>
+    </span>
+  ) : queued ? (
     <span className="min-w-0 flex-1 truncate text-dim">
       <span data-testid="job-status" className="text-fg2">{statusText(job, pct)}</span>
       {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
@@ -135,15 +140,15 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : (
     <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
       {lead}
-      {`${rendition ? ' · ' : ''}${job.pageUrl && siteOf(hostOf(job.url)) === siteOf(hostOf(job.pageUrl)) && rendition ? '' : hostOf(job.url)}`.replace(/ · $/, '')}
+      {rendition ? '' : hostOf(job.url)}
     </span>
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'A retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'Its page is still open, so a retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it there, then try again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page, then download it again from This page.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -177,21 +182,17 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
     >
       {failed ? (
+        recover && (
         <div className="mt-1 flex items-center gap-3">
-          <div className="flex min-w-0 flex-1 gap-2 text-[12px] leading-[17px]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
-            <IconError size={15} className="mt-px shrink-0 text-err" />
-            <div className="min-w-0" data-testid="job-error">
-              <div className="line-clamp-2 text-fg2">{friendlyError(job.error ?? 'The download stopped.')}</div>
-              {recover && <div className="text-dim">{recover.hint}</div>}
-            </div>
-          </div>
-          {recover && (
+          <p className="min-w-0 flex-1 text-[12px] leading-[17px] text-mute">{recover.hint}</p>
+          {(
             <Button tone="accent" size="md" onClick={recover.run} title={recover.tip}>
               {recover.icon}
               {recover.label}
             </Button>
           )}
         </div>
+        )
       ) : queued ? null : (
         <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}

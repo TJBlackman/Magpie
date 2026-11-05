@@ -3,7 +3,7 @@ import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
 import { IconAlert, IconCheck, IconError, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
 
-export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
+export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'post';
 
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
@@ -11,9 +11,7 @@ export function Badge({ children, tone = 'default', className = '' }: { children
     default: 'bg-white/[0.06] text-fg2 ring-white/[0.08]',
     shine: 'bg-shine/10 text-[#67e8f9] ring-shine/25',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
-    // Already downloaded: the only yellow in the popup, a hairline and a faint wash, so it marks the card without being its loudest part.
-    saved: 'bg-saved/[0.06] text-[#e5d49a] ring-saved/35',
-    bad: 'bg-live/[0.13] text-[#ff9fb1] ring-live/30',
+    bad: 'bg-live/[0.13] text-live-soft ring-live/30',
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
     post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
   }[tone];
@@ -52,8 +50,8 @@ export function Button({
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-live/[0.12] text-[#ff9fb1] ring-1 ring-inset ring-live/45 hover:bg-live/20 [&_svg]:text-live',
-    destroy: 'bg-err text-[#1a090e] font-semibold hover:bg-[#fa8787] active:bg-[#ef6363]',
+    stop: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover [&_svg]:text-live',
+    destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -70,7 +68,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
     tone === 'live'
       ? 'text-live hover:bg-live/10'
       : tone === 'danger'
-        ? 'text-mute hover:bg-err/10 hover:text-err'
+        ? 'text-mute hover:bg-live/10 hover:text-live-soft'
         : active
           ? 'bg-accent-fill text-shine ring-1 ring-accent-edge ring-inset'
           : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
@@ -211,17 +209,17 @@ export function Empty({ icon, title, children, action, below }: { icon: ReactNod
   );
 }
 
-/** A boxed note with an icon and a hairline in its tone: info (accent), warn (amber), error (red), neutral (grey). */
+/** A boxed note: one neutral box for every tone, the tone carried by its icon: info (accent), warn (yellow), error (red), neutral (grey). */
 export function Callout({ tone, title, children, testId, icon }: { tone: 'info' | 'warn' | 'error' | 'neutral'; title?: string; children: ReactNode; testId?: string; icon?: ReactNode }) {
   const cls = {
-    info: 'bg-shine/[0.06] ring-shine/30 text-fg2 [&_svg]:text-shine',
-    warn: 'bg-saved/[0.06] ring-saved/35 text-fg2 [&_svg]:text-saved',
-    error: 'bg-err/[0.07] ring-err/35 text-fg2 [&_svg]:text-err',
-    neutral: 'bg-white/[0.03] ring-btn-edge/60 text-fg2 [&_svg]:text-mute',
+    info: '[&>span>svg]:text-shine',
+    warn: '[&>span>svg]:text-saved',
+    error: '[&>span>svg]:text-live',
+    neutral: '[&>span>svg]:text-mute',
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
-    <div data-testid={testId} className={`flex gap-3 rounded-xl px-3.5 py-3 text-[12px] leading-[1.5] ring-1 ring-inset ${cls}`}>
+    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#171c23] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ring-1 ring-[#434e5c] ring-inset ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
       <div className="min-w-0 text-pretty">
         {title && <div className="mb-0.5 font-semibold text-text">{title}</div>}
@@ -231,10 +229,10 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   );
 }
 
-/** The one text action in a section header: grey until hovered, 32px tall. `label` names what it acts on for screen readers. */
+/** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-medium transition-colors ${armed ? 'bg-err/10 text-err' : 'text-mute hover:bg-white/[0.06] hover:text-text'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-medium transition-colors ${armed ? 'bg-live/10 text-live-soft' : 'text-mute hover:bg-white/[0.06] hover:text-text'}`}>
       {children}
     </button>
   );
