@@ -198,7 +198,9 @@ export function describeVariant(v: { label: string; resolution?: string; bandwid
   if (w && h) {
     const p = Math.min(w, h);
     const tag = p >= 2160 ? '4K' : p >= 1440 ? '2K' : p >= 1080 ? 'Full HD' : p >= 720 ? 'HD' : '';
-    return { name: `${p}p`, tag, detail: [`${w}×${h}`, rate, codecs].filter(Boolean).join(' · '), audio };
+    // The frame size only when it is not plain 16:9, where the name and tag already say it.
+    const wide = Math.abs(Math.max(w, h) / Math.min(w, h) - 16 / 9) < 0.02;
+    return { name: `${p}p`, tag, detail: [wide ? '' : `${w}×${h}`, rate, codecs].filter(Boolean).join(' · '), audio };
   }
   if (v.audioOnly) return { name: 'Audio only', tag: '', detail: [rate, codecs].filter(Boolean).join(' · '), audio };
   const parts = v.label.split(' · ').map((p) => CONTAINERS[p.trim().toLowerCase()] ?? p.trim());

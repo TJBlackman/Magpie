@@ -127,9 +127,10 @@ describe('nextRate', () => {
 
 describe('quality sheet labels', () => {
   it('names a rendition by its shorter side and tags HD and 4K', () => {
-    expect(describeVariant({ label: 'x', resolution: '3840x2160', bandwidth: 15_200_000, codecs: 'avc1.640028,mp4a.40.2' })).toEqual({ name: '2160p', tag: '4K', detail: '3840×2160 · 15.2 Mbps · H.264 · AAC', audio: '' });
+    expect(describeVariant({ label: 'x', resolution: '3840x2160', bandwidth: 15_200_000, codecs: 'avc1.640028,mp4a.40.2' })).toEqual({ name: '2160p', tag: '4K', detail: '15.2 Mbps · H.264 · AAC', audio: '' });
     expect(describeVariant({ label: 'x', resolution: '1080x1920', audioLabel: 'English' })).toMatchObject({ name: '1080p', tag: 'Full HD', audio: 'English' });
-    expect(describeVariant({ label: 'x', resolution: '640x360', bandwidth: 800_000 })).toMatchObject({ name: '360p', tag: '', detail: '640×360 · 800 kbps' });
+    expect(describeVariant({ label: 'x', resolution: '640x360', bandwidth: 800_000 })).toMatchObject({ name: '360p', tag: '', detail: '800 kbps' });
+    expect(describeVariant({ label: 'x', resolution: '1440x1080', bandwidth: 5_000_000 })).toMatchObject({ name: '1080p', detail: '1440×1080 · 5.0 Mbps' });
   });
   it('keeps the words of labels with no resolution', () => {
     expect(describeVariant({ label: 'video/mp4 · 412.0 MB' })).toMatchObject({ name: 'Original file', detail: 'MP4 · 412.0 MB' });

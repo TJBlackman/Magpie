@@ -6,7 +6,7 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconAlert, IconCheck, IconDownload, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconSliders, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -35,16 +35,9 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n, tone = 'default', label, rec }: { n: number; tone?: 'default' | 'failed'; label?: string; rec?: boolean }) {
+function Pill({ n }: { n: number }) {
   if (!n) return null;
-  const cls = { default: 'pill bg-white/[0.08] text-mute', failed: 'bg-live/15 text-[#ff9fb1] ring-1 ring-live/30 ring-inset' }[tone];
-  return (
-    <span aria-label={label} title={label} className={`inline-flex h-[18px] min-w-[18px] items-center justify-center gap-0.5 rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${cls}`}>
-      {tone === 'failed' && <IconAlert size={10} className="-ml-px" />}
-      {rec && <span className="pulse mr-0.5 size-1.5 rounded-full bg-live" role="img" aria-label="Recording" />}
-      {n}
-    </span>
-  );
+  return <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>;
 }
 
 function Panel({ shown, children, roomy }: { shown: boolean; children: ReactNode; roomy?: boolean }) {
@@ -120,7 +113,7 @@ export function Popup() {
     }
     return out;
   };
-  const recording = active.some((j) => j.live && j.state === 'downloading');
+  const recording = active.some((j) => j.live && j.state !== 'queued');
   const thumbs = settings?.thumbnails ?? true;
   const update = useUpdate(settings?.updateCheck ?? false);
 
@@ -186,7 +179,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 flex-1 items-center justify-center gap-1.5 rounded-[9px] text-[12.5px] font-medium transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -222,14 +215,20 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 flex shrink-0 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.35fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} rec={recording} />
-            <Pill n={failed.length} tone="failed" label={`${failed.length} failed`} />
+            {recording && <span className="pulse size-1.5 shrink-0 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+            <Pill n={active.length} />
+            {failed.length > 0 && (
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
+                <IconError size={13} />
+                {failed.length}
+              </span>
+            )}
           </>,
           failed.length ? `${failed.length} failed` : undefined,
         )}
@@ -238,7 +237,7 @@ export function Popup() {
 
       <Panel shown={view === 'page'}>
         {candidates.length > 0 && (
-          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'} count={shown.length || undefined}>
+          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             {scope && !scope.all && (
               <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
@@ -310,7 +309,7 @@ export function Popup() {
       <Panel shown={view === 'jobs'}>
         {active.length === 0 && failed.length === 0 ? (
           <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button size="md" onClick={() => setView('page')}>Go to This page</Button>}>
-            Pick a video on This page to see its progress here.
+            Pick a video on this page to see its progress here.
           </Empty>
         ) : (
           <>

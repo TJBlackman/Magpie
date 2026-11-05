@@ -3,7 +3,7 @@ import type { Job } from '../core/types';
 import { api, openPage } from './api';
 import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
 import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
-import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
+import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconX } from './icons';
 
 /**
  * Smoothed bytes per second for an active job, from the byte counts it reports.
@@ -94,7 +94,7 @@ function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live'
 
 function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: ReactNode; left: string; right?: ReactNode; testId?: string }) {
   return (
-    <div className="mt-2 flex h-5 items-center gap-2 text-[11.5px] text-mute tabular-nums">
+    <div className="mt-2 flex min-h-5 items-center gap-2 text-[11.5px] text-mute tabular-nums">
       {chip}
       <span className="min-w-0 flex-1 truncate" data-testid={testId}>
         {left}
@@ -148,9 +148,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Still on This page, so a retry gets a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'Retrying picks up a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it on its page to get a fresh link.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it there to get a fresh link.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -172,7 +172,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
           </IconButton>
         ) : job.live ? (
           <IconButton label="Discard the recording" tone="danger" framed active={discarding} onClick={() => setDiscarding((d) => !d)}>
-            <IconTrash size={16} />
+            <IconX size={17} />
           </IconButton>
         ) : (
           <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
@@ -212,7 +212,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               recording ? (
                 <>
                   <SpeedText job={job} rate={rate} />
-                  <Button tone="stop" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="-my-1.5">
+                  <Button tone="stop" onClick={() => api.stop(job.id)} title="Stop recording and save the file" className="!h-8">
                     <IconStop size={12} />
                     Stop
                   </Button>

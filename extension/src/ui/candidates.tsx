@@ -36,7 +36,9 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   // nothing new. It also fills a line that would otherwise be empty.
   const host = hostOf(candidate.url);
   const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
-  const rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
+  let rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
+  // A stream read without a resolution is a single media playlist: there is one quality.
+  if (!lead && !rest && !tagged) rest = candidate.info && candidate.kind !== 'file' ? 'Single quality' : host;
   return { lead, rest };
 }
 
@@ -143,7 +145,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
   }
   const blocked = candidate.info?.drm && !candidate.archived;
   const cls = blocked
-    ? 'bg-transparent text-dim ring-white/[0.07] group-hover:text-mute'
+    ? 'bg-transparent text-dim ring-transparent group-hover:text-mute'
     : candidate.archived
       ? 'bg-white/[0.05] text-mute ring-white/[0.08] group-hover:bg-white/[0.09] group-hover:text-text'
       : candidate.live
@@ -267,8 +269,8 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
   const where = candidate.post?.subreddit ? `Reddit/${candidate.post.subreddit}` : 'Reddit';
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3 rounded-[10px] bg-white/[0.035] p-2.5 ring-1 ring-white/[0.05] ring-inset">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-btn text-mute ring-1 ring-btn-edge ring-inset">
+      <div className="flex items-center gap-3 rounded-[10px] p-1">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-mute">
           <IconFolder size={18} />
         </span>
         <div className="min-w-0 flex-1">
@@ -278,7 +280,8 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
       </div>
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-[10px] bg-btn px-3 text-[12.5px] text-text ring-1 ring-btn-edge transition-colors ring-inset hover:bg-btn-hover [&::-webkit-details-marker]:hidden">
-          <span className="flex-1">{`The ${n} ${fileWord(variants, n)} in this post`}</span>
+          <span className="flex-1">Files</span>
+          <span className="text-mute tabular-nums">{n}</span>
           <IconChevron size={15} className="text-mute transition-transform group-open/files:rotate-90" />
         </summary>
         <ol className="mt-1 flex flex-col gap-px pb-1" data-testid="post-files">
@@ -347,8 +350,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   // Codecs every quality shares are said once, under the list.
   const codecSet = new Set(variants.map((v) => codecNames(v.codecs)));
   const sharedCodecs = !post && variants.length > 1 && codecSet.size === 1 ? [...codecSet][0]! : '';
-  const audioNote = inspection?.notes.find((n) => n.startsWith('Audio:'))?.replace(/^Audio: [^.]*\.\s*/, '');
-  const footnote = [`${sharedCodecs}${sharedAudio ? `${sharedCodecs ? ' with' : 'With'} ${sharedAudio} audio` : ''}`, audioNote ?? ''].map((s) => s.replace(/\.$/, '')).filter(Boolean).join('. ');
+  const otherLanguages = !!inspection?.notes.some((n) => n.startsWith('Audio:'));
+  const footnote = [sharedCodecs, sharedAudio ? `${sharedAudio} audio${otherLanguages ? ' only' : ''}` : ''].filter(Boolean).join(' · ');
 
   return (
     <>

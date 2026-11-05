@@ -107,7 +107,6 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
       {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
-      {thumb && live && <span className="pulse absolute top-1 left-1 size-1.5 rounded-full bg-live shadow-[0_0_4px_var(--color-live)]" />}
       {muted && <span className="absolute right-1 bottom-1 flex size-4 items-center justify-center rounded-full bg-saved text-ink shadow-[0_1px_3px_rgba(0,0,0,.5)]"><IconCheck size={11} /></span>}
       {corner && <span className="absolute right-0.5 bottom-0.5 rounded-[4px] bg-black/75 px-1 py-px text-[9.5px] leading-[13px] font-semibold text-white tabular-nums">{corner}</span>}
     </div>
@@ -160,7 +159,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-offset-[3px]">
           {body}
@@ -183,7 +182,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
     <div className="mt-3.5 mb-2 flex h-8 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
-        {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
+        {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
       {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-btn [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:ring-1 [&_button]:ring-btn-edge [&_button]:ring-inset [&_button]:hover:bg-btn-hover">{children}</div>}
     </div>
