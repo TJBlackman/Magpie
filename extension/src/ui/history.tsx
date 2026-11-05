@@ -3,7 +3,7 @@ import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
 import { Button, Empty, IconButton, MediaRow, MediaTile } from './components';
-import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
+import { IconExternal, IconFolder, IconHistory, IconMore, IconSearch, IconTrash } from './icons';
 
 /**
  * A row's extra actions behind one small button, shown while the row is
@@ -90,7 +90,7 @@ function highlight(text: string, query: string): ReactNode {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded-[3px] bg-shine/[0.18] px-px font-semibold text-[#83f3e5]">{text.slice(at, at + q.length)}</mark>
+      <mark className="rounded-[3px] bg-shine/[0.18] text-[#83f3e5] shadow-[0_0_0_2px_rgba(31,216,207,.18)]">{text.slice(at, at + q.length)}</mark>
       {text.slice(at + q.length)}
     </>
   );
@@ -137,7 +137,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           items={[
             { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
-            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
+            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconTrash size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}
         />
       }

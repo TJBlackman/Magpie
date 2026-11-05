@@ -53,7 +53,7 @@ export function Button({
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
     stop: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33] [&>svg]:text-live',
-    destroy: 'bg-[#e5484d] text-white font-semibold hover:bg-[#ec5d5e] active:bg-[#d13c41]',
+    destroy: 'bg-[#c4373c] text-white font-semibold hover:bg-[#d13c41] active:bg-[#b02f34]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -70,7 +70,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
     tone === 'live'
       ? 'text-live hover:bg-live/10'
       : tone === 'danger'
-        ? 'text-mute hover:bg-[#25282b] hover:text-live-soft'
+        ? '!rounded-full text-mute hover:bg-white/[0.08] hover:text-text'
         : active
           ? '!bg-sel-fill text-shine ring-1 !ring-sel-edge ring-inset'
           : framed
@@ -198,6 +198,7 @@ export function MediaRow({
   overlay,
   inset,
   hoverReserve,
+  wrapTitle,
 }: {
   tile: ReactNode;
   title: ReactNode;
@@ -221,13 +222,15 @@ export function MediaRow({
   overlay?: ReactNode;
   /** One row of a list that shares one raised surface (RowList): no surface of its own, a soft fill on hover. */
   inset?: boolean;
+  /** The title may take two lines (rows whose actions take room). */
+  wrapTitle?: boolean;
 }) {
   const body = (
     <>
       {tile}
       <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : hoverReserve ? 'group-hover:pr-11 group-has-[:focus-visible]:pr-11' : ''}`}>
-        <div className={`truncate text-[13px] leading-[18px] font-medium transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
-          {typeof title === 'string' ? <FitText text={title} /> : title}
+        <div className={`${wrapTitle ? 'line-clamp-2 text-pretty' : 'truncate'} text-[13px] leading-[18px] font-medium transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
+          {typeof title === 'string' && !wrapTitle ? <FitText text={title} /> : title}
         </div>
         {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
       </div>
@@ -372,7 +375,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, detail, actions = [], live, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
   if (!message) return null;
   return (
-    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_12px)] px-3.5 pt-6 pb-3">
+    <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_28px)] px-3.5 pt-9 pb-3">
       <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-white/[0.07] ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#0d4041] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : <IconCheck size={12} />}

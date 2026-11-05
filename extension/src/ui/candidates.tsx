@@ -188,7 +188,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
       onClick={() => onQuick(candidate)}
       className={`quick absolute z-10 flex items-center justify-center rounded-full transition-colors ${look}`}
     >
-      {candidate.live ? <span className={`rounded-full ${variant === 'lead' ? 'size-3 bg-[#e5484d]' : 'size-2.5 bg-live'}`} /> : <IconDownload size={variant === 'lead' ? 20 : 16} />}
+      {candidate.live ? <span className={`rounded-full ${variant === 'lead' ? 'size-3 bg-shine-ink' : 'size-2.5 bg-live'}`} /> : <IconDownload size={variant === 'lead' ? 20 : 16} />}
     </button>
   );
 }
@@ -266,8 +266,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   // The first media one click can save leads the page: its frame fills the card, its title sits on it.
   if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="group relative isolate overflow-hidden rounded-[18px] bg-[#1b1e21] shadow-[0_14px_34px_rgba(0,0,0,.5)] outline-offset-2 outline-text has-[.row-main:focus-visible]:outline-2">
-        <span className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] ring-1 ring-white/10 ring-inset" />
+      <div {...attrs} className="group relative isolate overflow-hidden rounded-[18px] bg-[#1b1e21] shadow-[0_14px_34px_rgba(0,0,0,.5)] outline-offset-2 outline-text transition-[box-shadow,transform] duration-200 hover:-translate-y-px hover:shadow-[0_18px_40px_rgba(0,0,0,.6)] has-[.row-main:focus-visible]:outline-2">
+        <span className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] ring-1 ring-white/10 transition-shadow ring-inset group-hover:ring-white/30" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative block h-[200px] w-full text-left focus-visible:outline-none">
           <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_28%,rgba(11,12,13,.5)_56%,rgba(11,12,13,.93)_100%)]" />
@@ -277,7 +277,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             </span>
             {meta && (
               <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">
-                {duration ? <span className="shrink-0 tabular-nums">{`${fmtClock(duration)} ·`}</span> : null}
+                {duration ? <span className="-mr-0.5 shrink-0 tabular-nums">{fmtClock(duration)}</span> : null}
+                {duration ? <span aria-hidden="true">·</span> : null}
                 {meta}
               </span>
             )}
@@ -616,7 +617,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         {inspection && !error && (!post || files > 0) && !folded && (
           <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="size-2.5 rounded-full bg-[#e5484d] ring-2 ring-[#021716]/25" aria-hidden="true" />
+              <span className="size-2.5 rounded-full bg-shine-ink" aria-hidden="true" />
             ) : (
               <IconDownload size={17} />
             )}

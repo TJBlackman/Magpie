@@ -157,7 +157,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
-    ? onRetry
+    ? onRetry && !/no longer has it|404|410/i.test(friendlyError(job.error ?? '') + (job.error ?? ''))
       ? { hint: 'Its page is still open, so a retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
         ? { hint: 'Play it on its page so Magpie catches a fresh link, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
@@ -166,6 +166,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   return (
     <MediaRow
       inset={inset}
+      wrapTitle={failed}
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
       tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
       title={job.title || job.filename}
@@ -180,8 +181,8 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
         failed ? (
           <span className="flex items-center gap-1">
             {recover && (
-              <button type="button" onClick={recover.run} aria-label={recover.label} title={`${recover.label}: ${recover.hint}`} className="inline-flex size-9 items-center justify-center rounded-full text-[#83f3e5] transition-colors hover:bg-shine/10 [&>svg]:size-[17px]">
-                {recover.icon}
+              <button type="button" onClick={recover.run} title={recover.hint} className="inline-flex h-8 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10">
+                {recover.label}
               </button>
             )}
             <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
@@ -195,8 +196,8 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
             </IconButton>
           )
         ) : (
-          <IconButton label="Cancel the download" tone="danger" className="size-9" onClick={() => api.cancel(job.id)}>
-            <IconStop size={15} />
+          <IconButton label={queued ? 'Remove from the queue' : 'Cancel the download'} tone="danger" className="size-9" onClick={() => api.cancel(job.id)}>
+            <IconX size={17} />
           </IconButton>
         )
       }
@@ -290,7 +291,7 @@ export function GroupRow({ jobs, thumbs, inset }: { jobs: Job[]; thumbs: boolean
       }
       action={
         <IconButton label="Cancel the download" tone="danger" className="size-9" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
-          <IconStop size={15} />
+          <IconX size={17} />
         </IconButton>
       }
     >

@@ -287,7 +287,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-shine/55 bg-[#2a2d31] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#2c2f33] text-text shadow-[0_1px_2px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.05)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
@@ -313,7 +313,7 @@ export function Popup() {
           <Logo size={26} />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-[19px] leading-[22px] font-bold">Magpie</div>
+          <div className="font-display text-[17px] leading-[20px] font-bold">Magpie</div>
           <div className="truncate text-[11.5px] text-mute" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
             {scope && (view !== 'page' ? 'All sites' : scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
@@ -457,8 +457,9 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="-mr-2.5 inline-flex h-8 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="-mr-1.5 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.06] hover:text-text">
                       {`${settings.maxConcurrent} at a time`}
+                      <IconChevron size={14} />
                     </button>
                   )}
                 </Section>
