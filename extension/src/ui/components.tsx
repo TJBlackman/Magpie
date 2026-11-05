@@ -17,7 +17,7 @@ export function Badge({ children, tone = 'default', className = '' }: { children
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
     post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
   }[tone];
-  return <span className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] leading-none font-semibold tracking-[0.04em] ${cls} ${className}`}>{children}</span>;
+  return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] leading-none font-semibold tracking-[0.04em] ${cls} ${className}`}>{children}</span>;
 }
 
 export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop' | 'destroy';
@@ -293,7 +293,7 @@ export function Toast({ message, detail, actions = [], live }: { message: string
   if (!message) return null;
   return (
     <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
-      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-[#141a22] py-1.5 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
+      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-[#141a22] py-2 pr-2 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
           <IconCheck size={12} />
         </span>
