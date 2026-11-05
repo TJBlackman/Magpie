@@ -177,7 +177,7 @@ describe('sizes', () => {
 describe('friendlyError', () => {
   it('says what to do for refused, missing and dropped downloads', () => {
     expect(friendlyError('HTTP 403 for https://cdn.example/seg-119.ts')).toBe('The link expired.');
-    expect(friendlyError('Server returned 404 for segment 3')).toBe('The link stopped working.');
+    expect(friendlyError('Server returned 404 for segment 3')).toBe('The server no longer has it.');
     expect(friendlyError('TypeError: Failed to fetch')).toBe('The connection dropped.');
     expect(friendlyError('No variant to download.')).toBe('No variant to download.');
   });

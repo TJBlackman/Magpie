@@ -20,7 +20,7 @@ export function Badge({ children, tone = 'default', className = '' }: { children
   return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[10px] leading-none font-semibold tracking-[0.04em] ring-1 ring-inset ${cls} ${className}`}>{children}</span>;
 }
 
-export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop';
+export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop' | 'destroy';
 
 export function Button({
   children,
@@ -52,7 +52,8 @@ export function Button({
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-live/[0.16] text-[#ffc2ce] ring-1 ring-inset ring-live/35 hover:bg-live/25',
+    stop: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover [&_svg]:text-live',
+    destroy: 'bg-[#dc2626] text-white font-semibold hover:bg-[#ef3b3b] active:bg-[#b91c1c]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -74,7 +75,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
           ? 'bg-accent-fill text-shine ring-1 ring-accent-edge ring-inset'
           : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-btn-edge ring-inset hover:!bg-btn-hover' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 ring-1 ring-transparent ring-inset group-hover:bg-btn group-hover:ring-btn-edge group-focus-within:bg-btn group-focus-within:ring-btn-edge hover:!bg-btn-hover' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -148,13 +149,13 @@ export function MediaRow({
   children?: ReactNode;
   /** Not one button, but it has actions that show on hover: it lifts like a clickable row. */
   hoverable?: boolean;
-  /** Its hover action floats over the end of the text: the text ends 44px early while hovered or focused. */
+  /** Room for an action that floats over the end of the text: the text always ends 44px early, so it never reflows. */
   reserve?: boolean;
 }) {
   const body = (
     <>
       {tile}
-      <div className={`min-w-0 flex-1 ${reserve ? 'group-focus-within:pr-11 group-hover:pr-11' : ''}`}>
+      <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : ''}`}>
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
@@ -183,12 +184,12 @@ export function MediaRow({
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-3.5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
+    <div className="mt-3.5 mb-2 flex h-8 items-center justify-between gap-2 first:mt-1.5">
       <h2 className="min-w-0 truncate text-[11px] font-semibold tracking-[0.07em] text-dim uppercase">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="-mr-2 flex shrink-0 items-center gap-1 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[12px] [&_button]:hover:bg-btn-hover">{children}</div>}
+      {children && <div className="-mr-2 flex shrink-0 items-center gap-1 [&_button]:h-8 [&_button]:px-2 [&_button]:text-[12px] [&_button]:text-[#c3ccd7] [&_button]:hover:bg-btn-hover">{children}</div>}
     </div>
   );
 }
@@ -254,11 +255,11 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="inline-flex shrink-0 items-center gap-2 rounded-lg text-mute transition-colors hover:bg-btn-hover hover:text-text">
+    <button type="button" role="switch" aria-checked={shown} onClick={onToggle} title={shown ? 'Media already in your history is listed' : `${count} downloaded ${count === 1 ? 'item is' : 'items are'} hidden`} className="inline-flex shrink-0 items-center gap-2 rounded-lg text-mute transition-colors hover:bg-btn-hover hover:text-text" aria-label={shown ? 'Show downloaded' : `Show downloaded (${count} hidden)`}>
       <span className={`relative h-3.5 w-6 shrink-0 rounded-full transition-colors ${shown ? 'bg-shine' : 'bg-[#334152] ring-1 ring-[#5f6e80] ring-inset'}`}>
         <span className={`absolute top-0.5 left-0.5 size-2.5 rounded-full bg-white shadow transition-transform ${shown ? 'translate-x-2.5' : ''}`} />
       </span>
-      Downloaded
+      Show downloaded
     </button>
   );
 }
@@ -274,7 +275,7 @@ export function Toast({ message, action }: { message: string | null; action?: { 
         </span>
         <span className="min-w-0 flex-1 truncate">{message}</span>
         {action && (
-          <button type="button" onClick={action.onClick} className="h-8 rounded-lg bg-[#232d3a] px-3 text-[12.5px] font-semibold text-shine transition-colors hover:bg-shine/10">
+          <button type="button" onClick={action.onClick} className="h-8 rounded-lg bg-accent-fill px-3 text-[12.5px] font-semibold text-[#7ff0ff] ring-1 ring-accent-edge transition-colors ring-inset hover:bg-[#163845]">
             {action.label}
           </button>
         )}

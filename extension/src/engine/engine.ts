@@ -308,8 +308,11 @@ export class Engine {
       if (!r.ok) throw new Error(r.error);
       entry = this.inspections.get(candidate.id)!;
     }
-    const top = Math.max(0, ...entry.inspection.variants.filter((v) => !v.audioOnly).map((v) => shorterSide(v.resolution)));
+    const video = entry.inspection.variants.filter((v) => !v.audioOnly);
+    const top = Math.max(0, ...video.map((v) => shorterSide(v.resolution)));
     if (top) info.height = top;
+    // Variants are sorted by bandwidth, highest first.
+    if (video[0]?.bandwidth) info.bitrate = video[0].bandwidth;
     if (entry.inspection.duration) info.duration = entry.inspection.duration;
     if (entry.inspection.notes.some((n) => n.includes('looks like DRM'))) info.drm = true;
     let media = entry.media;

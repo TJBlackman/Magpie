@@ -32,7 +32,8 @@ function postLabel(candidate: Candidate): string {
 /** The quality or size, then the host when it is another site, then the file name before anything is known. */
 function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; rest: string } {
   const file = sourceLabel(candidate.url).split(' · ')[1];
-  const lead = fmtHeight(candidate.info?.height) || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
+  const est = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
+  const lead = [fmtHeight(candidate.info?.height), est].filter(Boolean).join(' · ') || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says
@@ -40,7 +41,7 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const host = hostOf(candidate.url);
   const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
   let rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
-  if (!lead && !rest && !tagged) rest = candidate.live ? host : 'Video';
+  if (!lead && !rest && !tagged) rest = host;
   return { lead, rest };
 }
 
@@ -159,10 +160,10 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
   const cls = blocked
     ? 'text-dim ring-transparent'
     : candidate.archived
-      ? 'text-dim ring-transparent group-hover:bg-btn group-hover:text-text group-hover:ring-btn-edge group-has-[:focus-visible]:bg-btn group-has-[:focus-visible]:ring-btn-edge'
+      ? 'text-dim ring-transparent group-hover:text-text group-has-[:focus-visible]:text-text'
       : candidate.live
-        ? 'text-live ring-transparent group-hover:bg-live/[0.14] group-hover:ring-live/35 group-has-[:focus-visible]:bg-live/[0.14] group-has-[:focus-visible]:ring-live/35'
-        : 'text-shine ring-transparent group-hover:bg-accent-fill group-hover:text-[#7ff0ff] group-hover:ring-accent-edge group-has-[:focus-visible]:bg-accent-fill group-has-[:focus-visible]:ring-accent-edge';
+        ? 'text-live/80 ring-transparent group-hover:text-live group-has-[:focus-visible]:text-live'
+        : 'text-mute ring-transparent group-hover:text-shine group-has-[:focus-visible]:text-shine';
   return (
     <span className={`${box} ${cls}`} aria-hidden="true">
       {blocked ? <IconLock size={16} /> : candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
@@ -432,13 +433,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {footnote && <p className="text-[11.5px] text-pretty text-mute">{`${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase())}</p>}
+          {!post && inspection && <p className="text-[11.5px] text-pretty text-mute">{[footnote ? `${single ? '' : 'Every quality: '}${footnote}.`.replace(/^./, (c) => c.toUpperCase()) : '', 'Saves to your downloads folder.'].filter(Boolean).join(' ')}</p>}
         </div>
-        {error && (
-          <Button tone="ghost" size="lg" onClick={onClose} className="mt-2 w-full">
-            Close
-          </Button>
-        )}
         {inspection && !error && (!post || files > 0) && (
           <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">
             {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}

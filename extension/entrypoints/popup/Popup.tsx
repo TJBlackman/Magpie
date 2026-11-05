@@ -280,7 +280,7 @@ export function Popup() {
           <>
             <Pill n={active.length} />
             {failed.length > 0 && (
-              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#f87171] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconAlert size={13} />
                 {failed.length}
               </span>
@@ -295,11 +295,6 @@ export function Popup() {
         {candidates.length > 0 && (
           <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
-            {scope && !scope.all && (
-              <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
-                Clear list
-              </Button>
-            )}
           </Section>
         )}
         {shown.length === 0 ? (
@@ -353,10 +348,17 @@ export function Popup() {
                 ))}
               </div>
             ))}
+            {scope && !scope.all && (
+              <div className="mt-1 flex justify-center">
+                <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page" className="!text-dim hover:!text-text">
+                  Clear list
+                </Button>
+              </div>
+            )}
             {!showDownloaded && downloaded > 0 && (
               <div className="mt-1 flex items-center justify-center gap-1 text-[12px] text-dim">
                 {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden`}
-                <button type="button" onClick={toggleDownloaded} className="ml-1 h-8 rounded-lg bg-panel2 px-3 font-semibold text-shine transition-colors hover:bg-shine/10">
+                <button type="button" onClick={toggleDownloaded} className="ml-1 h-8 rounded-lg bg-accent-fill px-3 font-semibold text-[#7ff0ff] ring-1 ring-accent-edge transition-colors ring-inset hover:bg-[#163845]">
                   Show
                 </button>
               </div>
@@ -398,6 +400,14 @@ export function Popup() {
                 </div>
               </>
             )}
+            {waiting.length > 0 && (
+              <>
+                <Section title="Queued" count={waiting.length} />
+                <div className="flex flex-col gap-2">
+                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
+                </div>
+              </>
+            )}
             {failed.length > 0 && (
               <>
                 <Section title="Failed" count={failed.length}>
@@ -409,14 +419,6 @@ export function Popup() {
                   {failed.map((j) => (
                     <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
                   ))}
-                </div>
-              </>
-            )}
-            {waiting.length > 0 && (
-              <>
-                <Section title="Queued" count={waiting.length} />
-                <div className="flex flex-col gap-2">
-                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
                 </div>
               </>
             )}

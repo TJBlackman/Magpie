@@ -168,7 +168,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       action={
         failed ? (
           <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
-            <IconMinusCircle size={17} />
+            <IconX size={17} />
           </IconButton>
         ) : job.live ? (
           discarding ? null : (
@@ -210,7 +210,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>
-              <Button tone="live" size="md" onClick={() => api.cancel(job.id)}>
+              <Button tone="destroy" size="md" onClick={() => api.cancel(job.id)}>
                 Discard
               </Button>
             </div>

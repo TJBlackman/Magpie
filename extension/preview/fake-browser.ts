@@ -280,9 +280,11 @@ function captureThumbs(list: Candidate[]) {
 function infoFor(c: Candidate): MediaInfo {
   if (c.id === 'c13') return { drm: true };
   if (c.kind === 'file') return {};
-  const best = Math.max(0, ...variantsFor(c).map((v) => Number(v.resolution?.split('x')[1] ?? 0)));
+  const variants = variantsFor(c);
+  const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0)));
   const duration = c.live ? undefined : c.url.endsWith('playlist.m3u8') ? 612 : 180 + (hash(c.id) % 2400);
-  return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}) };
+  const bitrate = variants[0]?.bandwidth;
+  return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}), ...(bitrate ? { bitrate } : {}) };
 }
 const LIVE_NOTE = 'Records from about 30 seconds back until you press Stop or the stream ends. Quality is whatever the stream sends.';
 const fmtBytes = (n: number) => (n < 1024 ** 3 ? `${(n / MB).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);

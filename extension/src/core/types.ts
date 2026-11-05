@@ -42,6 +42,8 @@ export interface MediaInfo {
   height?: number;
   /** Seconds, for media with an end. */
   duration?: number;
+  /** Bits per second of that best rendition, for a size estimate. */
+  bitrate?: number;
   /** The stream is DRM protected; Magpie cannot save it. */
   drm?: boolean;
 }
