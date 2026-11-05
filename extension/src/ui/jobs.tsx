@@ -128,7 +128,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : null;
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
   const meta = failed ? (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
+    <span className="flex min-w-0 flex-1 items-center gap-2" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
       <IconError size={14} className="shrink-0 text-live" />
       <span className="min-w-0 truncate text-[#c9d2dd]">{friendlyError(job.error ?? 'The download stopped.')}</span>
     </span>
@@ -148,7 +148,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'The page is still open. Try again for a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'The page is open. Try again for a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
         ? { hint: 'Play it on its page, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
@@ -222,7 +222,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               recording ? (
                 <>
                   <SpeedText job={job} rate={rate} />
-                  <Button tone="stop" onClick={() => api.stop(job.id)} title="Stop recording and save the file" >
+                  <Button tone="stop" size="md" onClick={() => api.stop(job.id)} title="Stop recording and save the file">
                     <IconStop size={12} />
                     Stop
                   </Button>

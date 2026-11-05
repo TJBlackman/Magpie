@@ -193,10 +193,10 @@ body {
   mask-image: linear-gradient(to bottom, transparent 0, #000 20px);
 }
 .fade-bottom {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), rgb(0 0 0 / 0.4));
 }
 .fade-both {
-  mask-image: linear-gradient(to bottom, transparent 0, #000 20px, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 20px, #000 calc(100% - 24px), rgb(0 0 0 / 0.4));
 }
 
 /* Number inputs inside steppers: no spinner, the buttons do that. */

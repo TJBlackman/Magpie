@@ -280,13 +280,12 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
   const folder = candidate.post ? postPath(candidate.post) : where;
   return (
     <div className="divide-y divide-edge overflow-hidden rounded-[10px] ring-1 ring-edge ring-inset">
-      <div className="flex h-11 items-center gap-3 px-3 text-[12.5px]" title={folder}>
+      {/* Where it goes: the folder this post gets, and under it the place that folder lives. */}
+      <div className="flex items-center gap-3 px-3 py-2 text-[12.5px]" title={folder}>
         <IconFolder size={16} className="shrink-0 text-mute" />
-        <span className="shrink-0 text-mute">Save to</span>
-        {/* The folder name truncates, never the place it goes. */}
-        <span className="flex min-w-0 flex-1 text-text/90">
-          <span className="shrink-0 text-mute">{folder.slice(0, folder.lastIndexOf('/') + 1)}</span>
-          <span className="truncate">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-text/90">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
+          <span className="block truncate text-[11.5px] text-dim">{`Saved in ${folder.slice(0, folder.lastIndexOf('/'))}`}</span>
         </span>
       </div>
       <details className="group/files text-[12px] text-mute">
@@ -397,7 +396,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <p className="flex gap-3 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
+              <p className="flex gap-2.5 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
                 <IconLock size={15} className="mt-0.5 shrink-0 text-mute" />
                 {error}
               </p>

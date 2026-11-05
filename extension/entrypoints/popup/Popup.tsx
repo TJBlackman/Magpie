@@ -218,7 +218,11 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
-      {dot && <span className="pulse size-1.5 shrink-0 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+      {dot && (
+        <span className="flex size-3 shrink-0 items-center justify-center rounded-full ring-[1.5px] ring-live/45 ring-inset" role="img" aria-label="Recording" title="Recording">
+          <span className="pulse size-1.5 rounded-full bg-live" />
+        </span>
+      )}
       {label}
       {pill}
     </button>
@@ -261,7 +265,7 @@ export function Popup() {
           <>
             <Pill n={active.length} />
             {failed.length > 0 && (
-              <span className="ml-0.5 inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
+              <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
                 {failed.length}
               </span>
