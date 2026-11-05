@@ -309,7 +309,7 @@ export function Popup() {
   return (
     <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(31,216,207,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(133,90,231,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#1b1e21] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08),0_1px_2px_rgba(0,0,0,.5)]">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#3b3f45,#26292d)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.1),0_1px_2px_rgba(0,0,0,.5)]">
           <Logo size={26} />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
@@ -447,11 +447,19 @@ export function Popup() {
             {recordings.length > 0 && (
               <>
                 <Section title="Recording" count={recordings.length} />
-                <RowList>
-                  {recordings.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} inset />
-                  ))}
-                </RowList>
+                {thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {recordings.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} card />
+                    ))}
+                  </div>
+                ) : (
+                  <RowList>
+                    {recordings.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} inset />
+                    ))}
+                  </RowList>
+                )}
               </>
             )}
             {running.length > 0 && (
@@ -464,9 +472,23 @@ export function Popup() {
                     </button>
                   )}
                 </Section>
-                <RowList>
-                  {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
-                </RowList>
+                {thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {rowsOf(running).map((r) =>
+                      r.group !== undefined ? (
+                        <RowList key={r.group}>
+                          <GroupRow jobs={r.jobs} thumbs={thumbs} inset />
+                        </RowList>
+                      ) : (
+                        <JobRow key={r.job.id} job={r.job} thumbs={thumbs} card />
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <RowList>
+                    {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                  </RowList>
+                )}
               </>
             )}
             {failed.length > 0 && (
@@ -504,7 +526,7 @@ export function Popup() {
               <IconSearch size={15} />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search history" aria-label={`Search ${archive.length} downloads`} className="min-w-0 flex-1 bg-transparent text-[12.5px] text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
               {query && (
-                <IconButton label="Clear search" onClick={() => setQuery('')} className="-mr-2 size-7">
+                <IconButton label="Clear search" onClick={() => setQuery('')} className="-mr-2">
                   <IconX size={14} />
                 </IconButton>
               )}

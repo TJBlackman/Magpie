@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconAlert, IconCheck, IconClock, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconLock, IconRadio, IconUpdate, IconX } from './icons';
+import { IconAlert, IconCheck, IconClock, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconLock, IconRadio, IconUpdate, IconX, Logo } from './icons';
 
 export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
@@ -309,7 +309,10 @@ export function Empty({ icon, title, children, action, below }: { icon: ReactNod
       <div className="relative mb-5 flex size-16 items-center justify-center" aria-hidden="true">
         <span className="absolute -inset-10 rounded-full bg-[radial-gradient(closest-side,rgba(31,216,207,.13),rgba(31,216,207,0))]" />
         <span className="absolute -inset-2.5 rounded-[28px] ring-1 ring-white/[0.05] ring-inset" />
-        <span className="relative flex size-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#24272b,#191b1e)] text-[#83f3e5] shadow-[0_10px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.07)] ring-1 ring-white/[0.07] ring-inset">{icon}</span>
+        <span className="relative flex size-16 items-center justify-center rounded-[22px] bg-[linear-gradient(180deg,#34383d,#1f2226)] shadow-[0_10px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.07)] ring-1 ring-white/[0.07] ring-inset">
+          <Logo size={42} />
+          <span className="absolute -right-2 -bottom-2 flex size-7 items-center justify-center rounded-full bg-[#2a2d31] text-[#83f3e5] ring-[3px] ring-[#0b0c0d] [&>svg]:size-[14px]">{icon}</span>
+        </span>
       </div>
       <div className="font-display text-[17px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}

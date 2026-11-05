@@ -271,28 +271,42 @@ export const IconMore = (p: IconProps) => (
   </Icon>
 );
 
-/** The magpie mark: a pied bird, its dark coat, wing and long tail in the sheen. */
+/**
+ * The magpie mark: a Eurasian magpie perched in profile. Black head, bib and back
+ * with a stout corvid bill, a white belly and white scapular stripe, a blue sheen
+ * wing, and a long graduated tail in the teal to blue sheen. The black reads as a
+ * darker shape on the graphite tile; the whites, the eye and the sheen carry the
+ * silhouette.
+ */
 export const Logo = ({ size = 22 }: { size?: number }) => {
   const id = useId();
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
       <defs>
-        <linearGradient id={`${id}s`} x1="2" y1="22" x2="14" y2="10" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#2f86d6" />
-          <stop offset=".55" stopColor="#2bc4d6" />
-          <stop offset="1" stopColor="#52e7d7" />
+        <linearGradient id={`${id}t`} x1="13" y1="15" x2="1" y2="22.5" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#1fd8cf" />
+          <stop offset="1" stopColor="#2f86d6" />
         </linearGradient>
-        <linearGradient id={`${id}c`} x1="20" y1="5" x2="9" y2="15" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#1f8c87" />
-          <stop offset="1" stopColor="#1b4e6b" />
+        <linearGradient id={`${id}w`} x1="18" y1="8.5" x2="9.5" y2="16" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#2f86d6" />
+          <stop offset="1" stopColor="#2a5fb4" />
+        </linearGradient>
+        <linearGradient id={`${id}p`} x1="0" y1="8" x2="0" y2="16.5" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#f6f8f9" />
+          <stop offset="1" stopColor="#d4dbe0" />
         </linearGradient>
       </defs>
-      <path d="M10.4 14.6 L2.2 21.4 Q1.9 21.9 2.6 21.8 L4.2 21.2 L11.9 15.9 Z" fill={`url(#${id}s)`} />
-      <path d="M8.9 15.2 C8.6 11.6 10.9 8.5 14.3 7.3 C14.9 5.5 16.4 4.4 18.1 4.6 C19.3 4.8 20.1 5.6 20.4 6.6 L22.3 7.3 L20.3 7.9 C20 9.9 18.9 11.7 17.1 13.1 C15 14.8 12 15.7 8.9 15.2 Z" fill="#eceeef" />
-      <path d="M14.3 7.3 C14.9 5.5 16.4 4.4 18.1 4.6 C19.3 4.8 20.1 5.6 20.4 6.6 L22.3 7.3 L20.3 7.9 C19.6 8.3 18.6 8.5 17.6 8.4 C15.6 8.3 13.6 9.4 12.4 11.2 C11.4 12.7 10.4 13.9 8.9 15.2 C8.6 11.6 10.9 8.5 14.3 7.3 Z" fill={`url(#${id}c)`} />
-      <path d="M12.6 11.4 C13.6 9.9 15.3 9 17 9.1 C16 10.8 14.4 12.3 12.3 13.3 C11.6 13.6 11 13.8 10.4 13.9 C11.2 13.2 11.9 12.4 12.6 11.4 Z" fill={`url(#${id}s)`} />
-      <circle cx="18.3" cy="6.3" r=".6" fill="#0b0c0d" />
-      <path d="M13.2 15.3 L13.5 17.4 M15.2 14.6 L15.6 17" stroke="#c9cbcf" strokeWidth=".9" strokeLinecap="round" />
+      {/* head, bib, back and vent */}
+      <path d="M19.9 4.6C21.1 4.85 22.5 5.6 23.4 6.55C22.3 6.75 21.3 7.1 20.5 7.5C21 8.8 21 10.4 20.3 11.8C19.3 13.8 17.2 15.4 14.6 16.15C13.5 16.45 12.8 16.4 12.4 16.1L11.6 14.8C12.8 12.5 13.8 10.1 15 7.9C15 5.7 16.2 3.8 18 3.6C18.8 3.6 19.5 4 19.9 4.6Z" fill="#08090a" />
+      {/* graduated tail */}
+      <path d="M13.04 14.5L4.28 19.32C2.41 20.49 1.15 21.89 .86 22.58C1.61 22.66 3.44 22.21 5.35 21.13L13.76 15.7Z" fill={`url(#${id}t)`} />
+      {/* white belly */}
+      <path d="M20.55 11.2C19.6 13.5 17.4 15.3 14.7 16.1C14.1 16.3 13.6 16.4 13.1 16.4C12.9 15.5 13.2 14.6 13.8 14C15.6 12.4 17.9 11.1 20.55 11.2Z" fill={`url(#${id}p)`} />
+      {/* folded wing */}
+      <path d="M18 8.4C19 9.5 18.9 11.4 17.6 12.7C15.8 14.5 12.4 15.5 9.4 16C12 13.1 15.6 9.5 18 8.4Z" fill={`url(#${id}w)`} />
+      {/* white scapular stripe */}
+      <path d="M17.7 7.9C18.7 8.8 18.3 10.2 16.9 11.2C15.6 12.1 13.9 12.8 12.2 13.3C13.6 11.5 15.1 9.9 16.3 8.7C16.7 8.3 17.2 7.9 17.7 7.9Z" fill={`url(#${id}p)`} />
+      <circle cx="18.5" cy="5.7" r=".6" fill="#cfd4d8" />
     </svg>
   );
 };

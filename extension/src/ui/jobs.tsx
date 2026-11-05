@@ -120,7 +120,7 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
  * failed one stay one row tall, with their state on the second line, so the
  * running downloads keep the room.
  */
-export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean }) {
+export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean; card?: boolean }) {
   const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
   // When a failure's reason and its fix do not both fit on the line, the fix takes its own line below.
@@ -193,40 +193,8 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
       {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
     </button>
   );
-  return (
-    <MediaRow
-      inset={inset}
-      attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
-      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
-      title={job.title || job.filename}
-      titleTip={job.filename}
-      meta={
-        <>
-          {job.group && <Badge>{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
-          {meta}
-          {!tight && fix}
-        </>
-      }
-      action={
-        failed ? (
-          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-8">
-            <IconX size={16} />
-          </IconButton>
-        ) : job.live ? (
-          discarding ? null : (
-            <IconButton label="Discard the recording" tone="danger" className="size-8" onClick={() => setDiscarding(true)}>
-              <IconTrash size={16} />
-            </IconButton>
-          )
-        ) : (
-          <IconButton label={queued ? 'Remove from the queue' : 'Cancel the download'} tone="danger" className="size-8" onClick={() => api.cancel(job.id)}>
-            <IconX size={16} />
-          </IconButton>
-        )
-      }
-    >
-      {failed ? (tight && fix ? <div className="-mt-1.5 pl-[83px]">{fix}</div> : null) : queued ? null : (
-        <>
+  const progress = (
+    <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
           {discarding ? (
             <div
@@ -273,8 +241,65 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
               <Callout tone="info">{job.note}</Callout>
             </div>
           )}
+    </>
+  );
+  // A running or recording download with a frame is a card: the frame as a banner, its title on it, progress below.
+  if (card && thumbs && job.thumb && !failed && !queued) {
+    const stopLabel = job.live ? 'Discard the recording' : 'Cancel the download';
+    return (
+      <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative overflow-hidden rounded-[16px]">
+        <div className="relative h-[92px] overflow-hidden">
+          <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_15%,rgba(11,12,13,.5)_55%,rgba(11,12,13,.9)_100%)]" />
+          <span className="absolute inset-x-3.5 bottom-2.5 block">
+            <span className="font-display block truncate text-[15px] leading-[19px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" title={job.filename}>
+              <FitText text={job.title || job.filename} />
+            </span>
+            <span className="mt-0.5 flex text-[11.5px] text-[#d6d8db] tabular-nums">{meta}</span>
+          </span>
+          {!(job.live && discarding) && (
+            <button type="button" aria-label={stopLabel} title={stopLabel} onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))} className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset transition-colors hover:bg-[#16181b] hover:text-[#83f3e5] focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
+              {job.live ? <IconTrash size={15} /> : <IconX size={15} />}
+            </button>
+          )}
+        </div>
+        <div className="px-3.5 pt-2 pb-3">{progress}</div>
+      </div>
+    );
+  }
+  return (
+    <MediaRow
+      inset={inset}
+      attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
+      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
+      title={job.title || job.filename}
+      titleTip={job.filename}
+      meta={
+        <>
+          {job.group && <Badge>{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
+          {meta}
+          {!tight && fix}
         </>
-      )}
+      }
+      action={
+        failed ? (
+          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-8">
+            <IconX size={16} />
+          </IconButton>
+        ) : job.live ? (
+          discarding ? null : (
+            <IconButton label="Discard the recording" tone="danger" className="size-8" onClick={() => setDiscarding(true)}>
+              <IconTrash size={16} />
+            </IconButton>
+          )
+        ) : (
+          <IconButton label={queued ? 'Remove from the queue' : 'Cancel the download'} tone="danger" className="size-8" onClick={() => api.cancel(job.id)}>
+            <IconX size={16} />
+          </IconButton>
+        )
+      }
+    >
+      {failed ? (tight && fix ? <div className="-mt-1.5 pl-[83px]">{fix}</div> : null) : queued ? null : progress}
     </MediaRow>
   );
 }

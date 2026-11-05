@@ -1,8 +1,8 @@
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
-import { Button, Empty, FitText, IconButton, MediaRow, MediaTile } from './components';
+import { Button, Empty, FitText, IconButton, MediaRow, MediaTile, Section } from './components';
 import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
 
 /**
@@ -92,13 +92,30 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
 }
 
 
+/** Days since `ms`, by the calendar: 0 today, 1 yesterday. */
+function daysAgo(ms: number, now = Date.now()): number {
+  const midnight = (t: number) => {
+    const d = new Date(t);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  return Math.round((midnight(now) - midnight(ms)) / 86_400_000);
+}
+
+/** The heading a history entry falls under: Today, Yesterday, Past 7 days, Earlier. */
+function dayGroup(ms: number): string {
+  const days = daysAgo(ms);
+  return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? 'Past 7 days' : 'Earlier';
+}
+
 /**
  * One finished download: its frame with the length on it, the day, the
  * quality and size. Clicking the row shows the file on disk; More opens its
  * page or forgets it, so the media shows as new again. Memoized: entries only
  * change on an archive event, while the popup re-renders with every progress event.
  */
-export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMissing }: { entry: ArchiveEntry; thumbs: boolean; query: string; onMissing: () => void }) {
+export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMissing, grouped }: { entry: ArchiveEntry; thumbs: boolean; query: string; onMissing: () => void; grouped?: boolean }) {
+  // Under a Today or Yesterday heading the time says more than the day again.
+  const when = grouped && daysAgo(entry.at) <= 1 ? new Date(entry.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : fmtDay(entry.at);
   const page = entry.page;
   const kind = entry.kind ?? kindOfUrl(entry.src);
   const title = entry.title || entry.file;
@@ -115,7 +132,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       titleTestId="archive-title"
       meta={
         <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
-          <span className="group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{fmtDay(entry.at)}</span>
+          <span className="group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{when}</span>
           <span className="hidden font-medium text-text group-hover:inline group-has-[.row-main:focus-visible]:inline">
             <IconFolder size={12} className="-mt-0.5 mr-1 inline" />
             {folder ? 'Show the folder' : 'Show in folder'}
@@ -155,10 +172,26 @@ export const HistoryList = memo(function HistoryList({ entries, total, query, th
         {`Nothing in history matches "${query.trim()}".`}
       </Empty>
     );
+  // A search lists its matches flat; otherwise entries fall under Today, Yesterday, Past 7 days and Earlier.
+  const grouped = !query.trim();
+  const groups: { label: string; items: ArchiveEntry[] }[] = [];
+  for (const e of entries) {
+    const label = grouped ? dayGroup(e.at) : '';
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(e);
+    else groups.push({ label, items: [e] });
+  }
   return (
-    <div className="card-surface flex flex-col rounded-[16px] p-1.5" data-testid="archive">
-      {entries.map((e) => (
-        <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} />
+    <div className="flex flex-col" data-testid="archive">
+      {groups.map((g, i) => (
+        <Fragment key={`${g.label}${i}`}>
+          {g.label && <Section title={g.label} count={g.items.length} />}
+          <div className="card-surface flex flex-col rounded-[16px] p-1.5">
+            {g.items.map((e) => (
+              <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} />
+            ))}
+          </div>
+        </Fragment>
       ))}
     </div>
   );
