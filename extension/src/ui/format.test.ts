@@ -27,8 +27,11 @@ describe('format helpers', () => {
   });
   it('formats time left', () => {
     expect(fmtEta(42)).toBe('42s left');
-    expect(fmtEta(125)).toBe('2m 5s left');
-    expect(fmtEta(120)).toBe('2m left');
+    expect(fmtEta(125)).toBe('3 min left');
+    expect(fmtEta(120)).toBe('2 min left');
+    expect(fmtEta(125, true)).toBe('About 3 min left');
+    expect(fmtEta(30, true)).toBe('Under a minute left');
+    expect(fmtEta(3700)).toBe('1 h 2 min left');
     expect(fmtEta(NaN)).toBe('');
   });
 });

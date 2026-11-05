@@ -272,7 +272,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile, wide }: { wide?: boolean; candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -311,7 +311,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative block h-[200px] w-full text-left focus-visible:outline-none">
           <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
           <span className="absolute inset-0 bg-white/0 transition-colors duration-200 group-hover:bg-white/[0.05] group-has-[.quick:hover]:bg-white/0" />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_28%,rgba(11,12,13,.5)_56%,rgba(11,12,13,.93)_100%)]" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_18%,rgba(11,12,13,.72)_52%,rgba(11,12,13,.94)_100%)]" />
           <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
             <span className="font-display line-clamp-2 block text-[20px] leading-[23px] font-semibold text-pretty text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
               {bind(title)}
@@ -330,9 +330,9 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
     );
   if (tile) {
     return (
-      <div {...attrs} className={`group relative -m-1.5 min-w-0 rounded-[16px] p-1.5 transition-colors hover:bg-white/[0.045] ${wide ? 'col-span-2 [&>.disc]:right-[calc(50%+13px)]' : ''}`}>
-        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className={`row-main w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2 ${wide ? 'flex items-start gap-2.5' : 'block'}`}>
-          <span className={`relative block aspect-video overflow-hidden rounded-[12px] bg-[linear-gradient(135deg,#202326,#17191c)] ${wide ? 'w-[calc(50%-5px)] shrink-0' : 'w-full'}`}>
+      <div {...attrs} className={`group relative -m-1.5 min-w-0 rounded-[16px] p-1.5 transition-colors hover:bg-white/[0.045]`}>
+        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className={`row-main w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2 block`}>
+          <span className={`relative block aspect-video overflow-hidden rounded-[12px] w-full bg-[linear-gradient(135deg,#202326,#17191c)]`}>
             {thumbs && candidate.thumb ? (
               <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-[1.045] ${candidate.archived ? 'brightness-[.72] saturate-[.75]' : ''}`} />
             ) : (
@@ -345,7 +345,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
               <span className="absolute right-2 bottom-2 rounded-[5px] bg-[#0b0c0d]/60 px-1 text-[10.5px] leading-[15px] font-medium text-white tabular-nums backdrop-blur-sm">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
             )}
           </span>
-          <span className={wide ? 'block min-w-0 flex-1 self-center' : 'mt-2 block'}>
+          <span className="mt-2 block">
             <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
               {bind(title)}
             </span>
@@ -660,9 +660,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </div>
         )}
         {inspection && !error && (!post || files > 0) && !folded && (
-          <Button tone={candidate.archived || candidate.live ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
+          <Button tone={candidate.archived ? 'default' : candidate.live ? 'live' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="size-2.5 rounded-full bg-live" aria-hidden="true" />
+              <span className="size-2.5 rounded-full bg-[#1a0a0f]" aria-hidden="true" />
             ) : (
               <IconDownload size={17} />
             )}

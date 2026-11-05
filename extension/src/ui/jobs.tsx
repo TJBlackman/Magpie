@@ -55,7 +55,8 @@ function statusText(job: Job, pct: number | null): string {
 function SpeedText({ job, rate }: { job: Job; rate: number }) {
   if (job.state === 'queued' && job.bytesTotal) return <span className="shrink-0">{fmtBytes(job.bytesTotal)}</span>;
   if (job.state !== 'downloading' || rate <= 0) return null;
-  const eta = job.live ? '' : fmtEta(remaining(job) / rate);
+  // Without an exact total the time left is an estimate, and says so.
+  const eta = job.live ? '' : fmtEta(remaining(job) / rate, !job.bytesTotal);
   return (
     <span className="shrink-0">
       {fmtRate(rate)}
@@ -92,7 +93,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-1 h-1 rounded-full bg-[#5a5e64]">
+    <div className="mt-1 h-1 rounded-full bg-[#65696f]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -248,9 +249,9 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
     const stopLabel = job.live ? 'Discard the recording' : 'Cancel the download';
     return (
       <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative overflow-hidden rounded-[16px]">
-        <div className="relative h-[92px] overflow-hidden">
+        <div className="relative h-[76px] overflow-hidden">
           <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover" />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_15%,rgba(11,12,13,.5)_55%,rgba(11,12,13,.9)_100%)]" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,.1)_0%,rgba(11,12,13,.72)_42%,rgba(11,12,13,.92)_100%)]" />
           <span className="absolute inset-x-3.5 bottom-2.5 block">
             <span className="font-display block truncate text-[15px] leading-[19px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" title={job.filename}>
               <FitText text={job.title || job.filename} />
@@ -258,7 +259,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
             <span className="mt-0.5 flex text-[11.5px] text-[#d6d8db] tabular-nums">{meta}</span>
           </span>
           {!(job.live && discarding) && (
-            <button type="button" aria-label={stopLabel} title={stopLabel} onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))} className="absolute top-2.5 right-2.5 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset transition-colors hover:bg-[#16181b] hover:text-[#83f3e5] focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
+            <button type="button" aria-label={stopLabel} title={stopLabel} onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))} className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset transition-colors hover:bg-[#16181b] hover:text-[#83f3e5] focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
               {job.live ? <IconTrash size={15} /> : <IconX size={15} />}
             </button>
           )}
@@ -299,7 +300,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
         )
       }
     >
-      {failed ? (tight && fix ? <div className="-mt-1.5 pl-[83px]">{fix}</div> : null) : queued ? null : progress}
+      {failed ? (tight && fix ? <div className="-mt-1.5 pl-[102px]">{fix}</div> : null) : queued ? null : progress}
     </MediaRow>
   );
 }

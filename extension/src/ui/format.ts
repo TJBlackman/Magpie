@@ -76,13 +76,14 @@ export function fmtRate(bytesPerSec: number): string {
   return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB/s`;
 }
 
-export function fmtEta(seconds: number): string {
+export function fmtEta(seconds: number, approx = false): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '';
   const s = Math.round(seconds);
-  if (s < 60) return `${s}s left`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m${s % 60 ? ` ${s % 60}s` : ''} left`;
-  return `${Math.floor(m / 60)}h ${m % 60}m left`;
+  if (s < 60) return approx ? 'Under a minute left' : `${s}s left`;
+  const m = Math.ceil(s / 60);
+  const about = approx ? 'About ' : '';
+  if (m < 60) return `${about}${m} min left`;
+  return `${about}${Math.floor(m / 60)} h ${m % 60} min left`;
 }
 
 /** Recorded length as a clock: "0:42", "12:05", "1:02:09". */

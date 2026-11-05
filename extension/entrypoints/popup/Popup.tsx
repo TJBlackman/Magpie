@@ -410,8 +410,8 @@ export function Popup() {
                         </div>
                       )}
                       <div className="grid grid-cols-2 gap-x-2.5 gap-y-4 pt-1">
-                        {run.items.map((c, i) => (
-                          <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tile wide={run.items.length % 2 === 1 && i === run.items.length - 1} />
+                        {run.items.map((c) => (
+                          <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tile />
                         ))}
                       </div>
                     </Fragment>
