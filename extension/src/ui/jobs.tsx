@@ -120,7 +120,7 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
  * failed one stay one row tall, with their state on the second line, so the
  * running downloads keep the room.
  */
-export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; onRetry?: () => void }) {
+export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean }) {
   const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
   const queued = job.state === 'queued';
@@ -138,14 +138,14 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : null;
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
   const meta = failed ? (
-    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-live-soft" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`} data-testid="job-error">
-      <IconError size={13} className="shrink-0 text-live" />
+    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[#f5c76a]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`} data-testid="job-error">
+      <IconError size={13} className="shrink-0" />
       <span className="min-w-0 truncate">{friendlyError(job.error ?? 'The download stopped.')}</span>
     </span>
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
       <span data-testid="job-status" className="font-semibold text-text">{statusText(job, pct)}</span>
-      {[rendition, siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url), job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
+      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : '', siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
     <span className="min-w-0 flex-1 truncate" title={job.url}>
@@ -165,13 +165,14 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
     : null;
   return (
     <MediaRow
+      inset={inset}
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
       tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
       title={job.title || job.filename}
       titleTip={job.filename}
       meta={
         <>
-          {job.group && <Badge>{`${job.group.index + 1} OF ${job.group.total}`}</Badge>}
+          {job.group && <Badge>{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
           {meta}
         </>
       }
@@ -265,7 +266,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
  * that are saved have left the list, and the engine says how many; a file
  * that failed is listed under Failed on its own.
  */
-export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
+export function GroupRow({ jobs, thumbs, inset }: { jobs: Job[]; thumbs: boolean; inset?: boolean }) {
   const first = jobs[0]!;
   const total = first.group?.total ?? jobs.length;
   const saved = Math.max(0, ...jobs.map((j) => j.group?.saved ?? 0));
@@ -279,6 +280,7 @@ export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
   if (bytes) parts.push(fmtBytes(bytes));
   return (
     <MediaRow
+      inset={inset}
       attrs={{ 'data-testid': 'job-group', 'data-group-id': first.group?.id, 'data-jobs': ids, 'data-state': active ? 'downloading' : 'queued', 'data-saved': saved, 'data-pct': Math.floor(pct * 100) }}
       tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} />}
       title={first.title || first.filename}

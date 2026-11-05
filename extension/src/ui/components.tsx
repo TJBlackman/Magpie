@@ -52,7 +52,7 @@ export function Button({
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
-    stop: 'text-live-soft ring-1 ring-inset ring-live/50 hover:bg-live/10 hover:ring-live-soft active:bg-live/20',
+    stop: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn [&>svg]:text-live',
     destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
@@ -197,6 +197,7 @@ export function MediaRow({
   reserve,
   overlay,
   inset,
+  hoverReserve,
 }: {
   tile: ReactNode;
   title: ReactNode;
@@ -214,6 +215,8 @@ export function MediaRow({
   hoverable?: boolean;
   /** Room for a control drawn over the row, left of its action: the text always ends 44px early, so nothing moves on hover. */
   reserve?: boolean;
+  /** The same room, made only while the row is hovered or focused, when that control shows. */
+  hoverReserve?: boolean;
   /** A control drawn over the row, outside its button. */
   overlay?: ReactNode;
   /** One row of a list that shares one raised surface (RowList): no surface of its own, a soft fill on hover. */
@@ -222,7 +225,7 @@ export function MediaRow({
   const body = (
     <>
       {tile}
-      <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : ''}`}>
+      <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : hoverReserve ? 'group-hover:pr-11 group-has-[:focus-visible]:pr-11' : ''}`}>
         <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
           {typeof title === 'string' ? <FitText text={title} /> : title}
         </div>
@@ -293,7 +296,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   const cls = {
     info: '[&>span>svg]:text-mute',
     warn: '[&>span>svg]:text-saved',
-    error: '[&>span>svg]:text-live',
+    error: '[&>span>svg]:text-[#f2b84b]',
     neutral: '[&>span>svg]:text-mute',
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;

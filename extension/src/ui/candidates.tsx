@@ -182,7 +182,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-live/50' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge group-has-[.row-main:focus-visible]:ring-hover-edge'} ${candidate.live ? 'hover:!ring-live-soft hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-live/50' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge'} ${candidate.live ? 'hover:!ring-live-soft hover:bg-live/10 active:bg-live/20' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
     >
       {candidate.live ? (
         <span className="size-3 rounded-full bg-live" />
@@ -196,7 +196,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
 /** A running recording's own Stop button on This page: stops it and saves the file. */
 function StopAction({ job }: { job: CardJob }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-1/2 right-[7px] flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-live-soft ring-1 ring-live/50 transition-colors ring-inset hover:bg-live/10 hover:ring-live-soft active:bg-live/20">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-1/2 right-[7px] flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-live ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-white/[0.06] hover:ring-hover-edge active:bg-white/[0.04]">
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -374,6 +374,22 @@ function SavePath({ path }: { path: string }) {
       const room = box.clientWidth - 1;
       const fits = (n: string) => textWidth(folders + n, style) <= room;
       if (fits(name)) return setShown(name);
+      if (!/\.\w+$/.test(name)) {
+        // A folder: keep its start and its end, cut between.
+        const mid = (n: number) => {
+          const head = name.slice(0, Math.ceil(n * 0.55)).replace(/[\s,·:;–—-]+$/, '');
+          const tail = name.slice(name.length - Math.floor(n * 0.45)).replace(/^[\s,·:;–—-]+/, '');
+          return `${head}…${tail}`;
+        };
+        let lo = 4;
+        let hi = name.length;
+        while (lo < hi) {
+          const m = (lo + hi + 1) >> 1;
+          if (fits(mid(m))) lo = m;
+          else hi = m - 1;
+        }
+        return setShown(mid(lo));
+      }
       const suffix = /(?: \d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*\.\w+$/.exec(name)?.[0] ?? '';
       const stem = name.slice(0, name.length - suffix.length);
       const at = (k: number) => `${stem.slice(0, k).replace(/[\s,·:;–—-]+$/, '')}…${suffix}`;
@@ -558,7 +574,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <ul
               role="radiogroup"
               aria-label="Quality"
-              className="flex flex-col gap-1 rounded-[12px] bg-[#181a1c] p-2 ring-1 ring-ctl-edge ring-inset"
+              className="flex flex-col gap-1 rounded-[12px] bg-[#1b1e21] p-1.5"
               onKeyDown={(e) => {
                 // Arrow keys move the choice and the focus together, like any radio group.
                 if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -599,9 +615,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </div>
         )}
         {inspection && !error && (!post || files > 0) && !folded && (
-          <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
+          <Button tone={candidate.archived ? 'default' : candidate.live ? 'live' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="size-3 rounded-full bg-live ring-2 ring-[#062b29]" aria-hidden="true" />
+              <span className="size-2.5 rounded-full bg-[#1a0a0f]" aria-hidden="true" />
             ) : (
               <IconDownload size={17} />
             )}

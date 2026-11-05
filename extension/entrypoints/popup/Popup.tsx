@@ -73,8 +73,9 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
       )}
 
       {failed > 0 && (
-        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex size-5 shrink-0 items-center justify-center">
-          <span className="size-2 rounded-full bg-live" />
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-5 shrink-0 items-center gap-0.5 pl-0.5 text-[12px] leading-5 font-medium text-[#f5c76a] tabular-nums">
+          <IconError size={12} />
+          {failed}
         </span>
       )}
     </span>
@@ -406,8 +407,8 @@ export function Popup() {
               </div>
             )}
             {scope && !scope.all && (
-              <div className="mt-3 flex justify-end">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'Found media cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
+              <div className="mt-3 flex justify-center">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'Found media cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg px-3 text-[12px] font-medium text-mute transition-colors hover:bg-white/[0.05] hover:text-text">
                   Clear found media
                 </button>
               </div>
@@ -451,9 +452,9 @@ export function Popup() {
             {waiting.length > 0 && (
               <>
                 <Section title="Queued" count={waiting.length} />
-                <div className="flex flex-col gap-2">
-                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} />))}
-                </div>
+                <RowList>
+                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                </RowList>
               </>
             )}
             {failed.length > 0 && (
@@ -465,11 +466,11 @@ export function Popup() {
                     </TextButton>
                   )}
                 </Section>
-                <div className="flex flex-col gap-2">
+                <RowList>
                   {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
                   ))}
-                </div>
+                </RowList>
               </>
             )}
           </>
