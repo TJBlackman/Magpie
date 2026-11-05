@@ -181,7 +181,7 @@ export function Popup() {
     return out;
   }, [shown, all]);
 
-  const tab = (v: View, label: string, pill: ReactNode, tip?: string) => (
+  const tab = (v: View, label: string, pill: ReactNode, tip?: string, dot?: boolean) => (
     <button
       type="button"
       role="tab"
@@ -190,7 +190,10 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
-      {label}
+      <span className="relative">
+        {label}
+        {dot && <span className="pulse absolute top-0 -left-2.5 size-1.5 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+      </span>
       {pill}
     </button>
   );
@@ -230,7 +233,6 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <span className={`size-1.5 shrink-0 rounded-full bg-live ${recording ? 'pulse' : 'invisible'}`} role="img" aria-label={recording ? 'Recording' : undefined} aria-hidden={!recording} title={recording ? 'Recording' : undefined} />
             <Pill n={active.length} />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
@@ -240,6 +242,7 @@ export function Popup() {
             )}
           </>,
           failed.length ? `${failed.length} failed` : undefined,
+          recording,
         )}
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
