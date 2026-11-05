@@ -128,7 +128,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : null;
   const lead = rendition && <span className={LEAD}>{rendition}</span>;
   const meta = failed ? (
-    <span className="flex min-w-0 flex-1 items-center gap-2" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
+    <span className="flex min-w-0 flex-1 items-center gap-2.5" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
       <IconError size={14} className="shrink-0 text-live" />
       <span className="min-w-0 truncate text-[#c9d2dd]">{friendlyError(job.error ?? 'The download stopped.')}</span>
     </span>
@@ -206,7 +206,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               }}
             >
               <span className="pulse size-2 shrink-0 rounded-full bg-live" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-[12px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} of recording?`}</span>
+              <span className="min-w-0 flex-1 truncate text-[11.5px] text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} of recording?`}</span>
               <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>

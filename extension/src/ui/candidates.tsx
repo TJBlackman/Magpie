@@ -285,7 +285,7 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
         <IconFolder size={16} className="shrink-0 text-mute" />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-text/90">{folder.slice(folder.lastIndexOf('/') + 1)}</span>
-          <span className="block truncate text-[11.5px] text-dim">{`Saved in ${folder.slice(0, folder.lastIndexOf('/'))}`}</span>
+          <span className="block truncate text-[11.5px] text-dim">{`Saves to ${folder.slice(0, folder.lastIndexOf('/'))}`}</span>
         </span>
       </div>
       <details className="group/files text-[12px] text-mute">
@@ -379,13 +379,13 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
       >
         <div className="mx-auto mb-2.5 h-1 w-9 shrink-0 rounded-full bg-edge3" />
         <div className="mb-3 flex items-start gap-3">
-          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
+          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-                {post ? postLabel(candidate) : hostOf(candidate.url)}
+                {post ? postLabel(candidate).replace(/, \d+ (images|files|videos)$/, '') : hostOf(candidate.url)}
               </span>
             </div>
           </div>

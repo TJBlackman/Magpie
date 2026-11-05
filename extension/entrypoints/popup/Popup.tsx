@@ -41,10 +41,15 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-function Pill({ n }: { n: number }) {
+/** A tab's count. While something records, the count wears the live colour and a ring, and says so. */
+function Pill({ n, rec }: { n: number; rec?: boolean }) {
   if (!n) return null;
   return (
-    <span className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+    <span
+      aria-label={rec ? `${n}, recording` : undefined}
+      title={rec ? 'Recording' : undefined}
+      className={`inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full px-1.5 text-[10.5px] font-semibold tabular-nums transition-colors ${rec ? 'bg-[#2a1a22] text-[#ff9fb1] ring-1 ring-live ring-inset' : 'pill bg-white/[0.08] text-mute'}`}
+    >
       {n}
     </span>
   );
@@ -209,7 +214,7 @@ export function Popup() {
     return out;
   }, [shown, all]);
 
-  const tab = (v: View, label: string, pill: ReactNode, tip?: string, dot?: boolean) => (
+  const tab = (v: View, label: string, pill: ReactNode, tip?: string) => (
     <button
       type="button"
       role="tab"
@@ -218,11 +223,6 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2.5 text-[12.5px] font-medium whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] [&_.pill]:bg-shine [&_.pill]:text-shine-ink' : 'text-mute hover:bg-white/[0.03] hover:text-text'}`}
     >
-      {dot && (
-        <span className="flex size-3 shrink-0 items-center justify-center rounded-full ring-[1.5px] ring-live/45 ring-inset" role="img" aria-label="Recording" title="Recording">
-          <span className="pulse size-1.5 rounded-full bg-live" />
-        </span>
-      )}
       {label}
       {pill}
     </button>
@@ -263,7 +263,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} />
+            <Pill n={active.length} rec={recording} />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
@@ -272,7 +272,6 @@ export function Popup() {
             )}
           </>,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
-          recording,
         )}
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
@@ -358,6 +357,21 @@ export function Popup() {
           </Empty>
         ) : (
           <>
+            {/* One failure waits its turn under the running jobs; several lead, since they need a hand. */}
+            {failed.length > 1 && (
+              <>
+                <Section title="Failed" count={failed.length}>
+                  <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                    Clear
+                  </Button>
+                </Section>
+                <div className="flex flex-col gap-2">
+                  {failed.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
+                  ))}
+                </div>
+              </>
+            )}
             {active.length === 0 && <p className="mt-3 px-0.5 text-[12px] text-mute">Nothing downloading</p>}
             {recordings.length > 0 && (
               <>
@@ -384,7 +398,7 @@ export function Popup() {
                 </div>
               </>
             )}
-            {failed.length > 0 && (
+            {failed.length === 1 && (
               <>
                 <Section title="Failed" count={failed.length}>
                   <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
