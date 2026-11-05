@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-1 h-1 rounded-full bg-[#46494f]">
+    <div className="mt-1 h-1 rounded-full bg-[#5a5e64]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -159,7 +159,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   );
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
-    ? onRetry && !/file is gone|404|410/i.test(friendlyError(job.error ?? '') + (job.error ?? ''))
+    ? onRetry && !/site removed it|404|410/i.test(friendlyError(job.error ?? '') + (job.error ?? ''))
       ? { hint: 'Its page is still open, so a retry gets a fresh link.', label: 'Retry', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
         ? { hint: 'Play it on its page so Magpie catches a fresh link, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }

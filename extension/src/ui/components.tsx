@@ -128,7 +128,7 @@ export function textWidth(text: string, style: CSSStyleDeclaration): number {
   measure.letterSpacing = style.letterSpacing === 'normal' ? '0px' : style.letterSpacing;
   return measure.measureText(text).width;
 }
-const SMALL = new Set(['a', 'an', 'and', 'at', 'by', 'for', 'from', 'in', 'of', 'off', 'on', 'or', 'the', 'to', 'with']);
+export const SMALL = new Set(['a', 'an', 'and', 'at', 'by', 'for', 'from', 'in', 'of', 'off', 'on', 'or', 'over', 'the', 'to', 'with']);
 /** How much of `text` fits `width` with an ellipsis after it, cut back past spaces and joining punctuation. */
 function fitLength(text: string, width: number, style: CSSStyleDeclaration): number {
   measure ??= document.createElement('canvas').getContext('2d');
@@ -253,7 +253,7 @@ export function MediaRow({
         <div className={`${wrapTitle ? 'line-clamp-2 text-pretty' : 'truncate'} text-[13px] leading-[18px] font-medium transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
           {typeof title === 'string' && !wrapTitle ? <FitText text={title} /> : title}
         </div>
-        {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
+        {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute tabular-nums">{meta}</div>}
       </div>
     </>
   );
@@ -402,7 +402,7 @@ export function Toast({ message, detail, actions = [], live, queued, duration, h
   return (
     <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_28px)] px-3.5 pt-9 pb-3">
       <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-white/[0.07] ring-inset">
-        <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#2d1e28]' : 'bg-[#0d4041] text-shine'}`}>
+        <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#4a2631]' : 'bg-[#0d4041] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : queued ? <IconClock size={12} /> : <IconCheck size={12} />}
         </span>
         <span className="min-w-0 flex-1">

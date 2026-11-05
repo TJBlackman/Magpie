@@ -3,7 +3,7 @@ import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
-import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
+import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing, SMALL } from './components';
 import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFile, IconFilm, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
@@ -182,9 +182,9 @@ function quickText(candidate: Candidate): { what: string; size: string } {
   return { what: `Download${quality ? ` ${quality}` : ''}`, size };
 }
 
-/** A title with each number and each word of one or two letters bound to the next word, so no line ends on one. */
+/** A title with each number and each short joining word (a, at, of, the, and) bound to the next word, so no line ends on one. */
 function bind(title: string): string {
-  return title.replace(/(^|\s)(\d+|\p{L}{1,2}) (?=\S)/gu, '$1$2\u00a0');
+  return title.replace(/(?<=^|\s)(\d+|\p{L}+) (?=\S)/gu, (all, word: string) => (/^\d+$/.test(word) || word.length <= 2 || (word.length <= 3 && SMALL.has(word.toLowerCase())) ? `${word}\u00a0` : all));
 }
 
 /** The quick action over a frame: download now at the best quality, record now, or save every file of a post. */
@@ -195,7 +195,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
   const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
   const look = {
     lead: `bottom-4 right-4 size-11 ${'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
-    tile: 'disc top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/25 ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
+    tile: 'disc top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
     row: 'top-1/2 right-2 size-8 -translate-y-1/2 text-mute ring-1 ring-transparent ring-inset group-hover:text-text group-hover:ring-hover-edge hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10',
   }[variant];
   return (
@@ -217,7 +217,7 @@ function JobAction({ job }: { job: CardJob }) {
   const c = 2 * Math.PI * r;
   const label = job.queued ? 'Remove from the queue' : 'Cancel the download';
   return (
-    <button type="button" onClick={() => void api.cancel(job.id)} aria-label={label} title={label} data-testid="card-job" className="disc group/job absolute top-3.5 right-3.5 z-10 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-[#83f3e5] shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/25 ring-inset transition-colors hover:bg-[#16181b] hover:text-text focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
+    <button type="button" onClick={() => void api.cancel(job.id)} aria-label={label} title={label} data-testid="card-job" className="disc group/job absolute top-3.5 right-3.5 z-10 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-[#83f3e5] shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset transition-colors hover:bg-[#16181b] hover:text-text focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
       <span className="flex group-hover/job:hidden group-focus-visible/job:hidden" aria-hidden="true">
         {job.queued ? (
           <IconClock size={15} />
@@ -236,7 +236,7 @@ function JobAction({ job }: { job: CardJob }) {
 /** A running recording's own Stop button on This page: stops it and saves the file. */
 function StopAction({ job }: { job: CardJob }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="disc absolute top-3.5 right-3.5 z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="disc absolute top-3.5 right-3.5 z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -346,7 +346,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             )}
           </span>
           <span className={wide ? 'block min-w-0 flex-1 pt-0.5' : 'mt-2 block'}>
-            <span className={`line-clamp-2 block ${wide ? '' : 'min-h-8'} text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
+            <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
               {bind(title)}
             </span>
             {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</span>}
@@ -425,7 +425,7 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   return (
     <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={when.charAt(0).toUpperCase() + when.slice(1)} testId="archived-note">
       <span className="block" title={archived.file}>
-        <Destination label={archived.files ? `${archived.files} files in ${folders}` : `In ${folders}`} name={name} folder={!!archived.files} />
+        <Destination label={archived.files ? `${archived.files} files in ${folders === 'Downloads' ? 'your Downloads folder' : folders}` : `In ${folders === 'Downloads' ? 'your Downloads folder' : folders}`} name={name} folder={!!archived.files} />
       </span>
       <span className="mt-1.5 block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
@@ -442,7 +442,7 @@ function Destination({ label, name, folder }: { label: string; name: string; fol
       <span className="mt-1 flex gap-1.5 text-fg2">
         {folder ? <IconFolder size={13} className="mt-[1.5px] shrink-0" /> : <IconFile size={13} className="mt-[1.5px] shrink-0" />}
         <span className="line-clamp-2 min-w-0 break-words">
-          {stem}
+          {bind(stem)}
           <span className="whitespace-nowrap">{suffix}</span>
         </span>
       </span>
@@ -458,7 +458,7 @@ function splitPath(path: string): { folders: string; name: string } {
 
 function SavePath({ path, files }: { path: string; files?: number }) {
   const { folders, name } = splitPath(path);
-  return <Destination label={`Saves to ${folders}`} name={name} folder={!!files} />;
+  return <Destination label={`Saves to ${folders === 'Downloads' ? 'your Downloads folder' : folders}`} name={name} folder={!!files} />;
 }
 
 /** "images" when every file of a post is a picture, else "files". */
@@ -579,7 +579,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-pretty" title={fullTitle}>{bind(title)}</div>
+            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-balance" title={fullTitle}>{bind(title)}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
