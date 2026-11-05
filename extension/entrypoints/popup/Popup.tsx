@@ -41,14 +41,23 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-/** A tab's count, tinted on the selected tab. A failure is a red dot on its corner, announced as "n failed"; with nothing else to count, a red count. */
+/** "Show the 9 found on this page": the way from an empty tab to the media found. */
+function foundLabel(n: number): string {
+  return n === 1 ? 'Show the one found on this page' : `Show the ${n} found on this page`;
+}
+
+/** A tab's count, tinted on the selected tab, and a red count of failures beside it, announced as "n failed". */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
     <>
       {n > 0 && (
         <span role={failed ? 'img' : undefined} aria-label={failed ? `${n}, ${failed} failed` : undefined} title={failed ? `${failed} failed` : undefined} className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
           {n}
-          {failed > 0 && <span className="absolute -top-1.5 -right-1.5 size-[9px] rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
+        </span>
+      )}
+      {n > 0 && failed > 0 && (
+        <span aria-hidden="true" className="-ml-0.5 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-live px-1 text-[10.5px] font-bold text-[#1a090e] tabular-nums">
+          {failed}
         </span>
       )}
       {!n && failed > 0 && (
@@ -236,7 +245,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-btn-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-accent-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -261,7 +270,7 @@ export function Popup() {
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="text-[14px] font-semibold tracking-[0.01em]">Magpie</div>
-          <div className="truncate text-[11.5px] text-dim" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
+          <div className="truncate text-[11.5px] text-mute" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
             {scope && (scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
         </div>
@@ -283,7 +292,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.2fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -369,7 +378,7 @@ export function Popup() {
 
       <Panel shown={view === 'jobs'}>
         {active.length === 0 && failed.length === 0 ? (
-          <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button tone="accent" size="md" onClick={() => setView('page')}>Show media on this page</Button>}>
+          <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={shown.length ? <Button tone="accent" size="md" onClick={() => setView('page')}>{foundLabel(shown.length)}</Button> : undefined}>
             Pick a video to download and its progress shows up here.
           </Empty>
         ) : (
@@ -443,7 +452,7 @@ export function Popup() {
             {q ? <p className="flex h-11 shrink-0 items-center text-[12px] text-mute">{`${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}</p> : <div className="h-3 shrink-0" />}
           </>
         )}
-        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={() => setView('page')} />
+        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={shown.length ? () => setView('page') : undefined} browseLabel={foundLabel(shown.length)} />
         {archive.length > 0 && !q && (
           <div className="-mr-2 mt-1 flex justify-end">
             <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">

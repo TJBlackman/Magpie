@@ -150,10 +150,10 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
 });
 
 /** History entries, or a line saying there are none. */
-export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse: () => void }) {
+export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse, browseLabel }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse?: () => void; browseLabel: string }) {
   if (!total) {
     return (
-      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={<Button tone="accent" size="md" onClick={onBrowse}>Show media on this page</Button>}>
+      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={onBrowse ? <Button tone="accent" size="md" onClick={onBrowse}>{browseLabel}</Button> : undefined}>
         Finished downloads are listed here and marked on the page, so you never grab the same video twice.
       </Empty>
     );

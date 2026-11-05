@@ -15,7 +15,7 @@ export function Badge({ children, tone = 'default', className = '' }: { children
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
     post: 'bg-orange-500/[0.12] text-orange-200 ring-orange-400/25',
   }[tone];
-  return <span className={`inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[10px] leading-none font-semibold tracking-[0.04em] ring-1 ring-inset ${cls} ${className}`}>{children}</span>;
+  return <span className={`inline-flex h-5 shrink-0 items-center gap-1 rounded-[5px] px-1.5 text-[11px] leading-none font-semibold tracking-[0.04em] ring-1 ring-inset ${cls} ${className}`}>{children}</span>;
 }
 
 export type ButtonTone = 'default' | 'shine' | 'ghost' | 'danger' | 'live' | 'accent' | 'stop' | 'destroy';
@@ -75,7 +75,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-white/[0.05] hover:!bg-white/[0.09]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn-hover ring-1 ring-edge3 ring-inset hover:!bg-[#2a3441]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -110,7 +110,7 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
       {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
-      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[9.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
+      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[10.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
     </div>
   );
 }
@@ -202,7 +202,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
 export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
-      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
+      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute ring-1 ring-edge2 ring-inset">{icon}</div>
       <div className="text-[14.5px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
@@ -214,7 +214,7 @@ export function Empty({ icon, title, children, action, below }: { icon: ReactNod
 /** A boxed note: one neutral box for every tone, the tone carried by its icon: info (accent), warn (yellow), error (red), neutral (grey). */
 export function Callout({ tone, title, children, testId, icon }: { tone: 'info' | 'warn' | 'error' | 'neutral'; title?: string; children: ReactNode; testId?: string; icon?: ReactNode }) {
   const cls = {
-    info: '[&>span>svg]:text-shine',
+    info: '[&>span>svg]:text-mute',
     warn: '[&>span>svg]:text-saved',
     error: '[&>span>svg]:text-live',
     neutral: '[&>span>svg]:text-mute',
@@ -279,7 +279,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   return (
     <div className="-mr-2 flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12.5px] font-medium text-mute transition-colors hover:bg-panel3 hover:text-text">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -297,7 +297,7 @@ export function Toast({ message, actions = [], live }: { message: string | null;
         </span>
         <span className="min-w-0 flex-1 truncate">{message}</span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-white/[0.05] text-fg2 hover:bg-white/[0.09] hover:text-text'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-btn text-text ring-1 ring-btn-edge ring-inset hover:bg-btn-hover'}`}>
             {a.label}
           </button>
         ))}

@@ -94,7 +94,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
           {candidate.live && !job.queued ? (
             <Badge tone="bad">
               <span className="pulse size-1.5 rounded-full bg-live" />
-              RECORDING <span className="font-medium tracking-normal tabular-nums">{fmtClock(job.elapsed ?? 0)}</span>
+              REC
             </Badge>
           ) : (
             <Badge tone="shine">{job.queued ? 'QUEUED' : job.pct === null ? 'DOWNLOADING' : `${Math.floor(job.pct * 100)}%`}</Badge>
@@ -156,11 +156,11 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
   return (
     <button
       type="button"
-      aria-label={label}
+      aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       title={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-white/[0.05] text-fg2 transition-colors ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live-soft' : 'hover:bg-accent-fill hover:text-shine'}`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn-hover text-fg2 ring-1 ring-edge3 transition-colors ring-inset ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live-soft hover:ring-live/45' : 'hover:bg-accent-fill hover:text-shine hover:ring-accent-edge'}`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current">
@@ -284,19 +284,28 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
 }
 
 /** When this media was downloaded and as what, with a button that shows the file before another copy is saved. */
-function ArchivedNote({ archived, onMissing }: { archived: Archived; onMissing: () => void }) {
+function ArchivedNote({ archived }: { archived: Archived }) {
   const ago = fmtAgo(archived.at);
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   return (
     <Callout tone="warn" icon={<IconCheckCircle size={15} />} title={`Downloaded ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
-      <Button tone="accent" size="md" className="mt-2.5 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
-        <IconFolder size={14} />
-        Show in folder
-      </Button>
+      <span className="block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
   );
+}
+
+/** A long path with its middle cut, so both the top folder and the file's own name show. */
+function midTruncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const room = max - 1;
+  // Cut on spaces, so neither side ends in half a word.
+  let head = text.slice(0, Math.ceil(room * 0.6));
+  if (head.includes(' ')) head = head.slice(0, head.lastIndexOf(' '));
+  let tail = text.slice(text.length - (room - head.length));
+  if (tail.includes(' ')) tail = tail.slice(tail.indexOf(' ') + 1);
+  return `${head.trimEnd()} … ${tail.trimStart()}`;
 }
 
 /** "images" when every file of a post is a picture, else "files". */
@@ -315,7 +324,7 @@ function PostFiles({ variants }: { variants: Variant[] }) {
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-11 cursor-pointer list-none items-center gap-3 px-3 text-[12.5px] text-text transition-colors hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
-          <span className="flex-1">{`${n} ${n === 1 ? 'file' : 'files'}, saved together`}</span>
+          <span className="flex-1">{n === 1 ? `1 ${fileWord(variants, 1)}` : `${n} ${fileWord(variants, n)}, saved to one folder`}</span>
           <IconChevron size={15} className="rotate-90 text-mute transition-transform group-open/files:-rotate-90" />
         </summary>
         <ol className="flex flex-col gap-px px-1.5 pb-1.5" data-testid="post-files">
@@ -341,6 +350,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const [error, setError] = useState<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Media already saved opens folded: the file first, the qualities only for a second copy.
+  const [expanded, setExpanded] = useState(false);
   const dialog = useDialogFocus();
 
   useEffect(() => {
@@ -377,6 +388,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const chosen = variants.find((v) => v.id === variantId);
   const short = chosen ? shortName(chosen) : '';
   const again = candidate.archived ? ' again' : '';
+  const folded = !!candidate.archived && !post && !expanded;
   const single = files === 1;
   const duration = inspection?.duration ?? candidate.info?.duration;
   // One audio track for every rendition is said once, under the list, not on each row.
@@ -410,10 +422,10 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="line-clamp-2 text-[15px] leading-5 font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
-              <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
+              <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
                 {post ? postLabel(candidate) : siteOf(hostOf(candidate.pageUrl)) || hostOf(candidate.url)}
               </span>
             </div>
@@ -440,14 +452,14 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               <div className="mt-1 text-center text-[12px] text-mute">{post ? 'Reading the post...' : 'Reading the playlist...'}</div>
             </div>
           )}
-          {candidate.archived && <ArchivedNote archived={candidate.archived} onMissing={onMissing} />}
+          {candidate.archived && <ArchivedNote archived={candidate.archived} />}
           {inspection?.notes.filter((n) => !n.startsWith('Audio:')).map((n) => (
             <Callout key={n} tone={/fail|cannot|can't|DRM|not hosted|nothing to save/i.test(n) ? 'warn' : 'info'}>
               {n}
             </Callout>
           ))}
           {inspection && post && files > 0 && <PostFiles variants={variants} />}
-          {inspection && !post && !(candidate.live && single) && (
+          {inspection && !post && !(candidate.live && single) && !folded && (
             <ul
               role="radiogroup"
               aria-label="Quality"
@@ -471,16 +483,28 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
               ))}
             </ul>
           )}
-          {!post && inspection && footnote && <p className="text-[11.5px] text-pretty text-mute">{footnote}</p>}
+          {!post && inspection && footnote && !folded && <p className="text-[11.5px] text-pretty text-mute">{footnote}</p>}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
-          <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-dim" title={`Downloads/${saveAs}`} data-testid="save-as">
+          <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
             <IconFolder size={13} className="shrink-0" />
-            <span className="shrink-0">Downloads /</span>
-            <span className="min-w-0 truncate text-mute">{saveAs.replace(/\//g, ' / ')}</span>
+            <span className="shrink-0 text-mute">Downloads /</span>
+            <span className="min-w-0 truncate text-mute">{midTruncate((post ? saveAs.replace(/ \[\w+\](?=\.\w+$|$)/, '') : saveAs).replace(/\//g, ' / '), 54)}</span>
           </div>
         )}
-        {inspection && !error && (!post || files > 0) && (
+        {inspection && !error && folded && (
+          <div className="mt-3 flex gap-2">
+            <Button size="lg" className="flex-1" testId="start" onClick={() => setExpanded(true)} title="Pick a quality for a second copy">
+              <IconDownload size={17} />
+              Download again
+            </Button>
+            <Button tone="shine" size="lg" className="flex-1" onClick={() => void api.showFile(candidate.archived!.file, !!candidate.archived!.files).then((r) => r.ok && !r.value && onMissing())}>
+              <IconFolder size={16} />
+              Show in folder
+            </Button>
+          </div>
+        )}
+        {inspection && !error && (!post || files > 0) && !folded && (
           <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? <span className="size-2.5 rounded-full bg-current" aria-hidden="true" /> : <IconDownload size={17} />}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
