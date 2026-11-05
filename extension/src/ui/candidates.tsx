@@ -175,7 +175,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset group-hover:bg-[#232b36] hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
@@ -294,7 +294,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
       </button>
     );
-  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-edge2 bg-[#141a22] hover:border-edge3 hover:bg-panel2';
+  const shell = on ? 'border-sel-edge bg-sel-fill' : 'border-row-edge bg-[#141a22] hover:border-hover-edge hover:bg-panel2';
   return (
     <button type="button" role="radio" aria-checked={on} tabIndex={on ? 0 : -1} data-testid="variant" onClick={onPick} title={[d.detail, variant.uri].filter(Boolean).join('\n')} className={`flex min-h-12 w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -363,7 +363,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-edge2 ring-inset transition-colors hover:ring-edge3">
+    <div className="rounded-[10px] bg-[#141a22] ring-1 ring-row-edge ring-inset transition-colors hover:ring-hover-edge">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
@@ -538,8 +538,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           )}
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
-          <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
-            <IconFolder size={13} className="shrink-0" />
+          <div className="mt-3 flex h-4 items-center gap-2 px-0.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
+            <IconFolder size={14} className="shrink-0" />
             <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} />
           </div>
         )}

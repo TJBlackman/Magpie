@@ -29,6 +29,10 @@
   --color-btn-edge: #606f82;
   /* Buttons: the arrow, More, text actions and neutral buttons. Inputs and steppers keep btn-edge. */
   --color-ctl-edge: #58677a;
+  /* Clickable cards on the page and rows in a sheet: 3.1:1 on their background. Hover is a step brighter. */
+  --color-card-edge: #526174;
+  --color-row-edge: #56657a;
+  --color-hover-edge: #6b7a90;
   --color-btn-hover: #222a35;
   /* The one cyan control surface: download squares, pressed toggles, accent buttons. */
   --color-accent-fill: #112831;

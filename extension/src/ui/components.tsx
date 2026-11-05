@@ -77,7 +77,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-ctl-edge ring-inset hover:!bg-[#232b36] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-ctl-edge ring-inset group-hover:bg-[#232b36] hover:!bg-[#2c3644] hover:!ring-[#8796a9]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -169,7 +169,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border bg-panel ${onOpen || hoverable ? 'border-edge3' : 'border-transparent'} outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-ctl-edge hover:bg-panel3 active:bg-panel2 has-[.row-main:focus-visible]:border-ctl-edge has-[.row-main:focus-visible]:bg-panel3 has-[.quick:hover]:border-edge3 has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-ctl-edge hover:bg-panel3 focus-within:border-ctl-edge focus-within:bg-panel3' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl hover:z-10 has-[:focus-visible]:z-10 border bg-panel ${onOpen || hoverable ? 'border-card-edge' : 'border-transparent'} outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-hover-edge hover:bg-panel3 active:bg-panel2 has-[.row-main:focus-visible]:border-hover-edge has-[.row-main:focus-visible]:bg-panel3 has-[.quick:hover]:border-card-edge has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-hover-edge hover:bg-panel3 focus-within:border-hover-edge focus-within:bg-panel3' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
@@ -293,7 +293,7 @@ export function Toast({ message, detail, actions = [], live }: { message: string
   if (!message) return null;
   return (
     <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
-      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-panel3 py-1.5 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
+      <div className="rise-in flex min-h-11 items-center gap-2.5 rounded-xl bg-[#141a22] py-1.5 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
           <IconCheck size={12} />
         </span>

@@ -282,7 +282,7 @@ export function Popup() {
             onClick={() => setView('jobs')}
             title="Recording. Open Downloads"
             aria-label={`Recording, ${fmtClock(recordingJob.duration ?? 0)}. Open Downloads`}
-            className="flex h-7 items-center gap-1.5 rounded-full bg-panel3 pr-2.5 pl-2 text-[11.5px] font-semibold text-text ring-1 ring-edge3 transition-colors ring-inset hover:bg-btn-hover"
+            className="flex h-7 items-center gap-1.5 rounded-full bg-btn pr-2.5 pl-2 text-[11.5px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-hover-edge"
           >
             <span className="pulse size-2 rounded-full bg-live" />
             REC <span className="font-medium tabular-nums">{fmtClock(recordingJob.duration ?? 0)}</span>
@@ -355,7 +355,7 @@ export function Popup() {
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
                     </span>
-                    <span className="shrink-0 text-dim tabular-nums">{g.list.length}</span>
+                    <span className="inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#1f2834] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums">{g.list.length}</span>
                   </div>
                 )}
                 {g.list.map((c) => (

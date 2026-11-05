@@ -10,7 +10,7 @@ import { IconBack, IconCheck, IconMinus, IconPlus, Logo } from './icons';
 export function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId, compact }: { compact?: boolean; id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
   const btn = `flex size-7 items-center justify-center text-mute transition-colors hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04] disabled:pointer-events-none disabled:opacity-30`;
   return (
-    <div className={`flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-inset outline-offset-2 outline-text focus-within:outline-2 ${compact ? 'ring-ctl-edge' : 'ring-btn-edge'}`}>
+    <div className={`flex shrink-0 items-center overflow-hidden rounded-lg bg-btn ring-1 ring-inset outline-offset-2 outline-text has-[input:focus-visible]:outline-2 ${compact ? 'ring-ctl-edge' : 'ring-btn-edge'}`}>
       <button type="button" className={btn} onClick={() => onChange(value - 1)} disabled={value <= min} title={lessTitle} aria-label={lessTitle}>
         <IconMinus size={14} />
       </button>
