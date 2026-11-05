@@ -317,7 +317,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
               {bind(title)}
             </span>
             {meta && (
-              <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">
+              <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db] transition-colors group-hover:text-white group-hover:[&_svg]:opacity-100">
                 {/* The length joins the line with the same separator as the rest: "17:17 · 2160p". */}
                 {duration ? <span className="-mr-1.5 shrink-0 tabular-nums group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">{`${fmtClock(duration)} ·`}&nbsp;</span> : null}
                 {meta}
@@ -345,7 +345,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
               <span className="absolute right-2 bottom-2 rounded-[5px] bg-[#0b0c0d]/60 px-1 text-[10.5px] leading-[15px] font-medium text-white tabular-nums backdrop-blur-sm">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
             )}
           </span>
-          <span className={wide ? 'block min-w-0 flex-1 pt-0.5' : 'mt-2 block'}>
+          <span className={wide ? 'block min-w-0 flex-1 self-center' : 'mt-2 block'}>
             <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
               {bind(title)}
             </span>

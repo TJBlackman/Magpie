@@ -1,8 +1,8 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
 import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtHeight, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
-import { Badge, Button, Callout, FitText, IconButton, MediaRow, MediaTile } from './components';
+import { Badge, Button, Callout, FitText, IconButton, MediaRow, MediaTile, textWidth } from './components';
 import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
@@ -123,6 +123,12 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
 export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean }) {
   const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
+  // When a failure's reason and its fix do not both fit on the line, the fix takes its own line below.
+  // The line's width is the same either way, so the choice cannot flip back and forth.
+  const [tight, setTight] = useState(false);
+  const reasonRef = useRef<HTMLSpanElement>(null);
+  const fixRef = useRef<HTMLButtonElement>(null);
+  const reason = friendlyError(job.error ?? 'The download stopped.');
   const queued = job.state === 'queued';
   const pct = jobProgress(job);
   const rate = useRate(job.bytes, job.state === 'downloading');
@@ -140,8 +146,8 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   const meta = failed ? (
     <span className="flex min-w-0 flex-1 items-center gap-1.5 text-[#f5c76a]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`} data-testid="job-error">
       <IconError size={13} className="shrink-0" />
-      <span className="min-w-0 flex-1 truncate">
-        <FitText text={friendlyError(job.error ?? 'The download stopped.')} />
+      <span ref={reasonRef} className="min-w-0 flex-1 truncate">
+        <FitText text={reason} />
       </span>
     </span>
   ) : queued ? (
@@ -165,6 +171,28 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
         ? { hint: 'Play it on its page so Magpie catches a fresh link, then download it again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
+  const hasFix = !!recover;
+  useLayoutEffect(() => {
+    const span = reasonRef.current;
+    const line = span?.parentElement?.parentElement;
+    if (!failed || !hasFix || !span || !line || typeof ResizeObserver === 'undefined') return;
+    const run = () => {
+      // Icon 13 + gap 6, the reason, gap 6, the fix (its -4px margin tucks it in).
+      const need = 13 + 6 + textWidth(reason, getComputedStyle(span)) + 6 + (fixRef.current?.offsetWidth ?? 0) - 4;
+      setTight(need > line.clientWidth);
+    };
+    run();
+    const watch = new ResizeObserver(run);
+    watch.observe(line);
+    void document.fonts?.ready.then(run);
+    return () => watch.disconnect();
+  }, [failed, hasFix, reason]);
+  const fix = recover && (
+    <button ref={fixRef} type="button" onClick={recover.run} title={recover.hint} className={`${tight ? '-ml-2' : '-my-[7px] -mr-1'} inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10`}>
+      {recover.label}
+      {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
+    </button>
+  );
   return (
     <MediaRow
       inset={inset}
@@ -176,12 +204,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
         <>
           {job.group && <Badge>{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
           {meta}
-          {recover && (
-            <button type="button" onClick={recover.run} title={recover.hint} className="-my-[7px] -mr-1 inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10">
-              {recover.label}
-              {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
-            </button>
-          )}
+          {!tight && fix}
         </>
       }
       action={
@@ -202,7 +225,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
         )
       }
     >
-      {failed ? null : queued ? null : (
+      {failed ? (tight && fix ? <div className="-mt-1.5 pl-[83px]">{fix}</div> : null) : queued ? null : (
         <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
           {discarding ? (
