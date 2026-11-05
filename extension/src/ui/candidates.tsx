@@ -107,8 +107,13 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
               </Badge>
               <span className="ml-1.5 font-semibold text-live-soft tabular-nums">{fmtClock(job.elapsed ?? 0)}</span>
             </>
+          ) : job.queued ? (
+            <Badge>
+              <IconClock size={11} className="text-shine" />
+              Queued
+            </Badge>
           ) : (
-            <Badge tone="shine">{job.queued ? 'Queued' : job.pct === null ? 'Downloading' : `${Math.floor(job.pct * 100)}%`}</Badge>
+            <Badge tone="shine">{job.pct === null ? 'Downloading' : `${Math.floor(job.pct * 100)}%`}</Badge>
           )}
         </span>
       )}
@@ -124,7 +129,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
           </Badge>
         </span>
       )}
-      {candidate.archived && !inSheet && (
+      {candidate.archived && (
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
           <Badge tone="saved">
             <IconCheck size={11} className="-ml-px" />
@@ -308,7 +313,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             )}
             <span className="pointer-events-none absolute inset-0 rounded-[12px] ring-1 ring-white/[0.08] ring-inset transition-shadow group-hover:ring-white/20" />
             {(duration || files > 1) && (
-              <span className="absolute right-1.5 bottom-1.5 rounded-[5px] bg-[#0b0c0d]/60 px-1 text-[10.5px] leading-[15px] font-medium text-white tabular-nums backdrop-blur-sm">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
+              <span className="absolute right-2 bottom-2 rounded-[5px] bg-[#0b0c0d]/60 px-1 text-[10.5px] leading-[15px] font-medium text-white tabular-nums backdrop-blur-sm">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
             )}
             {pct !== null && (
               <span className="absolute inset-x-2 bottom-2 h-1 overflow-hidden rounded-full bg-[#0b0c0d]/60">
@@ -393,7 +398,7 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
   return (
-    <Callout tone="info" icon={<IconCheckCircle size={15} className="text-shine" />} title={`Saved ${when}`} testId="archived-note">
+    <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={`In your downloads since ${when}`} testId="archived-note">
       <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
       <span className="block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
@@ -401,23 +406,29 @@ function ArchivedNote({ archived }: { archived: Archived }) {
 }
 
 /** "Downloads / Reddit / EarthPorn / name": folders quiet, the last part a step brighter, cut in the middle when long. */
-function SavePath({ path }: { path: string }) {
+function SavePath({ path, files }: { path: string; files?: number }) {
   const cut = path.lastIndexOf('/');
   const folders = cut >= 0 ? path.slice(0, cut).split('/').join(' / ') : '';
   const name = path.slice(cut + 1);
   const suffix = /(?:\s\d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*(?:\.\w+)?$/.exec(name)?.[0] ?? '';
   const stem = name.slice(0, name.length - suffix.length);
+  if (files)
+    return (
+      <span className="block min-w-0 flex-1">
+        <span className="block truncate">{`Saves ${files} files to ${folders}`}</span>
+        <span className="mt-0.5 flex gap-1.5">
+          <IconFolder size={13} className="mt-0.5 shrink-0" />
+          <span className="line-clamp-2 min-w-0 break-words">{name}</span>
+        </span>
+      </span>
+    );
   return (
     <span className="block min-w-0 flex-1">
       <span className="block truncate">Saves to {folders}</span>
-      {/\.\w+$/.test(name) ? (
-        <span className="mt-0.5 line-clamp-2 break-words">
-          {stem}
-          <span className="whitespace-nowrap">{suffix}</span>
-        </span>
-      ) : (
-        <span className="mt-0.5 block truncate">{`Folder ${name}`}</span>
-      )}
+      <span className="mt-0.5 line-clamp-2 break-words">
+        {stem}
+        <span className="whitespace-nowrap">{suffix}</span>
+      </span>
     </span>
   );
 }
@@ -439,7 +450,7 @@ function PostFiles({ variants }: { variants: Variant[] }) {
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
           <span className="flex-1">{`${n} ${fileWord(variants, n)}`}</span>
-          <span className="flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
+          <span className="flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
             <span className="group-open/files:hidden">See files</span>
             <span className="hidden group-open/files:inline">Hide files</span>
             <IconChevron size={13} className="transition-transform group-open/files:rotate-90" />
@@ -605,7 +616,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         </div>
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex items-start gap-2 px-0.5 text-[11.5px] leading-4 text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
-            <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} />
+            <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} files={post ? files : undefined} />
           </div>
         )}
         {inspection && !error && folded && (

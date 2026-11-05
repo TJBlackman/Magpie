@@ -90,7 +90,7 @@ function highlight(text: string, query: string): ReactNode {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded-[3px] bg-shine/[0.18] text-[#83f3e5] shadow-[0_0_0_2px_rgba(31,216,207,.18)]">{text.slice(at, at + q.length)}</mark>
+      <mark className="rounded-[3px] bg-shine/[0.2] text-[#83f3e5]">{text.slice(at, at + q.length)}</mark>
       {text.slice(at + q.length)}
     </>
   );
@@ -119,7 +119,8 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       titleTestId="archive-title"
       meta={
         <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
-          {fmtDay(entry.at)}
+          <span className="group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{fmtDay(entry.at)}</span>
+          <span className="hidden font-medium text-text group-hover:inline group-has-[.row-main:focus-visible]:inline">{folder ? 'Show the folder' : 'Show in folder'}</span>
           {facts && (
             <>
               {' · '}
