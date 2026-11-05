@@ -181,6 +181,9 @@ p {
 }
 
 /* A list that scrolls under a footer fades out instead of being cut mid line. */
+.fade-top {
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12px);
+}
 .fade-bottom {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent);
 }

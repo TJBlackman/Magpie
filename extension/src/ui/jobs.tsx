@@ -148,9 +148,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   // A failure offers the way back: the sheet again while the media is listed, else its page, where playing it gives a fresh link.
   const recover = failed
     ? onRetry
-      ? { hint: 'Retrying picks up a fresh link.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
+      ? { hint: 'A retry gets a fresh link here.', label: 'Try again', icon: <IconRedo size={13} />, tip: 'Pick a quality for this video again', run: onRetry }
       : job.pageUrl
-        ? { hint: 'Play it there to get a fresh link.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
+        ? { hint: 'Play it on its page, then try again.', label: 'Open page', icon: <IconExternal size={13} />, tip: `Open ${job.pageUrl} in a new tab`, run: () => openPage(job.pageUrl!) }
         : null
     : null;
   return (
@@ -167,13 +167,15 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" framed onClick={() => api.removeJob(job.id)}>
+          <IconButton label="Remove from the list" className="size-9" onClick={() => api.removeJob(job.id)}>
             <IconMinusCircle size={16} />
           </IconButton>
         ) : job.live ? (
-          <IconButton label="Discard the recording" tone="danger" framed active={discarding} onClick={() => setDiscarding((d) => !d)}>
-            <IconX size={17} />
-          </IconButton>
+          discarding ? null : (
+            <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
+              <IconX size={17} />
+            </IconButton>
+          )
         ) : (
           <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
             <IconX size={17} />
@@ -195,12 +197,20 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
         <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
           {discarding ? (
-            <div className="mt-2 flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate text-[12px] text-[#ffb3c1]">{`Discard ${fmtBytes(job.bytes)} recorded?`}</span>
-              <Button tone="ghost" size="md" onClick={() => setDiscarding(false)}>
+            <div
+              className="mt-2 flex items-center gap-2"
+              onKeyDown={(e) => {
+                if (e.key !== 'Escape') return;
+                e.stopPropagation();
+                setDiscarding(false);
+              }}
+            >
+              <span className="pulse size-2 shrink-0 rounded-full bg-live" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-[12px] text-text">{`Discard ${fmtBytes(job.bytes)} recorded?`}</span>
+              <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                 Keep recording
               </Button>
-              <Button tone="stop" size="md" onClick={() => api.cancel(job.id)}>
+              <Button tone="live" size="md" onClick={() => api.cancel(job.id)}>
                 Discard
               </Button>
             </div>

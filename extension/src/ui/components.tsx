@@ -32,6 +32,7 @@ export function Button({
   className = '',
   testId,
   pressed,
+  autoFocus,
 }: {
   children: ReactNode;
   onClick?: () => void;
@@ -43,6 +44,7 @@ export function Button({
   testId?: string;
   /** A toggle: announces its state. */
   pressed?: boolean;
+  autoFocus?: boolean;
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-btn-edge hover:bg-btn-hover active:bg-btn',
@@ -55,7 +57,7 @@ export function Button({
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
   return (
-    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} aria-pressed={pressed} className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40 ${sz} ${cls} ${className}`}>
+    <button type="button" title={title} disabled={disabled} onClick={onClick} data-testid={testId} aria-pressed={pressed} autoFocus={autoFocus} className={`inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-40 ${sz} ${cls} ${className}`}>
       {children}
     </button>
   );
@@ -159,9 +161,9 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-offset-[3px]">
+        <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-none">
           {body}
           {action}
         </button>
@@ -184,7 +186,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-btn [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:ring-1 [&_button]:ring-btn-edge [&_button]:ring-inset [&_button]:hover:bg-btn-hover">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-8 [&_button]:bg-white/[0.04] [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:hover:bg-white/[0.08]">{children}</div>}
     </div>
   );
 }
@@ -250,7 +252,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] !ring-shine/40'}>
+    <Button tone="ghost" pressed={!shown} onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/[0.12] !text-[#7ff0ff] ring-1 ring-shine/40 ring-inset'}>
       {shown ? <IconEyeOff size={14} /> : <IconEye size={14} />}
       {shown ? 'Hide downloaded' : `${count} downloaded`}
     </Button>

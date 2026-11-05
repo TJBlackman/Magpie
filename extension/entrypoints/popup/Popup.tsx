@@ -18,6 +18,12 @@ type Scope = { all: true; label: string; url?: undefined; tabId?: undefined } | 
 
 const ALL_TABS: Scope = { all: true, label: 'All open tabs' };
 
+/** "3 tabs with media", for the header when the popup lists every tab. */
+function tabsWithMedia(list: Candidate[]): string {
+  const n = new Set(list.map((c) => c.tabId)).size;
+  return n ? `${n} ${n === 1 ? 'tab' : 'tabs'} with media` : 'All open tabs';
+}
+
 function scopeFor(tab: { id?: number; title?: string; url?: string } | null | undefined): Scope {
   return tab && tab.id !== undefined && tab.url ? { all: false, tabId: tab.id, label: tab.title || tab.url, url: tab.url } : ALL_TABS;
 }
@@ -40,10 +46,13 @@ function Pill({ n }: { n: number }) {
   return <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>;
 }
 
-function Panel({ shown, children, roomy }: { shown: boolean; children: ReactNode; roomy?: boolean }) {
+function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
+  const [scrolled, setScrolled] = useState(false);
   return (
-    <div hidden={!shown} className={`min-h-0 flex-1 overflow-y-auto px-3.5 scroll-thin ${roomy ? 'pb-16' : 'pb-4'}`}>
-      <div className="flex min-h-full flex-col">{children}</div>
+    <div hidden={!shown} className={`min-h-0 flex-1 border-t transition-colors ${scrolled ? 'border-edge' : 'border-transparent'}`}>
+      <div onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 0)} className={`h-full overflow-y-auto px-3.5 pb-4 scroll-thin ${scrolled ? 'fade-top' : ''}`}>
+        <div className="flex min-h-full flex-col">{children}</div>
+      </div>
     </div>
   );
 }
@@ -205,7 +214,7 @@ export function Popup() {
         <div className="min-w-0 flex-1 leading-tight">
           <div className="text-[14px] font-semibold tracking-[0.01em]">Magpie</div>
           <div className="truncate text-[11.5px] text-dim" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
-            {scope && (scope.all ? scope.label : hostOf(scope.url))}
+            {scope && (scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
         </div>
         <IconButton label="Settings" onClick={() => setSettingsOpen(true)} active={settingsOpen}>
@@ -221,7 +230,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            {recording && <span className="pulse size-1.5 shrink-0 rounded-full bg-live" role="img" aria-label="Recording" title="Recording" />}
+            <span className={`size-1.5 shrink-0 rounded-full bg-live ${recording ? 'pulse' : 'invisible'}`} role="img" aria-label={recording ? 'Recording' : undefined} aria-hidden={!recording} title={recording ? 'Recording' : undefined} />
             <Pill n={active.length} />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
@@ -237,7 +246,7 @@ export function Popup() {
 
       <Panel shown={view === 'page'}>
         {candidates.length > 0 && (
-          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
+          <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'} count={shown.length || undefined}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             {scope && !scope.all && (
               <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
@@ -298,9 +307,12 @@ export function Popup() {
               </div>
             ))}
             {!showDownloaded && downloaded > 0 && (
-              <button type="button" onClick={toggleDownloaded} className="mt-1 h-8 rounded-lg text-[12px] text-dim transition-colors hover:bg-btn-hover hover:text-text">
-                {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden · Show`}
-              </button>
+              <div className="mt-1 flex items-center justify-center gap-1 text-[12px] text-dim">
+                {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden`}
+                <button type="button" onClick={toggleDownloaded} className="h-8 rounded-lg px-2 font-semibold text-shine transition-colors hover:bg-shine/10">
+                  Show
+                </button>
+              </div>
             )}
           </div>
         )}
@@ -368,7 +380,7 @@ export function Popup() {
       <Panel shown={view === 'history'}>
         {archive.length > 0 && (
           <>
-            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset transition-shadow focus-within:ring-2 focus-within:ring-text">
+            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset outline-offset-2 outline-text has-[:focus-visible]:outline-2">
               <IconSearch size={15} />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search history" aria-label={`Search ${archive.length} downloads`} className="min-w-0 flex-1 bg-transparent text-[12.5px] text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
               {query && (

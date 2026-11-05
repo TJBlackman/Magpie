@@ -87,7 +87,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
           <LiveBadge />
         </span>
       )}
-      {candidate.info?.drm && !candidate.archived && (
+      {candidate.info?.drm && !candidate.archived && !inSheet && (
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
           <Badge>
             <IconLock size={10} />
@@ -134,11 +134,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.14] ring-1 ring-live/35 ring-inset" aria-hidden="true">
-          <span className="relative flex size-2.5">
-            <span className="ping absolute inline-flex size-full rounded-full bg-live/60" />
-            <span className="relative inline-flex size-2.5 rounded-full bg-live" />
-          </span>
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.12] text-live ring-1 ring-live/25 ring-inset" aria-hidden="true">
+          <IconRadio size={17} className="pulse" />
         </span>
       );
     return <ProgressRing pct={job.pct} />;
@@ -269,7 +266,7 @@ function PostFiles({ candidate, variants }: { candidate: Candidate; variants: Va
   const where = candidate.post?.subreddit ? `Reddit/${candidate.post.subreddit}` : 'Reddit';
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3 rounded-[10px] p-1">
+      <div className="flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-mute">
           <IconFolder size={18} />
         </span>
@@ -382,7 +379,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         </div>
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error && (
-            <Callout tone={drm ? 'neutral' : 'error'} icon={drm ? <IconLock size={15} /> : undefined} title={drm ? 'Copy protected' : 'Magpie can’t save this one'} testId="inspect-error">
+            <Callout tone={drm ? 'neutral' : 'error'} icon={drm ? <IconLock size={15} /> : undefined} title={drm ? undefined : 'Magpie can’t save this one'} testId="inspect-error">
               {error}
             </Callout>
           )}
