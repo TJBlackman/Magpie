@@ -220,7 +220,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               }}
             >
               <p className="text-[12.5px] font-medium text-text">Discard this recording?</p>
-              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes ${fmtClock(job.duration ?? 0)} of recording, ${fmtBytes(job.bytes)}. Nothing is saved.`}</p>
+              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes the ${fmtClock(job.duration ?? 0)} recorded so far, ${fmtBytes(job.bytes)}. Nothing is saved.`}</p>
               <div className="mt-2.5 flex justify-end gap-2">
                 <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                   Keep recording

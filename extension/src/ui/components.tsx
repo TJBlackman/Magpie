@@ -102,8 +102,9 @@ const glowCache = new Map<string, string | null>();
 
 /**
  * A frame's strongest colour, for the light it casts: the average of its most
- * saturated quarter, kept below full brightness. A frame too grey to have one
- * (fog, snow, overcast) casts none, since a grey glow only reads as haze.
+ * saturated quarter, brought to one brightness so every frame glows alike, and
+ * as strong as that colour is vivid. A frame with no colour to speak of (fog,
+ * snow, overcast) casts none, since a grey glow only reads as haze.
  */
 function glowOf(img: HTMLImageElement): string | null {
   const c = document.createElement('canvas');
@@ -121,10 +122,13 @@ function glowOf(img: HTMLImageElement): string | null {
   px.sort((a, b) => b[0]! - a[0]!);
   const top = px.slice(0, px.length >> 2);
   const avg = (k: number) => top.reduce((s, p) => s + p[k]!, 0) / top.length;
-  if (avg(0) < 60) return null;
   const rgb = [avg(1), avg(2), avg(3)];
-  const scale = Math.min(1, 190 / Math.max(...rgb));
-  return `rgb(${rgb.map((v) => Math.round(v * scale)).join(' ')})`;
+  const top3 = Math.max(...rgb);
+  const vivid = top3 ? (top3 - Math.min(...rgb)) / top3 : 0;
+  if (vivid < 0.22) return null;
+  const scale = 200 / top3;
+  const strength = Math.min(1, 0.35 + vivid);
+  return `rgb(${rgb.map((v) => Math.round(v * scale)).join(' ')} / ${strength.toFixed(2)})`;
 }
 
 /** The light a frame casts on its row, like a video player's ambient mode: one colour, softly blurred, held inside the row. */
@@ -157,7 +161,7 @@ export function Glow({ thumb, className }: { thumb?: string; className: string }
 export function MediaTile({ kind, live, thumb, muted, corner, glow = true, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; glow?: boolean; className?: string }) {
   return (
     <div className={`relative ${className} shrink-0`}>
-      {glow && !muted && <Glow thumb={thumb} className="-inset-1 opacity-45 blur-[10px]" />}
+      {glow && !muted && <Glow thumb={thumb} className="inset-0 opacity-50 blur-[9px]" />}
       <div className={`relative size-full overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
         {thumb ? (
           <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
@@ -399,7 +403,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   if (!count) return null;
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
-      <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
+      <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} downloaded ${count === 1 ? 'item' : 'items'} hidden`}</span>
       <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
         {shown ? 'Hide' : 'Show'}
       </button>

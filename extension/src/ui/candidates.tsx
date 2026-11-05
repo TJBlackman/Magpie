@@ -262,7 +262,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
     return (
       <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.6),rgba(96,165,250,.22)_45%,rgba(157,130,240,.5))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45),0_6px_22px_rgba(31,216,207,.13)] hover:[background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.9),rgba(96,165,250,.35)_45%,rgba(157,130,240,.75))_border-box] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(157,130,240,.2),transparent_60%)]" />
-        <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.11)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
+        <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.16)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
           <Glow thumb={candidate.thumb} className="top-[calc(50%-38px)] left-1.5 h-[76px] w-[134px] opacity-50 blur-[16px]" />
           <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
@@ -537,7 +537,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <ul
               role="radiogroup"
               aria-label="Quality"
-              className="flex flex-col gap-0.5 rounded-[12px] bg-[#181a1c] p-1.5 ring-1 ring-ctl-edge ring-inset"
+              className="flex flex-col gap-1 rounded-[12px] bg-[#181a1c] p-2 ring-1 ring-ctl-edge ring-inset"
               onKeyDown={(e) => {
                 // Arrow keys move the choice and the focus together, like any radio group.
                 if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
