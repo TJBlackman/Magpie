@@ -50,7 +50,8 @@ export const ARCHIVE_KEY = 'archive';
 const MAX_TEXT = 300;
 const MAX_URL = 2000;
 const MAX_SRC = 4000;
-const MAX_THUMB = 24_000;
+/** Same cap as the capture itself (THUMB_MAX_CHARS), so every captured frame is kept. */
+const MAX_THUMB = 96_000;
 
 /** Query parameter names that carry signatures, expiry times and cache busters, never the video. */
 const VOLATILE_NAMES = new Set([

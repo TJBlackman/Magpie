@@ -4,7 +4,7 @@ import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFilm, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
 
@@ -169,25 +169,26 @@ function quickText(candidate: Candidate): { what: string; size: string } {
   return { what: `Download${quality ? ` ${quality}` : ''}`, size };
 }
 
-/** The arrow at the right of a card: download now at the best quality, record now, or save every file of a post. */
-function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; lead?: boolean }) {
+/** The quick action over a frame: download now at the best quality, record now, or save every file of a post. */
+function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; variant?: 'row' | 'lead' | 'tile' }) {
   const files = candidate.post?.assets.length ?? 0;
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
   const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
+  const look = {
+    lead: `bottom-4 right-4 size-11 ${candidate.live ? 'bg-live text-[#1a0a0f] hover:bg-[#ff7590]' : 'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
+    tile: 'top-2 right-2 size-8 bg-[#0b0c0d]/55 text-white ring-1 ring-white/20 ring-inset backdrop-blur-md hover:bg-[#0b0c0d]/80 hover:ring-white/45 active:bg-[#0b0c0d]/90',
+    row: 'top-1/2 right-[7px] size-8 -translate-y-1/2 text-mute ring-1 ring-transparent ring-inset group-hover:text-text group-hover:ring-hover-edge hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10',
+  }[variant];
   return (
     <button
       type="button"
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 flex -translate-y-1/2 items-center justify-center rounded-full ring-1 transition-colors ring-inset ${lead ? 'right-2.5 size-9' : 'right-[7px] size-8'} ${lead && !candidate.live ? 'bg-shine text-shine-ink ring-transparent shadow-[inset_0_1px_0_rgba(255,255,255,.35)] hover:bg-[#4ee2da] active:bg-[#19bfb7]' : `${candidate.live ? 'text-live ring-ctl-edge group-hover:ring-hover-edge' : 'text-mute ring-transparent group-hover:text-text group-hover:ring-hover-edge'} ${candidate.live ? 'hover:bg-white/[0.06] active:bg-white/[0.04]' : 'hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10 active:bg-shine/20'}`}`}
+      className={`quick absolute z-10 flex items-center justify-center rounded-full transition-colors ${look}`}
     >
-      {candidate.live ? (
-        <span className="size-2.5 rounded-full bg-live" />
-      ) : (
-        <IconDownload size={lead ? 19 : 17} />
-      )}
+      {candidate.live ? <span className={`rounded-full ${variant === 'lead' ? 'size-3 bg-[#1a0a0f]' : 'size-2.5 bg-live'}`} /> : <IconDownload size={variant === 'lead' ? 20 : 16} />}
     </button>
   );
 }
@@ -195,7 +196,7 @@ function QuickAction({ candidate, onQuick, lead }: { candidate: Candidate; onQui
 /** A running recording's own Stop button on This page: stops it and saves the file. */
 function StopAction({ job }: { job: CardJob }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-1/2 right-[7px] flex size-8 -translate-y-1/2 items-center justify-center rounded-full text-live ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-white/[0.06] hover:ring-hover-edge active:bg-white/[0.04]">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-[#0b0c0d]/55 text-live ring-1 ring-white/20 backdrop-blur-md transition-colors ring-inset hover:bg-[#0b0c0d]/80 hover:ring-white/45">
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -231,7 +232,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -262,29 +263,60 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
           : candidate.kind === 'post'
             ? 'Download every file of this post'
             : 'Choose a quality, or use the arrow to download the best one now';
-  // The first media one click can save leads the page: its own colours fill the card, the frame sits crisp in front.
+  // The first media one click can save leads the page: its frame fills the card, its title sits on it.
   if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="card-surface group relative isolate overflow-hidden rounded-[16px] border border-transparent [background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.6),rgba(56,189,248,.2)_55%,rgba(31,216,207,.3))_border-box] outline-offset-2 outline-text transition-[border-color,box-shadow] duration-150 hover:z-10 hover:shadow-[0_10px_28px_rgba(0,0,0,.45)] hover:[background:linear-gradient(180deg,#212428,#181a1d)_padding-box,linear-gradient(125deg,rgba(31,216,207,.9),rgba(56,189,248,.35)_55%,rgba(31,216,207,.5))_border-box] has-[:focus-visible]:z-10 has-[>button.row-main:focus-visible]:border-hover-edge has-[>button.row-main:focus-visible]:outline-2 has-[.quick:hover]:border-transparent">
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(130%_120%_at_0%_0%,rgba(31,216,207,.21),transparent_58%),radial-gradient(110%_130%_at_100%_100%,rgba(56,189,248,.12),transparent_60%)]" />
-        <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-white/0 transition-[background-color,box-shadow] duration-150 group-hover:bg-[rgba(158,162,168,.16)] group-hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,.10)] group-has-[.quick:hover]:bg-white/0 group-has-[.quick:hover]:shadow-none" />
-        <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative flex w-full items-center gap-3.5 py-3 pr-[58px] pl-2.5 text-left focus-visible:outline-none">
-          <span className="relative h-[72px] w-[128px] shrink-0 overflow-hidden rounded-[10px] shadow-[0_6px_18px_rgba(0,0,0,.5)] ring-1 ring-white/15 ring-inset">
-            <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.05]" />
-            {(duration || files > 1) && (
-              <span className="absolute right-1 bottom-1 rounded-[4px] bg-black/70 px-1 py-px text-[10.5px] leading-[13px] font-semibold text-text tabular-nums">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
-            )}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="font-display line-clamp-2 block text-[15.5px] leading-5 font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.45)]" data-testid="candidate-title" title={full}>
+      <div {...attrs} className="group relative isolate overflow-hidden rounded-[18px] bg-[#1b1e21] shadow-[0_14px_34px_rgba(0,0,0,.5)] ring-1 ring-white/10 outline-offset-2 outline-text ring-inset has-[.row-main:focus-visible]:outline-2">
+        <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative block h-[200px] w-full text-left focus-visible:outline-none">
+          <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_28%,rgba(11,12,13,.5)_56%,rgba(11,12,13,.93)_100%)]" />
+          {(duration || files > 1) && (
+            <span className="absolute top-3 left-3 rounded-md bg-[#0b0c0d]/55 px-1.5 py-0.5 text-[11px] leading-[14px] font-medium text-white tabular-nums backdrop-blur-md">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
+          )}
+          <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
+            <span className="font-display line-clamp-2 block text-[18px] leading-[22px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
               {title}
             </span>
-            {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-fg2">{meta}</span>}
+            {meta && <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">{meta}</span>}
           </span>
         </button>
-        <QuickAction candidate={candidate} onQuick={onQuick} lead />
+        <QuickAction candidate={candidate} onQuick={onQuick} variant="lead" />
       </div>
     );
+  if (tile) {
+    const pct = job && !job.queued && !candidate.live ? job.pct : null;
+    return (
+      <div {...attrs} className="group relative min-w-0">
+        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className="row-main block w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2">
+          <span className="relative block aspect-video w-full overflow-hidden rounded-[12px] bg-[linear-gradient(135deg,#202326,#17191c)]">
+            {thumbs && candidate.thumb ? (
+              <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-[1.045] ${candidate.archived ? 'brightness-[.72] saturate-[.75]' : ''}`} />
+            ) : (
+              <span className={`flex size-full items-center justify-center ${candidate.live ? 'text-live' : 'text-dim'}`}>
+                {candidate.info?.drm ? <IconLock size={20} /> : candidate.live ? <IconRadio size={20} className="pulse" /> : candidate.kind === 'post' ? <IconImages size={20} /> : <IconFilm size={20} />}
+              </span>
+            )}
+            <span className="pointer-events-none absolute inset-0 rounded-[12px] ring-1 ring-white/[0.08] ring-inset transition-shadow group-hover:ring-white/20" />
+            {(duration || files > 1) && (
+              <span className="absolute right-1.5 bottom-1.5 rounded-[5px] bg-[#0b0c0d]/60 px-1 text-[10.5px] leading-[15px] font-medium text-white tabular-nums backdrop-blur-sm">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
+            )}
+            {pct !== null && (
+              <span className="absolute inset-x-2 bottom-2 h-1 overflow-hidden rounded-full bg-[#0b0c0d]/60">
+                <span className="block h-full rounded-full bg-shine transition-[width] duration-300" style={{ width: `${Math.max(pct * 100, 3)}%` }} />
+              </span>
+            )}
+          </span>
+          <span className="mt-2 block px-0.5">
+            <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
+              {title}
+            </span>
+            {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</span>}
+          </span>
+        </button>
+        {!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} variant="tile" /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : null}
+      </div>
+    );
+  }
   return (
     <MediaRow
       attrs={attrs}

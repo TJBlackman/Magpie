@@ -53,7 +53,7 @@ export function Button({
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
     stop: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33] [&>svg]:text-live',
-    destroy: 'bg-err/[0.16] text-[#fecaca] ring-1 ring-inset ring-err/40 hover:bg-err/25 active:bg-err/20',
+    destroy: 'bg-[#dc3545] text-white font-semibold hover:bg-[#e5484d] active:bg-[#c92c3b]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -268,8 +268,8 @@ export function RowList({ children, testId }: { children: ReactNode; testId?: st
 /** Section heading inside a panel: small caps label and count on the left, actions on the right. */
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
-    <div className="mt-4 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
-      <h2 className="min-w-0 translate-y-px truncate text-[12.5px] font-semibold text-mute">
+    <div className="mt-5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
+      <h2 className="min-w-0 translate-y-px truncate text-[13px] font-semibold text-fg2">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
@@ -314,7 +314,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : 'bg-[#2c2f33] text-text ring-transparent hover:bg-[#363a3f]'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : 'text-mute ring-transparent hover:bg-white/[0.06] hover:text-text'}`}>
       {children}
     </button>
   );
@@ -358,10 +358,10 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   if (!count) return null;
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
-      <span className="min-w-0 truncate text-[12.5px] font-semibold text-mute">
+      <span className="min-w-0 truncate text-[13px] font-semibold text-fg2">
         Already downloaded <span className="font-medium text-dim tabular-nums">{count}</span>
       </span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-7 shrink-0 items-center rounded-md bg-[#2c2f33] px-2.5 text-[12px] font-semibold text-text transition-colors hover:bg-[#363a3f]">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-mute transition-colors hover:bg-white/[0.06] hover:text-text">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>

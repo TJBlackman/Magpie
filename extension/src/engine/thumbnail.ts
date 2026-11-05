@@ -1,6 +1,6 @@
 /*
  * Thumbnails: one frame of the stream, decoded by the browser from a small
- * sample of the media and scaled to a 16:9 JPEG of 10 to 20 kilobytes.
+ * sample of the media and scaled to a 16:9 JPEG of 20 to 50 kilobytes.
  *
  * The engine fetches the sample (one segment of the lowest rendition, or the
  * first megabyte of a plain file) and this file turns it into a picture with a
@@ -8,9 +8,9 @@
  * the offscreen document on Chrome and the background page on Firefox.
  */
 
-/** Twice the largest frame the popup draws (128 by 72), so frames stay sharp on high density screens. */
-export const THUMB_W = 256;
-export const THUMB_H = 144;
+/** Large enough for the lead card on This page (372 CSS px wide), and sharp in the grid on high density screens. */
+export const THUMB_W = 384;
+export const THUMB_H = 216;
 /** Bytes of a plain file to fetch: enough for the index and the first frames of most MP4s. */
 export const FILE_SAMPLE = 1024 * 1024;
 /** Cap on one HLS segment fetched for a frame. Lowest renditions are far smaller than this. */
@@ -18,7 +18,7 @@ export const SEGMENT_CAP = 4 * 1024 * 1024;
 /** Whole capture, fetch and decode, before it gives up. */
 export const THUMB_TIMEOUT = 12_000;
 /** A data URL longer than this is not kept: something went wrong with the encode. */
-export const THUMB_MAX_CHARS = 64_000;
+export const THUMB_MAX_CHARS = 96_000;
 
 /** The first `max` bytes of `url`: a Range request, with the body cancelled past the cap when the server ignores Range. */
 export async function fetchPrefix(url: string, max: number, signal: AbortSignal): Promise<Uint8Array> {

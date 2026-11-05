@@ -73,10 +73,7 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
       )}
 
       {failed > 0 && (
-        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-[#f2b84b]/15 px-1.5 text-[11px] leading-[18px] font-semibold text-[#f5c76a] tabular-nums">
-          <IconError size={11} />
-          {failed}
-        </span>
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="ml-0.5 inline-block size-[7px] shrink-0 rounded-full bg-[#f2b84b]" />
       )}
     </span>
   );
@@ -335,7 +332,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel/80 p-[3px]`}>
+      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-[#17191c] p-[3px] ring-1 ring-white/[0.05] ring-inset`}>
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={candidates.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -407,11 +404,11 @@ export function Popup() {
                           <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
                         </div>
                       )}
-                      <RowList>
+                      <div className="grid grid-cols-2 gap-x-2.5 gap-y-4 pt-1">
                         {run.items.map((c) => (
-                          <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} />
+                          <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tile />
                         ))}
-                      </RowList>
+                      </div>
                     </Fragment>
                   ),
                 )}
@@ -473,7 +470,6 @@ export function Popup() {
                   {settings && (
                     <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="inline-flex h-7 items-center rounded-md px-1.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.05] hover:text-text">
                       {`${settings.maxConcurrent} at a time`}
-                      <span className="ml-1.5 text-[#83f3e5]">Change</span>
                     </button>
                   )}
                 </Section>

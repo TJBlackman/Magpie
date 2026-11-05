@@ -3,12 +3,14 @@
  * each title gets a small landscape in the style of the nature footage it
  * names: a dawn lake, a snowfield, a storm over the desert, an aurora. Real
  * use shows real video frames; these only have to read like them, at the
- * size the engine captures (256 by 144). The same title always paints the
+ * size the engine captures (384 by 216). The same title always paints the
  * same frame.
  */
 
 const W = 256;
 const H = 144;
+/** Output scale: the engine's frames are 384 by 216. */
+const S = 1.5;
 type Ctx = CanvasRenderingContext2D;
 type Rand = () => number;
 
@@ -109,15 +111,15 @@ function haze(ctx: Ctx, rand: Rand, y: number, color: string, count = 4, spread 
 /** The frame above `horizon`, mirrored below it, dimmed and tinted like still water. */
 function reflect(ctx: Ctx, horizon: number, tint: string): void {
   const copy = document.createElement('canvas');
-  copy.width = W;
-  copy.height = H;
+  copy.width = ctx.canvas.width;
+  copy.height = ctx.canvas.height;
   copy.getContext('2d')!.drawImage(ctx.canvas, 0, 0);
   ctx.save();
   ctx.translate(0, horizon * 2);
   ctx.scale(1, -1);
   ctx.globalAlpha = 0.6;
   ctx.filter = 'blur(1.5px)';
-  ctx.drawImage(copy, 0, 0, W, horizon, 0, 0, W, horizon);
+  ctx.drawImage(copy, 0, 0, copy.width, horizon * S, 0, 0, W, horizon);
   ctx.restore();
   ctx.fillStyle = tint;
   ctx.fillRect(0, horizon, W, H - horizon);
@@ -151,7 +153,7 @@ function bird(ctx: Ctx, x: number, y: number, s: number): void {
 
 /** Film grain and a soft vignette, the two things that make flat shapes read as footage. */
 function finish(ctx: Ctx, rand: Rand): void {
-  const img = ctx.getImageData(0, 0, W, H);
+  const img = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const d = img.data;
   for (let i = 0; i < d.length; i += 4) {
     const n = (rand() - 0.5) * 14;
@@ -160,11 +162,14 @@ function finish(ctx: Ctx, rand: Rand): void {
     d[i + 2] = d[i + 2]! + n;
   }
   ctx.putImageData(img, 0, 0);
+  ctx.save();
+  ctx.setTransform(S, 0, 0, S, 0, 0);
   const v = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
   v.addColorStop(0, 'rgba(0,0,0,0)');
   v.addColorStop(1, 'rgba(0,0,0,0.38)');
   ctx.fillStyle = v;
   ctx.fillRect(0, 0, W, H);
+  ctx.restore();
 }
 
 const scenes: { match: RegExp; paint: (ctx: Ctx, r: Rand, title: string) => void }[] = [
@@ -669,9 +674,10 @@ function dawn(ctx: Ctx, r: Rand): void {
 /** A 256 by 144 JPEG data URL that reads like a frame of the footage `title` names. */
 export function paintScene(title: string): string {
   const c = document.createElement('canvas');
-  c.width = W;
-  c.height = H;
+  c.width = W * S;
+  c.height = H * S;
   const ctx = c.getContext('2d', { willReadFrequently: true })!;
+  ctx.scale(S, S);
   const r = seeded(hash(title));
   (scenes.find((s) => s.match.test(title))?.paint ?? dawn)(ctx, r, title);
   finish(ctx, r);
