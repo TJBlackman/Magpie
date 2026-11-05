@@ -26,9 +26,9 @@
   --color-err: #fb5a78;
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
   --color-btn: #1a2029;
-  --color-btn-edge: #606f82;
+  --color-btn-edge: #64748b;
   /* Buttons: the arrow, More, text actions and neutral buttons. Inputs and steppers keep btn-edge. */
-  --color-ctl-edge: #58677a;
+  --color-ctl-edge: #64748b;
   /* Clickable cards on the page and rows in a sheet: 3.1:1 on their background. Hover is a step brighter. */
   --color-card-edge: #526174;
   --color-row-edge: #56657a;

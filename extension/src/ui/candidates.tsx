@@ -175,7 +175,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset group-hover:bg-[#232b36] hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset group-hover:bg-[#232b36] group-hover:ring-hover-edge group-has-[:focus-visible]:ring-hover-edge hover:bg-[#232b36] hover:text-text hover:!ring-[#8796a9] active:bg-[#2c3644]`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center">
