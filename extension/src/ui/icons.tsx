@@ -207,6 +207,14 @@ export const IconFolder = (p: IconProps) => (
   </Icon>
 );
 
+export const IconExternal = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14 4h6v6" />
+    <path d="M20 4 11 13" />
+    <path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4" />
+  </Icon>
+);
+
 /** The magpie mark used in the header. */
 export const Logo = ({ size = 22 }: { size?: number }) => (
   <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">

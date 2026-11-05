@@ -237,3 +237,12 @@ describe('downloadPattern', () => {
     expect(match('Reddit/pics/2026-10-28 me · Title [abc]', true, String.raw`C:\dl\Reddit\pics\2026-10-28 me · Title [abc].json`)).toBe(false);
   });
 });
+
+describe('entry size', () => {
+  it('keeps the size of a saved file, and none for a post', () => {
+    const c = { url: 'https://a.example/v.m3u8', pageUrl: 'https://a.example/', pageTitle: 'T', kind: 'hls' as const };
+    expect(makeEntry({ id: 'j', filename: 'f.mp4', bytes: 1234.6 }, c).bytes).toBe(1235);
+    expect(makeEntry({ id: 'g', filename: 'dir', bytes: 99 }, { ...c, kind: 'post' }, undefined, 3).bytes).toBeUndefined();
+    expect(normalizeArchive([{ id: 'a', at: 1, bytes: 5 }, { id: 'b', at: 2, bytes: -1 }]).map((e) => e.bytes)).toEqual([undefined, 5]);
+  });
+});

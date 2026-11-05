@@ -1,10 +1,11 @@
 import type { MediaKind } from '../core/types';
 
+/** "412 MB", "6.5 MB", "1.74 GB": no trailing ".0". */
 export function fmtBytes(n: number): string {
-  if (n < 1024) return `${n} B`;
+  if (n < 1024) return `${Math.round(n)} B`;
   if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
-  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  return `${(n / 1024 ** 3).toFixed(2)} GB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1).replace(/.0$/, '')} MB`;
+  return `${(n / 1024 ** 3).toFixed(2).replace(/.?0+$/, '')} GB`;
 }
 
 export function shortUrl(url: string): string {
@@ -218,10 +219,31 @@ export function hostOf(url: string): string {
 /** "~1.6 GB": what a rendition of `bitsPerSec` comes to over `seconds`, or '' when either is unknown. */
 export function fmtEstimate(bitsPerSec: number | undefined, seconds: number | undefined): string {
   if (!bitsPerSec || !seconds) return '';
-  return `~${fmtBytes(Math.round((bitsPerSec * seconds) / 8))}`;
+  // An estimate keeps two significant figures: "~740 MB", "~1.8 GB".
+  const bytes = (bitsPerSec * seconds) / 8;
+  const [n, unit] = bytes >= 1024 ** 3 ? [bytes / 1024 ** 3, 'GB'] : bytes >= 1024 ** 2 ? [bytes / 1024 ** 2, 'MB'] : [bytes / 1024, 'KB'];
+  return `~${Number(n.toPrecision(2))} ${unit}`;
 }
 
 /** "2160p" from a shorter side in pixels. */
 export function fmtHeight(height: number | undefined): string {
   return height ? `${height}p` : '';
+}
+
+/**
+ * An engine error in words a person can act on. The original stays available
+ * as the detail (a tooltip), since it names the status and the URL.
+ */
+export function friendlyError(message: string): string {
+  if (/\b(401|403)\b/.test(message)) return 'The server refused the download. The link has probably expired: reload the page, then try again.';
+  if (/\b(404|410)\b/.test(message)) return 'The video is gone from the server. Reload the page, then try again.';
+  if (/\b(429|5\d\d)\b/.test(message)) return 'The server is busy or failing. Try again in a moment.';
+  if (/failed to fetch|networkerror|network error|connection/i.test(message)) return 'The connection dropped. Check your connection, then try again.';
+  if (/timed? ?out|timeout/i.test(message)) return 'The server stopped answering. Try again in a moment.';
+  return message;
+}
+
+/** "2160p" from a file name Magpie built, like "Aurora [2160p].mp4"; '' when it names none. */
+export function qualityOfFile(file: string): string {
+  return /\[(\d{3,4}p)\]/.exec(file)?.[1] ?? '';
 }

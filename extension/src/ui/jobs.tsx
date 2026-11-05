@@ -1,9 +1,9 @@
 import { useMemo, useRef, type ReactNode } from 'react';
 import type { Job } from '../core/types';
-import { api } from './api';
-import { fmtBytes, fmtClock, fmtEta, fmtRate, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
+import { api, openPage } from './api';
+import { fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, type RateSample } from './format';
 import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
-import { IconError, IconRedo, IconStop, IconTrash, IconX } from './icons';
+import { IconError, IconExternal, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
  * Smoothed bytes per second for an active job, from the byte counts it reports.
@@ -59,7 +59,11 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
   return (
     <span className="flex min-w-0 shrink-0 items-center gap-1.5">
       <span className="truncate">{fmtRate(rate)}</span>
-      {eta && <span className="shrink-0 font-medium text-text">{`· ${eta}`}</span>}
+      {eta && (
+        <span className="shrink-0">
+          · <span className="font-semibold text-text">{eta}</span>
+        </span>
+      )}
     </span>
   );
 }
@@ -68,7 +72,6 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
   inspecting: { label: 'STARTING', tone: 'shine' },
   muxing: { label: 'FINISHING', tone: 'shine' },
   saving: { label: 'SAVING', tone: 'shine' },
-  error: { label: 'FAILED', tone: 'bad' },
 };
 
 /** The thin bar under a job: accent while it fills, red while recording or after a failure, a sliding segment when the size is unknown. */
@@ -136,15 +139,15 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
             </Button>
           )}
           {failed ? (
-            <IconButton label="Remove" onClick={() => api.removeJob(job.id)}>
+            <IconButton label="Remove" framed onClick={() => api.removeJob(job.id)}>
               <IconX size={17} />
             </IconButton>
           ) : job.live ? (
-            <IconButton label="Discard recording" tone="danger" onClick={() => api.cancel(job.id)}>
+            <IconButton label="Discard recording" tone="danger" framed onClick={() => api.cancel(job.id)}>
               <IconTrash size={16} />
             </IconButton>
           ) : (
-            <IconButton label="Cancel" tone="danger" onClick={() => api.cancel(job.id)}>
+            <IconButton label="Cancel" tone="danger" framed onClick={() => api.cancel(job.id)}>
               <IconX size={17} />
             </IconButton>
           )}
@@ -155,23 +158,27 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       {failed ? (
         <>
           {job.error && (
-            <p className="-mt-0.5 flex gap-2 text-[12px] leading-[1.45] text-[#ffb3c1]" title={job.error}>
+            <p className="-mt-0.5 flex gap-2 text-[12px] leading-[1.45] text-[#c9d2dd]" title={job.error}>
               <IconError size={14} className="mt-0.5 shrink-0 text-live" />
-              <span className="line-clamp-2">{job.error}</span>
+              <span className="line-clamp-2">{friendlyError(job.error)}</span>
             </p>
           )}
-          <StatusLine
-            chip={chip}
-            left={statusText(job, pct)}
-            right={
-              onRetry && (
-                <Button tone="default" onClick={onRetry} title="Open the quality sheet for this video again" className="-mr-0.5">
-                  <IconRedo size={13} />
-                  Try again
-                </Button>
-              )
-            }
-          />
+          <div className="mt-2 flex items-center gap-2">
+            {onRetry ? (
+              <Button tone="default" onClick={onRetry} title="Open the quality sheet for this video again">
+                <IconRedo size={13} />
+                Try again
+              </Button>
+            ) : job.pageUrl ? (
+              <Button tone="default" onClick={() => openPage(job.pageUrl!)} title={`Open ${job.pageUrl} in a new tab`}>
+                <IconExternal size={13} />
+                Open the page
+              </Button>
+            ) : null}
+            <span className="min-w-0 flex-1 truncate text-right text-[11.5px] text-dim tabular-nums" data-testid="job-status">
+              {statusText(job, pct)}
+            </span>
+          </div>
         </>
       ) : (
         <StatusLine chip={chip} left={statusText(job, pct)} right={<SpeedText job={job} rate={rate} />} />
@@ -218,7 +225,7 @@ export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
         </>
       }
       action={
-        <IconButton label="Cancel" tone="danger" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
+        <IconButton label="Cancel" tone="danger" framed onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
           <IconX size={17} />
         </IconButton>
       }

@@ -25,15 +25,21 @@
   --font-sans: 'Segoe UI Variable Text', 'Segoe UI', ui-sans-serif, system-ui, -apple-system, 'Inter', Roboto, sans-serif;
 }
 
+/* The root stays at 16px so Tailwind's spacing scale is a true 4px grid; body text is 13px. */
+html {
+  font-size: 16px;
+}
 html,
 body {
   background: var(--color-ink);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 13px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'ss01', 'cv11';
+}
+body {
+  font-size: 13px;
 }
 
 /* One focus ring everywhere: 2px accent, offset, only for the keyboard. */

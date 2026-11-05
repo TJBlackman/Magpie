@@ -152,6 +152,8 @@ export interface Job {
   title: string;
   filename: string;
   url: string;
+  /** The page the media played on, so a failed job can send the user back to it. */
+  pageUrl?: string;
   kind: MediaKind;
   variantLabel: string;
   state: JobState;

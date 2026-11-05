@@ -57,7 +57,7 @@ export function Button({
 }
 
 /** A square button holding one icon. `label` is what screen readers, tooltips and tests see. */
-export function IconButton({ label, onClick, children, active, tone = 'default', className = '' }: { label: string; onClick?: () => void; children: ReactNode; active?: boolean; tone?: 'default' | 'live' | 'danger'; className?: string }) {
+export function IconButton({ label, onClick, children, active, tone = 'default', framed, className = '' }: { label: string; onClick?: () => void; children: ReactNode; active?: boolean; tone?: 'default' | 'live' | 'danger'; framed?: boolean; className?: string }) {
   const color =
     tone === 'live'
       ? 'text-live hover:bg-live/10'
@@ -67,7 +67,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
           ? 'bg-shine/10 text-shine'
           : 'text-mute hover:bg-white/[0.07] hover:text-text active:bg-white/[0.04]';
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${color} ${className}`}>
+    <button type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'bg-white/[0.03] ring-1 ring-white/[0.08] ring-inset' : ''} ${color} ${className}`}>
       {children}
     </button>
   );
@@ -97,7 +97,7 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
   return (
     <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-45 grayscale' : ''}`} />
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-50 saturate-[.3]' : ''}`} />
       ) : (
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
@@ -143,7 +143,7 @@ export function MediaRow({
     <>
       {tile}
       <div className="min-w-0 flex-1">
-        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute grayscale' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
+        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text group-hover:text-white'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
         <div className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>
@@ -151,7 +151,7 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-panel2' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-edge bg-panel transition-colors duration-150 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2' : ''}`}>
       {onOpen ? (
         <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-3 rounded-xl p-2 pr-2.5 text-left focus-visible:outline-offset-[3px]">
           {body}
@@ -176,20 +176,20 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="-mr-2 flex shrink-0 items-center gap-0.5 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[11.5px]">{children}</div>}
+      {children && <div className="-mr-2 flex shrink-0 items-center gap-0.5 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[12px]">{children}</div>}
     </div>
   );
 }
 
 /** The one empty state: centered in what is left of the panel, an icon in a soft disc, a title, a line, an optional action. */
-export function Empty({ icon, title, children, action, above }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; above?: ReactNode }) {
+export function Empty({ icon, title, children, action, below }: { icon: ReactNode; title: string; children?: ReactNode; action?: ReactNode; below?: ReactNode }) {
   return (
-    <div className="rise-in my-auto flex flex-col items-center px-6 py-8 text-center">
-      {above}
-      <div className="mb-3.5 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-b from-panel3 to-panel text-mute shadow-[inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge2 ring-inset">{icon}</div>
-      <div className="text-[14px] font-semibold text-text">{title}</div>
-      {children && <p className="mt-1 max-w-[270px] text-[12.5px] leading-relaxed text-mute">{children}</p>}
-      {action && <div className="mt-4">{action}</div>}
+    <div className="rise-in flex flex-col items-center px-6 pt-[18%] pb-8 text-center">
+      <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,.07),rgba(255,255,255,.02))] text-mute">{icon}</div>
+      <div className="text-[14.5px] font-semibold text-text">{title}</div>
+      {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-mute">{children}</p>}
+      {action && <div className="mt-5">{action}</div>}
+      {below && <div className="mt-5">{below}</div>}
     </div>
   );
 }

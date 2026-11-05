@@ -6,7 +6,7 @@ import { CandidateCard, QualitySheet, type CardJob } from '../../src/ui/candidat
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel } from '../../src/ui/settings';
-import { IconDownload, IconPlay, IconSearch, IconSettings, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconDownload, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -46,9 +46,9 @@ function Pill({ n, tone = 'default', label }: { n: number; tone?: 'default' | 'l
   );
 }
 
-function Panel({ shown, children }: { shown: boolean; children: ReactNode }) {
+function Panel({ shown, children, roomy }: { shown: boolean; children: ReactNode; roomy?: boolean }) {
   return (
-    <div hidden={!shown} className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4 scroll-thin">
+    <div hidden={!shown} className={`min-h-0 flex-1 overflow-y-auto px-3.5 scroll-thin ${roomy ? 'pb-16' : 'pb-4'}`}>
       <div className="flex min-h-full flex-col">{children}</div>
     </div>
   );
@@ -72,7 +72,7 @@ function cardJobs(active: Job[]): Map<string, CardJob> {
       const saved = Math.max(0, ...list.map((j) => j.group?.saved ?? 0));
       pct = (saved + list.reduce((n, j) => n + (jobProgress(j) ?? 0), 0)) / first.group.total;
     } else pct = jobProgress(first);
-    out.set(key, { id: first.id, queued, pct });
+    out.set(key, { id: first.id, queued, pct, elapsed: first.live ? first.duration : undefined });
   }
   return out;
 }
@@ -243,7 +243,7 @@ export function Popup() {
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
 
-      <Panel shown={view === 'page'}>
+      <Panel shown={view === 'page'} roomy={!!toast}>
         {candidates.length > 0 && (
           <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
@@ -256,16 +256,16 @@ export function Popup() {
         )}
         {shown.length === 0 ? (
           downloaded ? (
-            <Empty icon={<IconDownload size={22} />} title="Everything here is already downloaded" action={<Button onClick={toggleDownloaded}>Show downloaded</Button>}>
+            <Empty icon={<IconCheck size={24} />} title="Everything here is already downloaded" action={<Button size="md" onClick={toggleDownloaded}>Show downloaded</Button>}>
               Show downloaded media to get it again.
             </Empty>
           ) : (
             <Empty
-              icon={<IconPlay size={20} />}
+              icon={<IconVideo size={24} />}
               title="Nothing detected yet"
-              above={
+              below={
                 scope && (
-                  <div className="mb-5 flex items-center gap-2 rounded-full bg-white/[0.04] py-1 pr-3 pl-2.5 text-[11.5px] text-mute ring-1 ring-edge ring-inset">
+                  <div className="flex items-center gap-2 text-[11.5px] text-dim">
                     <span className="relative flex size-2">
                       <span className="ping absolute inline-flex size-full rounded-full bg-shine/70" />
                       <span className="relative inline-flex size-2 rounded-full bg-shine" />
@@ -281,9 +281,9 @@ export function Popup() {
         ) : (
           <div className="flex flex-col gap-2">
             {groups.map((g) => (
-              <div key={g.key} className="flex flex-col gap-2">
+              <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
-                  <div className="mt-1.5 flex items-center gap-2 px-0.5 text-[11.5px] first:mt-0" title={g.page}>
+                  <div className="mt-3 mb-0.5 flex items-center gap-2 px-0.5 text-[11.5px]" title={g.page}>
                     <span className="flex size-4 shrink-0 items-center justify-center rounded bg-panel3 text-[9px] font-bold text-mute uppercase ring-1 ring-edge2 ring-inset">{hostOf(g.page).slice(0, 1)}</span>
                     <span className="min-w-0 flex-1 truncate">
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
@@ -303,7 +303,7 @@ export function Popup() {
 
       <Panel shown={view === 'jobs'}>
         {active.length === 0 && failed.length === 0 ? (
-          <Empty icon={<IconDownload size={22} />} title="Nothing downloading" action={<Button onClick={() => setView('page')}>Go to This page</Button>}>
+          <Empty icon={<IconDownload size={24} />} title="Nothing downloading" action={<Button size="md" onClick={() => setView('page')}>Go to This page</Button>}>
             Pick a video on This page and its progress shows up here.
           </Empty>
         ) : (
@@ -362,7 +362,7 @@ export function Popup() {
       <Panel shown={view === 'history'}>
         {archive.length > 0 && (
           <>
-            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset transition-shadow focus-within:ring-shine/60">
+            <div className="mt-1.5 flex h-9 shrink-0 items-center gap-2 rounded-[10px] bg-panel px-3 text-dim ring-1 ring-edge ring-inset transition-shadow focus-within:ring-2 focus-within:ring-shine">
               <IconSearch size={15} />
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search history" aria-label={`Search ${archive.length} downloads`} className="min-w-0 flex-1 bg-transparent text-[12.5px] text-text outline-none placeholder:text-dim [&::-webkit-search-cancel-button]:hidden" />
               {query && (
@@ -385,6 +385,7 @@ export function Popup() {
 
       {sheet && (
         <QualitySheet
+          onMissing={onMissing}
           key={sheet.id}
           candidate={sheet}
           thumbs={thumbs}

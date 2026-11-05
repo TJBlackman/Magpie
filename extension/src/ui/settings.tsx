@@ -44,7 +44,7 @@ function Switch({ id, testId, checked, onChange }: { id: string; testId: string;
   return (
     <span className="relative inline-flex shrink-0">
       <input id={id} data-testid={testId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-      <span className="block h-6 w-10 rounded-full bg-[#2c3a4b] ring-1 ring-[#3d4d61] ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-shine" />
+      <span className="block h-6 w-10 rounded-full bg-[#334152] ring-1 ring-[#5f6e80] ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-shine" />
       <span className="pointer-events-none absolute top-1 left-1 size-4 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-4" />
     </span>
   );
@@ -121,7 +121,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
               How many run at once. The rest wait in line, in the order you clicked. Live recordings don't count. 2 or 3 fill a fast connection.
             </Row>
             <Row label="Show thumbnails" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
-              A frame of each video on its row. Costs one small segment per stream, fetched only while this popup is open.
+              A frame, the length and the best quality on each row, and a lock on copy protected video. Reads one small piece of each video, only while this popup is open.
             </Row>
           </Group>
           <Group title="History">

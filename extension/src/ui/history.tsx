@@ -1,7 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
-import { fmtClock, fmtDateTime, fmtDay, isWebUrl, kindOfUrl, shortUrl } from './format';
+import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
 import { Empty, IconButton, MediaRow, MediaTile } from './components';
 import { IconFolder, IconHistory, IconSearch, IconX } from './icons';
 
@@ -30,6 +30,8 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
   const kind = entry.kind ?? kindOfUrl(entry.src);
   const title = entry.title || entry.file;
   const folder = !!entry.files;
+  // "2160p · 1.4 GB": the quality from the file name Magpie gave it, and the size it saved.
+  const facts = [qualityOfFile(entry.file), entry.bytes ? fmtBytes(entry.bytes) : ''].filter(Boolean).join(' · ');
   return (
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
@@ -42,6 +44,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           <span className="shrink-0" title={`Saved ${fmtDateTime(entry.at)}`}>
             {fmtDay(entry.at)}
           </span>
+          {facts && <span className="shrink-0 font-medium text-text/90 tabular-nums">{`· ${facts}`}</span>}
           {page && <span className="shrink-0 text-dim">·</span>}
           {page && isWebUrl(page) ? (
             <a
@@ -55,25 +58,25 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
                 openPage(page);
               }}
             >
-              {shortUrl(page)}
+              {hostOf(page)}
             </a>
           ) : page ? (
             <span className="min-w-0 truncate text-dim" title={page}>
-              {shortUrl(page)}
+              {hostOf(page)}
             </span>
           ) : null}
         </>
       }
       action={
         <>
-          <IconButton label={folder ? 'Show the folder' : 'Show in folder'} onClick={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}>
-            <IconFolder size={16} />
-          </IconButton>
           <span className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             <IconButton label="Remove from history. The video shows as new again." onClick={() => void api.removeArchive(entry.id)}>
               <IconX size={16} />
             </IconButton>
           </span>
+          <IconButton label={folder ? 'Show the folder' : 'Show in folder'} framed onClick={() => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing())}>
+            <IconFolder size={16} />
+          </IconButton>
         </>
       }
     />

@@ -3,7 +3,7 @@ import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { describeVariant, fmtAgo, fmtBytes, fmtClock, fmtDateTime, fmtEstimate, fmtHeight, hostOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, KindBadge, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconClock, IconDownload, IconImages, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconClock, IconDownload, IconFolder, IconLock, IconRadio, IconX } from './icons';
 
 /** "yesterday at 9:19 PM as Harbor at Dusk.mp4": when media in history was saved, and under what name. */
 function savedAs(a: Archived): string {
@@ -25,23 +25,15 @@ function postLabel(candidate: Candidate): string {
  * best quality and the host; before that, the host and the file name, since
  * streams on one page often share a title.
  */
-function Source({ candidate }: { candidate: Candidate }) {
-  const [host, file] = sourceLabel(candidate.url).split(' · ');
+function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }) {
+  const file = sourceLabel(candidate.url).split(' · ')[1];
   const lead = fmtHeight(candidate.info?.height) || (candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
-  const known = !!lead || !!candidate.info?.duration;
+  // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
+  const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   return (
-    <span className="min-w-0 flex-1 truncate" title={candidate.url}>
-      {known ? (
-        <>
-          {lead && <span className="font-medium text-text/90 tabular-nums">{lead}</span>}
-          <span className="text-dim">{`${lead ? ' · ' : ''}${hostOf(candidate.url)}`}</span>
-        </>
-      ) : (
-        <>
-          {host}
-          {file && <span className="text-dim">{` · ${file}`}</span>}
-        </>
-      )}
+    <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
+      {lead && <span className="font-medium text-text/90 tabular-nums">{lead}</span>}
+      {`${lead ? ' · ' : ''}${hostOf(candidate.url)}${showFile ? ` · ${file}` : ''}`}
     </span>
   );
 }
@@ -52,10 +44,12 @@ export interface CardJob {
   queued: boolean;
   /** 0..1, or null when the size is unknown (a live recording). */
   pct: number | null;
+  /** Seconds recorded so far, for a live recording. */
+  elapsed?: number;
 }
 
 /** The tags of a card: status only (live, queued, downloading, saved, protected). The format lives in the sheet. */
-function StatusTags({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
+function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: CardJob; inSheet?: boolean }) {
   return (
     <>
       {job && !candidate.archived && (
@@ -63,7 +57,7 @@ function StatusTags({ candidate, job }: { candidate: Candidate; job?: CardJob })
           {candidate.live && !job.queued ? (
             <Badge tone="bad">
               <span className="pulse size-1.5 rounded-full bg-live" />
-              REC
+              REC <span className="font-medium tracking-normal tabular-nums">{fmtClock(job.elapsed ?? 0)}</span>
             </Badge>
           ) : (
             <Badge tone="shine">{job.queued ? 'QUEUED' : job.pct === null ? 'DOWNLOADING' : `${Math.floor(job.pct * 100)}%`}</Badge>
@@ -83,7 +77,7 @@ function StatusTags({ candidate, job }: { candidate: Candidate; job?: CardJob })
           </Badge>
         </span>
       )}
-      {candidate.archived && (
+      {candidate.archived && !inSheet && (
         <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
           <Badge tone="saved">
             <IconCheck size={11} className="-ml-px" />
@@ -104,7 +98,7 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
           {postLabel(candidate)}
         </span>
       ) : (
-        <Source candidate={candidate} />
+        <Source candidate={candidate} tagged={!!job || !!candidate.live || !!candidate.archived || !!candidate.info?.drm} />
       )}
     </>
   );
@@ -119,7 +113,16 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
           <IconClock size={17} />
         </span>
       );
-    return <ProgressRing pct={job.pct} live={candidate.live} />;
+    if (candidate.live)
+      return (
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-live/[0.12] ring-1 ring-live/25 ring-inset" aria-hidden="true">
+          <span className="relative flex size-2.5">
+            <span className="ping absolute inline-flex size-full rounded-full bg-live/70" />
+            <span className="relative inline-flex size-2.5 rounded-full bg-live" />
+          </span>
+        </span>
+      );
+    return <ProgressRing pct={job.pct} />;
   }
   const blocked = candidate.info?.drm && !candidate.archived;
   const cls = blocked
@@ -128,7 +131,7 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       ? 'bg-white/[0.05] text-mute ring-white/[0.08] group-hover:bg-white/[0.09] group-hover:text-text'
       : candidate.live
         ? 'bg-live/[0.12] text-live ring-live/25 group-hover:bg-live/[0.22]'
-        : 'bg-shine/[0.1] text-shine ring-shine/25 group-hover:bg-shine/[0.2] group-hover:ring-shine/40';
+        : 'bg-shine/[0.1] text-shine ring-shine/25 group-hover:bg-shine/[0.22] group-hover:text-[#7ff0ff] group-hover:ring-shine/50';
   return (
     <span className={`flex size-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition-colors duration-150 ${cls}`} aria-hidden="true">
       {blocked ? <IconLock size={16} /> : candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
@@ -188,7 +191,14 @@ function shortName(v: Variant): string {
 function VariantRow({ variant, on, single, duration, showAudio, onPick }: { variant: Variant; on: boolean; single: boolean; duration?: number; showAudio: boolean; onPick: () => void }) {
   const d = describeVariant(variant);
   const size = fmtEstimate(variant.bandwidth, duration);
-  const shell = single ? 'border-transparent bg-white/[0.035] cursor-default' : on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge bg-ink/40 hover:border-edge3 hover:bg-panel2';
+  if (single)
+    return (
+      <button type="button" data-testid="variant" aria-pressed={on} onClick={onPick} title={variant.uri} className="flex w-full cursor-default items-baseline gap-2 px-1 py-0.5 text-left text-[12px] text-mute">
+        <span className="font-semibold text-text">{d.name}</span>
+        <span className="min-w-0 flex-1 truncate tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : '', size].filter(Boolean).join(' · ')}</span>
+      </button>
+    );
+  const shell = on ? 'border-shine/70 bg-shine/[0.07] shadow-[inset_0_0_0_1px_rgba(34,211,238,.25)]' : 'border-edge bg-ink/40 hover:border-edge3 hover:bg-panel2';
   return (
     <button type="button" data-testid="variant" aria-pressed={on} onClick={onPick} title={variant.uri} className={`flex w-full items-center gap-3 rounded-[10px] border px-3 py-2 text-left transition-colors ${shell}`}>
       {!single && (
@@ -205,6 +215,22 @@ function VariantRow({ variant, on, single, duration, showAudio, onPick }: { vari
       </span>
       {size && <span className="shrink-0 text-[12px] font-medium text-mute tabular-nums">{size}</span>}
     </button>
+  );
+}
+
+/** When this media was downloaded and as what, with a button that shows the file before another copy is saved. */
+function ArchivedNote({ archived, onMissing }: { archived: Archived; onMissing: () => void }) {
+  const ago = fmtAgo(archived.at);
+  const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
+  return (
+    <Callout tone="warn" title={`Downloaded ${when}`} testId="archived-note">
+      <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''}`}</span>
+      <Button tone="default" className="mt-2 -mb-0.5" onClick={() => void api.showFile(archived.file, !!archived.files).then((r) => r.ok && !r.value && onMissing())}>
+        <IconFolder size={14} />
+        Show in folder
+      </Button>
+    </Callout>
   );
 }
 
@@ -230,17 +256,14 @@ function PostFiles({ candidate, variants, thumbs }: { candidate: Candidate; vari
           <MediaTile kind="post" thumb={thumbs ? candidate.thumb : undefined} className="relative h-full w-full shadow-[0_2px_6px_rgba(0,0,0,.4)]" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-semibold">{`${n} ${fileWord(variants, n)}`}</div>
-          <div className="truncate text-[11.5px] text-mute">{n > 1 ? `One folder in ${where}, with post.json` : `Saved to ${where}, with its post.json`}</div>
+          <div className="text-[13px] font-semibold">{n > 1 ? 'Saved together in one folder' : 'Saved as one file'}</div>
+          <div className="truncate text-[11.5px] text-mute">{`${where}, with the post's title, author and date`}</div>
         </div>
-        <span className="text-dim">
-          <IconImages size={18} />
-        </span>
       </div>
       <details className="group/files rounded-[10px] px-1 text-[12px] text-mute">
         <summary className="flex h-7 cursor-pointer list-none items-center gap-1.5 rounded-md px-1.5 font-medium hover:text-text [&::-webkit-details-marker]:hidden">
           <span className="transition-transform group-open/files:rotate-90">›</span>
-          {`Show the ${n} ${fileWord(variants, n)}`}
+          {`See the ${n} ${fileWord(variants, n)}`}
         </summary>
         <ol className="mt-1 flex flex-col gap-px pb-1" data-testid="post-files">
           {variants.map((v, i) => (
@@ -260,7 +283,7 @@ function PostFiles({ candidate, variants, thumbs }: { candidate: Candidate; vari
  * Slides up over the list: inspects the candidate, lists its renditions, and
  * starts the download of the chosen one.
  */
-export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candidate: Candidate; thumbs: boolean; onClose: () => void; onStarted: () => void }) {
+export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing }: { candidate: Candidate; thumbs: boolean; onClose: () => void; onStarted: () => void; onMissing: () => void }) {
   const [inspection, setInspection] = useState<Inspection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
@@ -321,9 +344,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
             <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold">{title}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <KindBadge kind={candidate.kind} />
-              <StatusTags candidate={candidate} />
-              <span className="min-w-0 flex-1 truncate" title={candidate.url}>
-                {post ? postLabel(candidate) : sourceLabel(candidate.url)}
+              <StatusTags candidate={candidate} inSheet />
+              <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
+                {post ? postLabel(candidate) : hostOf(candidate.url)}
               </span>
             </div>
           </div>
@@ -344,11 +367,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
               <div className="mt-1 text-center text-[12px] text-mute">{post ? 'Reading the post...' : 'Reading the playlist...'}</div>
             </div>
           )}
-          {candidate.archived && (
-            <Callout tone="warn" title="Already downloaded" testId="archived-note">
-              {`Saved ${savedAs(candidate.archived)}. Check your downloads folder before saving another copy.`}
-            </Callout>
-          )}
+          {candidate.archived && <ArchivedNote archived={candidate.archived} onMissing={onMissing} />}
           {inspection?.notes.map((n) => (
             <Callout key={n} tone={/fail|cannot|can't|DRM|not hosted|nothing to save/i.test(n) ? 'warn' : 'info'}>
               {n}
@@ -372,11 +391,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted }: { candid
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}
-        {error && (
-          <Button size="lg" onClick={onClose} className="mt-3 w-full">
-            Close
-          </Button>
-        )}
+
       </div>
     </>
   );

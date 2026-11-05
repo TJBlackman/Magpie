@@ -184,7 +184,8 @@ function seedJobs(): Job[] {
       segmentsTotal: 300,
       segmentsDone: 118,
       bytes: 214 * MB,
-      error: 'Server returned 403 for segment 119. The link probably expired. Reload the page and try again.',
+      error: 'HTTP 403 for https://cdn.wildframe.tv/v/monarch-migration/1080p/seg-119.ts',
+      pageUrl: 'https://wildframe.tv/watch/monarch-migration',
       startedAt: now - 900_000,
       finishedAt: now - 870_000,
     }),
@@ -201,7 +202,8 @@ function seedJobs(): Job[] {
 }
 
 function entry(id: string, title: string, file: string, page: string, src: string, at: number, secs: number): ArchiveEntry {
-  return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title) };
+  const p = Number(/[(d+)p]/.exec(file)?.[1] ?? 1080);
+  return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title), bytes: Math.round(secs * (p >= 2160 ? 1_900_000 : p >= 1080 ? 750_000 : 400_000)) };
 }
 
 function seedArchive(): ArchiveEntry[] {
@@ -314,7 +316,7 @@ async function inspect(c: Candidate): Promise<Result<Inspection>> {
   const cached = state.inspections.get(c.id);
   if (cached) return ok(cached);
   await delay(550);
-  if (c.id === 'c13') return err('This stream uses DRM (the MPD marks its video or its audio protected), which Magpie does not download.');
+  if (c.id === 'c13') return err('This video is copy protected (DRM), and Magpie does not save protected streams.');
   const notes: string[] = [];
   if (c.live) notes.push(LIVE_NOTE);
   if (c.id === 'c5') notes.push('Audio: English (default). Other languages are not selectable yet.');
@@ -427,7 +429,7 @@ function finish(j: Job) {
       emitArchive();
     } else if (size > 0) {
       const total = j.live ? j.duration : j.segmentsTotal ? j.segmentsTotal * 6 : 418;
-      state.archive.unshift({ id: j.id, title: j.title, file: j.filename, page: c?.pageUrl ?? '', src: c?.url ?? j.url, at: Date.now(), kind: j.kind, secs: total, thumb: j.thumb });
+      state.archive.unshift({ id: j.id, title: j.title, file: j.filename, page: c?.pageUrl ?? '', src: c?.url ?? j.url, at: Date.now(), kind: j.kind, secs: total, thumb: j.thumb, bytes: Math.round(j.bytes) });
       state.archive = state.archive.slice(0, size);
       emitArchive();
     }

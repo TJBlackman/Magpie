@@ -38,6 +38,8 @@ export interface ArchiveEntry {
   files?: number;
   /** Length in seconds, when known. */
   secs?: number;
+  /** Size of the saved file in bytes, when known. Missing on entries from before 0.8 and on posts. */
+  bytes?: number;
   /** Downloaded in a private window. Kept out of storage.local unless the user allows it. */
   priv?: true;
   /** The frame captured for the stream, a JPEG data URL of a few kilobytes. */
@@ -192,7 +194,7 @@ export function isArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []):
 
 /** The entry for a finished job. */
 export function makeEntry(
-  job: { id: string; filename: string; finishedAt?: number },
+  job: { id: string; filename: string; finishedAt?: number; bytes?: number },
   candidate: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito' | 'kind' | 'thumb'>,
   secs?: number,
   files?: number,
@@ -210,6 +212,7 @@ export function makeEntry(
   };
   if (secs !== undefined && Number.isFinite(secs) && secs > 0) entry.secs = Math.round(secs * 10) / 10;
   if (files !== undefined && files > 1) entry.files = files;
+  if (job.bytes !== undefined && Number.isFinite(job.bytes) && job.bytes > 0 && !files) entry.bytes = Math.round(job.bytes);
   if (candidate.incognito) entry.priv = true;
   if (candidate.thumb && candidate.thumb.length <= MAX_THUMB) entry.thumb = candidate.thumb;
   return entry;
@@ -237,6 +240,7 @@ export function normalizeArchive(raw: unknown): ArchiveEntry[] {
     };
     if (typeof r.secs === 'number' && Number.isFinite(r.secs) && r.secs > 0) e.secs = r.secs;
     if (typeof r.files === 'number' && Number.isInteger(r.files) && r.files > 1) e.files = r.files;
+    if (typeof r.bytes === 'number' && Number.isFinite(r.bytes) && r.bytes > 0) e.bytes = Math.round(r.bytes);
     if (r.kind === 'hls' || r.kind === 'dash' || r.kind === 'file' || r.kind === 'post') e.kind = r.kind;
     if (typeof r.thumb === 'string' && r.thumb.length <= MAX_THUMB && r.thumb) e.thumb = r.thumb;
     if (r.priv === true) e.priv = true;

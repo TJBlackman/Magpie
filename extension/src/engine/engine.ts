@@ -623,6 +623,7 @@ export class Engine {
       title: candidate.pageTitle || candidate.url,
       filename: candidate.saveAs ?? buildFilename(candidate.pageTitle, candidate.kind, variant.audioOnly ? 'audio' : undefined, candidate.mime, candidate.url, variant.label),
       url: variant.uri,
+      pageUrl: candidate.pageUrl,
       kind: candidate.kind,
       variantLabel: variant.label,
       state: 'queued',

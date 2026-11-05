@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codecNames, describeVariant, fmtAgo, fmtBitrate, fmtEstimate, fmtClock, fmtDate, fmtDay, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
+import { codecNames, describeVariant, friendlyError, fmtAgo, fmtBitrate, fmtEstimate, fmtClock, fmtDate, fmtDay, fmtEta, isWebUrl, jobProgress, nextRate, sourceLabel } from './format';
 import { withPart, withTimestamp } from '../core/filename';
 import { normalizeSettings } from '../core/settings';
 
@@ -143,12 +143,22 @@ describe('quality sheet labels', () => {
     expect(codecNames(undefined)).toBe('');
   });
   it('estimates a size from bitrate and length', () => {
-    expect(fmtEstimate(6_000_000, 600)).toBe('~429.2 MB');
+    expect(fmtEstimate(6_000_000, 600)).toBe('~430 MB');
+    expect(fmtEstimate(15_200_000, 1000)).toBe('~1.8 GB');
     expect(fmtEstimate(6_000_000, undefined)).toBe('');
   });
   it('formats bitrates', () => {
     expect(fmtBitrate(6_000_000)).toBe('6.0 Mbps');
     expect(fmtBitrate(96_000)).toBe('96 kbps');
+  });
+});
+
+describe('friendlyError', () => {
+  it('says what to do for refused, missing and dropped downloads', () => {
+    expect(friendlyError('HTTP 403 for https://cdn.example/seg-119.ts')).toMatch(/^The server refused the download/);
+    expect(friendlyError('Server returned 404 for segment 3')).toMatch(/^The video is gone/);
+    expect(friendlyError('TypeError: Failed to fetch')).toMatch(/^The connection dropped/);
+    expect(friendlyError('No variant to download.')).toBe('No variant to download.');
   });
 });
 
