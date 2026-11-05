@@ -65,15 +65,15 @@ function foundLabel(n: number): string {
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   if (n <= 0 && failed <= 0) return null;
   return (
-    <span className="inline-flex items-center gap-1">
+    <span className="inline-flex items-baseline gap-1">
       {n > 0 && (
-        <span className="pill relative inline-flex h-[18px] min-w-5 shrink-0 items-center justify-center rounded-full bg-[#25282b] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+        <span className="pill relative inline-flex h-5 min-w-[22px] shrink-0 items-center justify-center rounded-full px-1.5 text-[11.5px] leading-5 font-semibold tabular-nums transition-colors">
           {n}
         </span>
       )}
 
       {failed > 0 && (
-        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[10.5px] font-semibold text-live-soft tabular-nums">
+        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-5 shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[11.5px] leading-5 font-semibold text-live-soft tabular-nums">
           <IconError size={11} />
           {failed}
         </span>
@@ -268,10 +268,12 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] [&_.pill]:self-center whitespace-nowrap transition-colors ${view === v ? 'border border-transparent font-semibold text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] [background:linear-gradient(180deg,#14292b,#121e25)_padding-box,linear-gradient(120deg,rgba(31,216,207,.85),rgba(74,163,248,.45)_50%,rgba(139,123,255,.8))_border-box] [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:h-auto [&_.pill]:min-w-0 [&_.pill]:self-baseline [&_.pill]:bg-transparent [&_.pill]:px-0 [&_.pill]:text-[12px] [&_.pill]:font-medium [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] [background:linear-gradient(180deg,#14292b,#121e25)_padding-box,linear-gradient(120deg,rgba(31,216,207,.85),rgba(74,163,248,.75)_50%,rgba(139,123,255,.8))_border-box] [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:bg-transparent [&_.pill]:text-dim'}`}
     >
-      {label}
-      {pill}
+      <span className="inline-flex items-baseline gap-1">
+        {label}
+        {pill}
+      </span>
     </button>
   );
 
@@ -376,7 +378,7 @@ export function Popup() {
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
                     </span>
-                    <span className="shrink-0 pl-0.5 text-[12px] font-medium text-dim tabular-nums">{g.list.length}</span>
+                    <span className="shrink-0 text-[12px] text-dim tabular-nums">{`· ${g.list.length}`}</span>
                   </div>
                 )}
                 {listRuns(g.list, gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>

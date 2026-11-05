@@ -336,7 +336,7 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
         </span>
         {!size && (d.detail || (showAudio && d.audio)) && <span className="block truncate text-[11.5px] leading-4 text-mute tabular-nums">{[d.detail, showAudio && d.audio ? `+ ${d.audio}` : ''].filter(Boolean).join(' · ')}</span>}
       </span>
-      {size && <span className="shrink-0 text-[12px] font-medium text-mute tabular-nums">{size}</span>}
+      {size && <span className="shrink-0 text-[12px] text-mute tabular-nums">{size}</span>}
     </button>
   );
 }
@@ -359,9 +359,9 @@ function SavePath({ path }: { path: string }) {
   const parts = path.split('/');
   const name = parts.pop() ?? '';
   return (
-    <span className="line-clamp-2 min-w-0 break-words">
+    <span className="min-w-0 truncate">
       {parts.map((p) => `${p} / `).join('')}
-      <span className="text-fg2">{name}</span>
+      <span className="text-fg2">{midTruncate(name, Math.max(24, 52 - parts.join(' / ').length))}</span>
     </span>
   );
 }

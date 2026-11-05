@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-[linear-gradient(90deg,#1fd8cf,#4aa3f8_60%,#8b7bff)] shadow-[0_0_10px_rgba(56,189,248,.45)]', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-0.5 h-1.5 rounded-full bg-[#4f5359]">
+    <div className="mt-0.5 h-1.5 rounded-full bg-[#3a3e44]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -145,7 +145,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   ) : queued ? (
     <span className="min-w-0 flex-1 truncate">
       <span data-testid="job-status" className="font-semibold text-text">{statusText(job, pct)}</span>
-      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
+      {[rendition, siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url), job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
     <span className="min-w-0 flex-1 truncate" title={job.url}>

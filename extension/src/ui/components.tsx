@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconAlert, IconCheck, IconError, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
+import { IconAlert, IconCheck, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
 
 export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
@@ -48,7 +48,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-btn text-text ring-1 ring-inset ring-ctl-edge hover:bg-btn-hover hover:ring-[#90959b] active:bg-btn',
-    shine: 'bg-[linear-gradient(105deg,#52e7d7_0%,#38bdf8_55%,#8b7bff_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.4),0_4px_12px_rgba(0,0,0,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#6cebdd_0%,#36cfe3_55%,#ac94f3_100%)] active:bg-[linear-gradient(105deg,#1fd8cf_0%,#2aaef0_55%,#8e71eb_100%)]',
+    shine: 'bg-[linear-gradient(105deg,#45d3c8_0%,#33b3e6_55%,#7d74f4_100%)] text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.32),0_4px_12px_rgba(0,0,0,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[linear-gradient(105deg,#55e0d5_0%,#43c2f0_55%,#8d85fa_100%)] active:bg-[linear-gradient(105deg,#3cc7bc_0%,#2ba6db_55%,#736ae8_100%)]',
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#83f3e5] ring-1 ring-inset ring-accent-edge hover:bg-[#103a3e]',
@@ -446,6 +446,7 @@ export function UpdateBanner({ version, onGet, onDismiss }: { version: string; o
       </span>
       <Button tone="accent" size="md" onClick={onGet} title="Open magpie.trevorblackman.dev in a new tab">
         Update
+        <IconExternal size={13} />
       </Button>
       <IconButton label="Hide until the next version" onClick={onDismiss}>
         <IconX size={15} />
