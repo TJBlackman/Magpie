@@ -48,7 +48,7 @@ function Pill({ n, rec, on }: { n: number; rec?: boolean; on?: boolean }) {
     <span
       aria-label={rec ? `${n}, recording` : undefined}
       title={rec ? 'Recording' : undefined}
-      className={`pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors ${rec ? (on ? 'shadow-[0_0_0_1.5px_var(--color-panel3),0_0_0_3px_var(--color-live)]' : 'shadow-[0_0_0_1.5px_var(--color-panel),0_0_0_3px_var(--color-live)]') : ''}`}
+      className={`pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors ${rec ? (on ? 'mx-[3px] shadow-[0_0_0_1.5px_var(--color-panel3),0_0_0_3px_var(--color-live)]' : 'mx-[3px] shadow-[0_0_0_1.5px_var(--color-panel),0_0_0_3px_var(--color-live)]') : ''}`}
     >
       {n}
     </span>
