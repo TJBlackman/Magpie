@@ -398,7 +398,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <p className="flex gap-2.5 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
+              <p className="flex gap-2 text-[12.5px] leading-relaxed text-[#c9d2dd]" data-testid="inspect-error">
                 <IconLock size={15} className="mt-0.5 shrink-0 text-mute" />
                 {error}
               </p>

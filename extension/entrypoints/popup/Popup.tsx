@@ -42,13 +42,13 @@ async function resolveScope(): Promise<Scope> {
 }
 
 /** A tab's count. While something records, the count wears the live colour and a ring, and says so. */
-function Pill({ n, rec, on }: { n: number; rec?: boolean; on?: boolean }) {
+function Pill({ n, rec, on, margin }: { n: number; rec?: boolean; on?: boolean; margin?: boolean }) {
   if (!n) return null;
   return (
     <span
       aria-label={rec ? `${n}, recording` : undefined}
       title={rec ? 'Recording' : undefined}
-      className={`pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors ${rec ? (on ? 'mx-[3px] shadow-[0_0_0_1.5px_var(--color-panel3),0_0_0_3px_var(--color-live)]' : 'mx-[3px] shadow-[0_0_0_1.5px_var(--color-panel),0_0_0_3px_var(--color-live)]') : ''}`}
+      className={`pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors ${margin ? 'mx-[3px]' : ''} ${rec ? (on ? 'shadow-[0_0_0_1.5px_var(--color-panel3),0_0_0_2.5px_var(--color-live)]' : 'shadow-[0_0_0_1.5px_var(--color-panel),0_0_0_2.5px_var(--color-live)]') : ''}`}
     >
       {n}
     </span>
@@ -263,7 +263,7 @@ export function Popup() {
           'jobs',
           'Downloads',
           <>
-            <Pill n={active.length} rec={recording} on={view === 'jobs'} />
+            <Pill n={active.length} rec={recording} on={view === 'jobs'} margin />
             {failed.length > 0 && (
               <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-semibold text-[#ff9fb1] tabular-nums" role="img" aria-label={`${failed.length} failed`} title={`${failed.length} failed`}>
                 <IconError size={13} />
