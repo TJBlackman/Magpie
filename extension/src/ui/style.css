@@ -1,5 +1,15 @@
 @import 'tailwindcss';
 
+/* Bricolage Grotesque (SIL Open Font License), Latin, weight axis: the display face. */
+@font-face {
+  font-family: 'Bricolage Grotesque Variable';
+  font-style: normal;
+  font-display: block;
+  font-weight: 200 800;
+  src: url('../../node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* Inter (SIL Open Font License), Latin subset with weight and optical size axes. Other scripts fall back to the system face. */
 @font-face {
   font-family: 'Inter Variable';
@@ -33,7 +43,7 @@
   /* Already downloaded: a caution, the only yellow in the popup. */
   --color-saved: #f2cc60;
   /* Errors use the same red, by its own name. A filled red button carries dark text at 6.3:1. */
-  --color-err: #f87171;
+  --color-err: #f2555a;
   /* The one neutral button surface and its edge. The edge is 3.2:1 on the surface, so every control's bounds pass WCAG 1.4.11. */
   --color-btn: #282b2e;
   --color-btn-edge: #6e7279;
@@ -247,8 +257,8 @@ body {
 @layer components {
 /* Titles that lead a view use the display cut of the system face. */
 .font-display {
-  font-family: 'Inter Variable', 'Segoe UI Variable Display', 'Segoe UI', -apple-system, 'SF Pro Display', system-ui, sans-serif;
-  letter-spacing: -0.01em;
+  font-family: 'Bricolage Grotesque Variable', 'Inter Variable', 'Segoe UI Variable Display', 'Segoe UI', -apple-system, system-ui, sans-serif;
+  letter-spacing: -0.015em;
 }
 
 /* A raised card: a soft vertical light, a hairline of top light, a shadow under it. */

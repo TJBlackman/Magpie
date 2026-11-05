@@ -47,7 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        className={open ? 'size-8 !rounded-full' : 'size-8 !rounded-full !text-mute group-hover:!text-fg2 hover:!bg-white/[0.08]'}
+        className={open ? 'size-8 !rounded-full !bg-white/[0.1] !text-text !ring-0' : 'size-8 !rounded-full !text-mute group-hover:!text-fg2 hover:!bg-white/[0.08]'}
         ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
@@ -70,7 +70,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
                 setOpen(false);
                 it.run();
               }}
-              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#fca5a5]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
+              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#ff8b8b]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-edge2' : ''}`}
             >
               <span className={it.danger ? 'text-err' : 'text-mute'}>{it.icon}</span>
               {it.label}

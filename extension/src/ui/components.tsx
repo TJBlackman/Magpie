@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconAlert, IconCheck, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconRadio, IconUpdate, IconX } from './icons';
+import { IconAlert, IconCheck, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconLock, IconRadio, IconUpdate, IconX } from './icons';
 
 export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
@@ -53,7 +53,7 @@ export function Button({
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33]',
     stop: 'bg-[#2c2f33] text-text hover:bg-[#363a3f] active:bg-[#2c2f33] [&>svg]:text-live',
-    destroy: 'bg-[#dc3545] text-white font-semibold hover:bg-[#e5484d] active:bg-[#c92c3b]',
+    destroy: 'bg-[#e5484d] text-white font-semibold hover:bg-[#ec5d5e] active:bg-[#d13c41]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
   const sz = { sm: 'h-7 px-2.5 text-[12px]', md: 'h-8 px-3 text-[12.5px]', lg: 'h-10 px-4 text-[13.5px]' }[size];
@@ -103,14 +103,14 @@ export function LiveBadge() {
  * captured, else an icon on a quiet gradient. Live streams pulse either way.
  * `corner` is drawn over the bottom right, like a length on a video player.
  */
-export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
+export function MediaTile({ kind, live, locked, thumb, muted, corner, className = 'h-10 w-[71px]' }: { kind: MediaKind; live?: boolean; locked?: boolean; thumb?: string; muted?: boolean; corner?: ReactNode; className?: string }) {
   return (
     <div className={`relative ${className} shrink-0`}>
       <div className={`relative size-full overflow-hidden rounded-lg shadow-[0_2px_6px_rgba(0,0,0,.4)] bg-gradient-to-br from-panel3 to-panel2 ${live && !thumb ? 'text-live' : 'text-dim'}`}>
         {thumb ? (
           <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.8] saturate-[.8]' : ''}`} />
         ) : (
-          <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
+          <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{locked ? <IconLock size={17} /> : live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
         )}
         {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
         {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[3px] px-[3px] text-[10px] leading-[13px] font-medium tabular-nums bg-black/70 text-text`}>{corner}</span>}
@@ -269,7 +269,7 @@ export function RowList({ children, testId }: { children: ReactNode; testId?: st
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
     <div className="mt-5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
-      <h2 className="min-w-0 translate-y-px truncate text-[13px] font-semibold text-fg2">
+      <h2 className="min-w-0 translate-y-px truncate text-[13px] font-medium text-mute">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
@@ -283,7 +283,7 @@ export function Empty({ icon, title, children, action, below }: { icon: ReactNod
   return (
     <div className="rise-in flex flex-col items-center px-6 pt-28 pb-8 text-center">
       <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-[#1b1e21] text-[#83f3e5] ring-1 ring-white/[0.06] ring-inset" aria-hidden="true">{icon}</div>
-      <div className="text-[14.5px] font-semibold text-text">{title}</div>
+      <div className="font-display text-[17px] font-semibold text-text">{title}</div>
       {children && <p className="mt-1.5 max-w-[280px] text-[12.5px] leading-relaxed text-balance text-mute">{children}</p>}
       {action && <div className="mt-5">{action}</div>}
       {below && <div className="mt-5">{below}</div>}
@@ -314,7 +314,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : 'text-mute ring-transparent hover:bg-white/[0.06] hover:text-text'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : '-mr-2.5 text-[#83f3e5] ring-transparent hover:bg-shine/10'}`}>
       {children}
     </button>
   );
@@ -358,10 +358,10 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   if (!count) return null;
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
-      <span className="min-w-0 truncate text-[13px] font-semibold text-fg2">
+      <span className="min-w-0 truncate text-[13px] font-medium text-mute">
         Already downloaded <span className="font-medium text-dim tabular-nums">{count}</span>
       </span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-mute transition-colors hover:bg-white/[0.06] hover:text-text">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="-mr-2.5 inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>

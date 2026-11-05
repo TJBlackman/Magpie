@@ -176,8 +176,8 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
   const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
   const look = {
-    lead: `bottom-4 right-4 size-11 ${candidate.live ? 'bg-live text-[#1a0a0f] hover:bg-[#ff7590]' : 'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
-    tile: 'top-2 right-2 size-8 bg-[#0b0c0d]/55 text-white ring-1 ring-white/20 ring-inset backdrop-blur-md hover:bg-[#0b0c0d]/80 hover:ring-white/45 active:bg-[#0b0c0d]/90',
+    lead: `bottom-4 right-4 size-11 ${'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
+    tile: 'top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
     row: 'top-1/2 right-[7px] size-8 -translate-y-1/2 text-mute ring-1 ring-transparent ring-inset group-hover:text-text group-hover:ring-hover-edge hover:!text-shine hover:!ring-shine/80 hover:bg-shine/10',
   }[variant];
   return (
@@ -188,7 +188,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
       onClick={() => onQuick(candidate)}
       className={`quick absolute z-10 flex items-center justify-center rounded-full transition-colors ${look}`}
     >
-      {candidate.live ? <span className={`rounded-full ${variant === 'lead' ? 'size-3 bg-[#1a0a0f]' : 'size-2.5 bg-live'}`} /> : <IconDownload size={variant === 'lead' ? 20 : 16} />}
+      {candidate.live ? <span className={`rounded-full ${variant === 'lead' ? 'size-3 bg-[#e5484d]' : 'size-2.5 bg-live'}`} /> : <IconDownload size={variant === 'lead' ? 20 : 16} />}
     </button>
   );
 }
@@ -196,7 +196,7 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
 /** A running recording's own Stop button on This page: stops it and saves the file. */
 function StopAction({ job }: { job: CardJob }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-2 right-2 z-10 flex size-8 items-center justify-center rounded-full bg-[#0b0c0d]/55 text-live ring-1 ring-white/20 backdrop-blur-md transition-colors ring-inset hover:bg-[#0b0c0d]/80 hover:ring-white/45">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="absolute top-3.5 right-3.5 z-10 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-white/[0.14] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -266,18 +266,21 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   // The first media one click can save leads the page: its frame fills the card, its title sits on it.
   if (hero && leads(candidate, thumbs, job))
     return (
-      <div {...attrs} className="group relative isolate overflow-hidden rounded-[18px] bg-[#1b1e21] shadow-[0_14px_34px_rgba(0,0,0,.5)] ring-1 ring-white/10 outline-offset-2 outline-text ring-inset has-[.row-main:focus-visible]:outline-2">
+      <div {...attrs} className="group relative isolate overflow-hidden rounded-[18px] bg-[#1b1e21] shadow-[0_14px_34px_rgba(0,0,0,.5)] outline-offset-2 outline-text has-[.row-main:focus-visible]:outline-2">
+        <span className="pointer-events-none absolute inset-0 z-[1] rounded-[inherit] ring-1 ring-white/10 ring-inset" />
         <button type="button" onClick={() => onOpen(candidate)} title={openTip} className="row-main relative block h-[200px] w-full text-left focus-visible:outline-none">
-          <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
+          <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_28%,rgba(11,12,13,.5)_56%,rgba(11,12,13,.93)_100%)]" />
-          {(duration || files > 1) && (
-            <span className="absolute top-3 left-3 rounded-md bg-[#0b0c0d]/55 px-1.5 py-0.5 text-[11px] leading-[14px] font-medium text-white tabular-nums backdrop-blur-md">{duration ? fmtClock(duration) : <FileCount n={files} />}</span>
-          )}
           <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
-            <span className="font-display line-clamp-2 block text-[18px] leading-[22px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
+            <span className="font-display line-clamp-2 block text-[20px] leading-[23px] font-semibold text-pretty text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
               {title}
             </span>
-            {meta && <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">{meta}</span>}
+            {meta && (
+              <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">
+                {duration ? <span className="shrink-0 tabular-nums">{`${fmtClock(duration)} ·`}</span> : null}
+                {meta}
+              </span>
+            )}
           </span>
         </button>
         <QuickAction candidate={candidate} onQuick={onQuick} variant="lead" />
@@ -286,8 +289,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
   if (tile) {
     const pct = job && !job.queued && !candidate.live ? job.pct : null;
     return (
-      <div {...attrs} className="group relative min-w-0">
-        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className="row-main block w-full rounded-[12px] text-left outline-offset-2 outline-text focus-visible:outline-2">
+      <div {...attrs} className="group relative -m-1.5 min-w-0 rounded-[16px] p-1.5 transition-colors hover:bg-white/[0.045]">
+        <button type="button" onClick={() => onOpen(candidate, job?.id)} title={openTip} className="row-main block w-full rounded-[12px] text-left outline-offset-[5px] outline-text focus-visible:outline-2">
           <span className="relative block aspect-video w-full overflow-hidden rounded-[12px] bg-[linear-gradient(135deg,#202326,#17191c)]">
             {thumbs && candidate.thumb ? (
               <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition-[transform,filter] duration-500 ease-out group-hover:scale-[1.045] ${candidate.archived ? 'brightness-[.72] saturate-[.75]' : ''}`} />
@@ -307,7 +310,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             )}
           </span>
           <span className="mt-2 block px-0.5">
-            <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
+            <span className={`line-clamp-2 block text-[12.5px] leading-[16px] font-medium text-pretty ${candidate.archived || (candidate.info?.drm && !job) ? 'text-fg2' : 'text-text'}`} data-testid="candidate-title" title={full}>
               {title}
             </span>
             {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</span>}
@@ -424,7 +427,7 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="rounded-[10px] bg-[#181a1c] ring-1 ring-ctl-edge ring-inset transition-colors hover:ring-hover-edge">
+    <div className="rounded-[10px] bg-[#1d1f22] transition-colors hover:bg-[#232629]">
       <details className="group/files text-[12px] text-mute">
         <summary className="flex h-12 cursor-pointer list-none items-center gap-2.5 rounded-[10px] pr-1.5 pl-3.5 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
@@ -528,9 +531,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         className="sheet-in outline-none absolute inset-x-0 bottom-0 z-20 flex max-h-[528px] flex-col rounded-t-[18px] border-t border-white/[0.09] bg-panel px-3.5 pt-3.5 pb-3.5 shadow-[0_-20px_50px_rgba(0,0,0,.6)]"
       >
         <div className="mb-3 flex items-start gap-3">
-          <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
+          <MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="font-display line-clamp-3 text-[16.5px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="font-display line-clamp-3 text-[18px] leading-[22px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
@@ -611,9 +614,9 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </div>
         )}
         {inspection && !error && (!post || files > 0) && !folded && (
-          <Button tone={candidate.archived ? 'default' : candidate.live ? 'live' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
+          <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
             {candidate.live ? (
-              <span className="size-2.5 rounded-full bg-[#1a0a0f]" aria-hidden="true" />
+              <span className="size-2.5 rounded-full bg-[#e5484d] ring-2 ring-[#021716]/25" aria-hidden="true" />
             ) : (
               <IconDownload size={17} />
             )}

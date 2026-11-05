@@ -224,10 +224,15 @@ export function Popup() {
   const lastSaved = useRef<string | undefined>(undefined);
   // Failures stay flagged on the tab until Downloads has been opened once since they happened.
   const [seenFailed, setSeenFailed] = useState<Set<string>>(() => new Set());
-  const unseenFailed = failed.filter((j) => !seenFailed.has(j.id)).length;
+  const initialFailedSeen = useRef(false);
   useEffect(() => {
-    if (view === 'jobs' && failed.some((j) => !seenFailed.has(j.id))) setSeenFailed(new Set(failed.map((j) => j.id)));
-  }, [view, failed, seenFailed]);
+    const fresh = failed.filter((j) => !seenFailed.has(j.id));
+    if (!fresh.length) return;
+    // The first look at the popup takes old failures as known; a failure after that gets a toast.
+    if (seenFailed.size || initialFailedSeen.current) setToast({ text: 'Download failed', detail: fresh[0]!.title || fresh[0]!.filename, view: true });
+    initialFailedSeen.current = true;
+    setSeenFailed(new Set(failed.map((j) => j.id)));
+  }, [failed, seenFailed]);
   useEffect(() => {
     const head = archive[0];
     if (lastSaved.current === undefined) {
@@ -308,7 +313,7 @@ export function Popup() {
           <Logo size={26} />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-[15.5px] font-bold">Magpie</div>
+          <div className="font-display text-[19px] leading-[22px] font-bold">Magpie</div>
           <div className="truncate text-[11.5px] text-mute" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
             {scope && (view !== 'page' ? 'All sites' : scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
@@ -337,7 +342,7 @@ export function Popup() {
         {tab(
           'jobs',
           'Downloads',
-          <Pill n={active.length + failed.length} failed={view === 'jobs' ? 0 : unseenFailed} />,
+          <Pill n={active.length + failed.length} />,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
         )}
         {tab('history', 'History', null)}
@@ -421,7 +426,7 @@ export function Popup() {
             )}
             {scope && !scope.all && (
               <div className="mt-3 flex justify-end">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg px-3 text-[12px] font-medium text-mute transition-colors hover:bg-white/[0.05] hover:text-text">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="-mr-2.5 inline-flex h-8 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
                   Clear detected media
                 </button>
               </div>
@@ -438,22 +443,6 @@ export function Popup() {
         ) : (
           <>
             {active.length === 0 && <p className="mt-3 px-0.5 text-[12px] text-mute">Nothing downloading</p>}
-            {failed.length > 0 && (
-              <>
-                <Section title="Failed" count={failed.length}>
-                  {failed.length > 1 && (
-                    <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                      Clear failed
-                    </TextButton>
-                  )}
-                </Section>
-                <RowList>
-                  {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
-                  ))}
-                </RowList>
-              </>
-            )}
             {recordings.length > 0 && (
               <>
                 <Section title="Recording" count={recordings.length} />
@@ -468,13 +457,29 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="inline-flex h-7 items-center rounded-md px-1.5 text-[12px] text-mute tabular-nums transition-colors hover:bg-white/[0.05] hover:text-text">
+                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change how many download at once" className="-mr-2.5 inline-flex h-8 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] tabular-nums transition-colors hover:bg-shine/10">
                       {`${settings.maxConcurrent} at a time`}
                     </button>
                   )}
                 </Section>
                 <RowList>
                   {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                </RowList>
+              </>
+            )}
+            {failed.length > 0 && (
+              <>
+                <Section title="Failed" count={failed.length}>
+                  {failed.length > 1 && (
+                    <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                      Clear failed
+                    </TextButton>
+                  )}
+                </Section>
+                <RowList>
+                  {failed.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
+                  ))}
                 </RowList>
               </>
             )}

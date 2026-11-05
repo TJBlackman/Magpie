@@ -92,7 +92,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-1 h-1 rounded-full bg-[#2c2f33]">
+    <div className="mt-1 h-1 rounded-full bg-[#383b40]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -178,35 +178,30 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
       }
       action={
         failed ? (
-          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
-            <IconX size={17} />
-          </IconButton>
+          <span className="flex items-center gap-1">
+            {recover && (
+              <button type="button" onClick={recover.run} aria-label={recover.label} title={`${recover.label}: ${recover.hint}`} className="inline-flex size-9 items-center justify-center rounded-full text-[#83f3e5] transition-colors hover:bg-shine/10 [&>svg]:size-[17px]">
+                {recover.icon}
+              </button>
+            )}
+            <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
+              <IconX size={17} />
+            </IconButton>
+          </span>
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" className="size-9" onClick={() => setDiscarding(true)}>
-              <IconX size={17} />
+              <IconTrash size={16} />
             </IconButton>
           )
         ) : (
-          <IconButton label="Cancel" tone="danger" className="size-9" onClick={() => api.cancel(job.id)}>
-            <IconX size={17} />
+          <IconButton label="Cancel the download" tone="danger" className="size-9" onClick={() => api.cancel(job.id)}>
+            <IconStop size={15} />
           </IconButton>
         )
       }
     >
-      {failed ? (
-        recover && (
-        <div className="mt-1 flex items-center gap-3">
-          <p className="min-w-0 flex-1 text-[12px] leading-[17px] text-mute">{recover.hint}</p>
-          {(
-            <Button tone="accent" size="md" onClick={recover.run} title={recover.tip}>
-              {recover.icon}
-              {recover.label}
-            </Button>
-          )}
-        </div>
-        )
-      ) : queued ? null : (
+      {failed ? null : queued ? null : (
         <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
           {discarding ? (
@@ -294,8 +289,8 @@ export function GroupRow({ jobs, thumbs, inset }: { jobs: Job[]; thumbs: boolean
         </>
       }
       action={
-        <IconButton label="Cancel" tone="danger" className="size-9" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
-          <IconX size={17} />
+        <IconButton label="Cancel the download" tone="danger" className="size-9" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
+          <IconStop size={15} />
         </IconButton>
       }
     >
