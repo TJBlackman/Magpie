@@ -361,21 +361,18 @@ function SavePath({ path }: { path: string }) {
   return (
     <span className="min-w-0 truncate">
       {parts.map((p) => `${p} / `).join('')}
-      <span className="text-fg2">{midTruncate(name, Math.max(24, 52 - parts.join(' / ').length))}</span>
+      <span className="text-fg2">{fitName(name, Math.max(26, 54 - parts.join(' / ').length))}</span>
     </span>
   );
 }
 
-/** A long path with its middle cut, so both the top folder and the file's own name show. */
-function midTruncate(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const room = max - 1;
-  // Cut on spaces, so neither side ends in half a word.
-  let head = text.slice(0, Math.ceil(room * 0.6));
-  if (head.includes(' ')) head = head.slice(0, head.lastIndexOf(' '));
-  let tail = text.slice(text.length - (room - head.length));
-  if (tail.includes(' ')) tail = tail.slice(tail.indexOf(' ') + 1);
-  return `${head.trimEnd()} … ${tail.trimStart()}`;
+/** A file name cut to `max` characters inside its title, keeping its stamp, quality and extension whole: "Old Faithful … 2026-11-05 10.52.mp4". */
+function fitName(name: string, max: number): string {
+  if (name.length <= max) return name;
+  const suffix = /(?: \d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*\.\w+$/.exec(name)?.[0] ?? '';
+  let stem = name.slice(0, name.length - suffix.length).slice(0, Math.max(8, max - suffix.length - 2));
+  if (stem.includes(' ')) stem = stem.slice(0, stem.lastIndexOf(' '));
+  return `${stem.replace(/[\s,·:;–—-]+$/, '')} …${suffix.startsWith(' ') ? '' : ' '}${suffix}`;
 }
 
 /** "images" when every file of a post is a picture, else "files". */

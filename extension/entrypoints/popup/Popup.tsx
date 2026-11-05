@@ -19,10 +19,10 @@ type Scope = { all: true; label: string; url?: undefined; tabId?: undefined } | 
 
 const ALL_TABS: Scope = { all: true, label: 'All open tabs' };
 
-/** "3 tabs with media", for the header when the popup lists every tab. */
+/** "9 found in 3 tabs", for the header when the popup lists every tab. */
 function tabsWithMedia(list: Candidate[]): string {
   const n = new Set(list.map((c) => c.tabId)).size;
-  return n ? `${n} ${n === 1 ? 'tab' : 'tabs'} with media` : 'All open tabs';
+  return n ? `${list.length} found in ${n} ${n === 1 ? 'tab' : 'tabs'}` : 'All open tabs';
 }
 
 function scopeFor(tab: { id?: number; title?: string; url?: string } | null | undefined): Scope {
@@ -65,7 +65,7 @@ function foundLabel(n: number): string {
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   if (n <= 0 && failed <= 0) return null;
   return (
-    <span className="inline-flex items-baseline gap-1">
+    <span className="inline-flex h-5 items-center gap-1">
       {n > 0 && (
         <span className="pill relative inline-flex h-5 min-w-[22px] shrink-0 items-center justify-center rounded-full px-1.5 text-[11.5px] leading-5 font-semibold tabular-nums transition-colors">
           {n}
@@ -270,7 +270,7 @@ export function Popup() {
       title={tip}
       className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent text-text shadow-[0_1px_3px_rgba(0,0,0,.45)] [background:linear-gradient(180deg,#14292b,#121e25)_padding-box,linear-gradient(120deg,rgba(31,216,207,.85),rgba(74,163,248,.75)_50%,rgba(139,123,255,.8))_border-box] [--tab-bg:var(--color-sel-fill)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:bg-transparent [&_.pill]:text-dim'}`}
     >
-      <span className="inline-flex items-baseline gap-1">
+      <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
         {pill}
       </span>
@@ -378,7 +378,7 @@ export function Popup() {
                       <span className="font-semibold text-text">{shortUrl(g.page).split('/')[0]}</span>
                       <span className="text-mute">{shortUrl(g.page).slice(shortUrl(g.page).indexOf('/'))}</span>
                     </span>
-                    <span className="shrink-0 text-[12px] text-dim tabular-nums">{`· ${g.list.length}`}</span>
+                    <span className="-ml-1 shrink-0 text-[12px] text-dim tabular-nums">{`· ${g.list.length}`}</span>
                   </div>
                 )}
                 {listRuns(g.list, gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
@@ -401,7 +401,11 @@ export function Popup() {
                 )}
               </div>
             ))}
-            {!showDownloaded && downloaded > 0 && <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />}
+            {!showDownloaded && downloaded > 0 && (
+              <div className="mt-3 mb-0.5">
+                <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
+              </div>
+            )}
             {scope && !scope.all && (
               <div className="mt-1 flex justify-end border-t border-edge pt-2">
                 <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">

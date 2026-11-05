@@ -16,7 +16,7 @@
   --color-dim: #85898e;
   /* Accent and its ink, for text on a solid accent. */
   --color-shine: #1fd8cf;
-  --color-shine-ink: #042b2a;
+  --color-shine-ink: #021716;
   /* The one red: live, recording, failures and destructive actions. `live-soft` is its text on dark surfaces. */
   --color-live: #fb5a78;
   --color-live-soft: #ff9fb1;
@@ -227,10 +227,10 @@ body {
   mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px);
 }
 .fade-bottom {
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 32px), rgb(0 0 0 / 0.08));
 }
 .fade-both {
-  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px, #000 calc(100% - 20px), rgb(0 0 0 / 0.55));
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0) 0, rgb(0 0 0 / 0) 4px, #000 24px, #000 calc(100% - 32px), rgb(0 0 0 / 0.08));
 }
 
 /* Component classes live in a layer, so hover and focus utilities can still change them. */
