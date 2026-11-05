@@ -179,7 +179,7 @@ function seedJobs(): Job[] {
   const list = [
     job('j1', 'Serengeti Wildebeest Migration', 'hls', '1920x1080 · 6000 kbps', 'downloading', { segmentsTotal: 412, segmentsDone: 256, bytes: 598 * MB, startedAt: now - 140_000 }),
     job('j2', 'Glacier Calving, Perito Moreno', 'hls', '3840x2160 · 15200 kbps', 'downloading', { segmentsTotal: 198, segmentsDone: 31, bytes: 240 * MB, startedAt: now - 40_000 }),
-    job('j3', 'Coral Reef Drift, Great Barrier Reef', 'file', 'video/mp4 · 980.0 MB', 'queued', { bytesTotal: 980 * MB, queuePosition: scenario === 'busy' ? 2 : 1, startedAt: now - 20_000 }),
+    job('j3', 'Coral Reef Drift, Great Barrier Reef', 'file', 'video/mp4 · 980.0 MB', 'queued', { height: 1080, bytesTotal: 980 * MB, queuePosition: scenario === 'busy' ? 2 : 1, startedAt: now - 20_000 }),
     job('j4', 'Monarch Butterfly Migration, Michoacan', 'hls', '1920x1080 · 6000 kbps', 'error', {
       segmentsTotal: 300,
       segmentsDone: 118,
@@ -194,9 +194,9 @@ function seedJobs(): Job[] {
     list.splice(
       2,
       0,
-      job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'queued', { segmentsTotal: 65, queuePosition: 1, startedAt: now - 15_000 }),
+      job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'queued', { sizeEstimate: 290 * MB, segmentsTotal: 65, queuePosition: 1, startedAt: now - 15_000 }),
       job('j8', 'Humpback Whales Breaching off Maui', 'hls', '1280x720 · 3100 kbps', 'error', { candidateId: 'c2', segmentsTotal: 102, segmentsDone: 40, bytes: 92 * MB, error: 'HTTP 404 for https://stream.wildframe.tv/v/humpback-maui/seg-41.ts', startedAt: now - 600_000, finishedAt: now - 590_000 }),
-      job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { bytesTotal: 640 * MB, queuePosition: 3, startedAt: now - 10_000 }),
+      job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { height: 2160, bytesTotal: 640 * MB, queuePosition: 3, startedAt: now - 10_000 }),
     );
   }
   return list;

@@ -91,7 +91,7 @@ function highlight(text: string, query: string): ReactNode {
   return (
     <>
       {text.slice(0, at)}
-      <mark className="rounded-[3px] bg-shine/25 px-px text-text">{text.slice(at, at + q.length)}</mark>
+      <mark className="rounded-[3px] bg-[#1d5f6e] px-px font-semibold text-text">{text.slice(at, at + q.length)}</mark>
       {text.slice(at + q.length)}
     </>
   );

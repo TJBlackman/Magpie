@@ -8,8 +8,8 @@ export type Tone = 'default' | 'shine' | 'warn' | 'bad' | 'good' | 'post';
 /** A small all caps tag. Tinted, with a hairline ring in its own color, so every tag reads as one family. */
 export function Badge({ children, tone = 'default', className = '' }: { children: ReactNode; tone?: Tone; className?: string }) {
   const cls = {
-    default: 'bg-white/[0.06] text-fg2 ring-white/[0.08]',
-    shine: 'bg-shine/10 text-[#67e8f9] ring-shine/25',
+    default: 'bg-white/[0.06] text-mute ring-white/[0.08]',
+    shine: 'bg-shine/10 text-[#7ff0ff] ring-shine/25',
     warn: 'bg-amber-400/10 text-amber-200 ring-amber-400/25',
     bad: 'bg-live/[0.13] text-live-soft ring-live/30',
     good: 'bg-emerald-400/10 text-emerald-200 ring-emerald-400/25',
@@ -105,12 +105,12 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
   return (
     <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.8] saturate-[.3]' : ''}`} />
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'brightness-[.6] grayscale' : ''}`} />
       ) : (
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
       {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
-      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[9.5px] leading-[13px] font-semibold tabular-nums ${muted ? 'bg-black/60 text-fg2' : 'bg-black/75 text-text'}`}>{corner}</span>}
+      {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[4px] px-1 py-px text-[9.5px] leading-[13px] font-semibold tabular-nums bg-black/75 text-text`}>{corner}</span>}
     </div>
   );
 }
@@ -159,7 +159,7 @@ export function MediaRow({
     <>
       {tile}
       <div className={`min-w-0 flex-1 ${reserve ? 'pr-11' : ''}`}>
-        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-mute' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
+        <div className={`truncate text-[13px] leading-[18px] font-semibold transition-colors ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
           {title}
         </div>
         {meta && <div className="mt-0.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</div>}
@@ -167,9 +167,9 @@ export function MediaRow({
     </>
   );
   return (
-    <div {...attrs} className={`group relative rounded-xl border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[:focus-visible]:border-edge3 has-[:focus-visible]:bg-[#18202b]' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
+    <div {...attrs} className={`group relative rounded-xl border border-transparent bg-panel outline-offset-2 outline-text transition-colors duration-150 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:border-edge3 hover:bg-[#18202b] active:bg-panel2 has-[:focus-visible]:border-edge3 has-[:focus-visible]:bg-[#18202b] has-[.quick:hover]:border-transparent has-[.quick:hover]:bg-panel' : hoverable ? 'hover:border-edge3 hover:bg-[#18202b] focus-within:border-edge3 focus-within:bg-[#18202b]' : ''}`}>
       {onOpen ? (
-        <button type="button" onClick={onOpen} title={openTip} className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
+        <button type="button" onClick={onOpen} title={openTip} className="row-main flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left focus-visible:outline-none">
           {body}
           {action}
         </button>
@@ -267,7 +267,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 /** The one switch look, 32 by 18: the list filter and every setting. */
 export function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#3d4b5d] ring-1 ring-dim ring-inset'}`}>
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#5b6a7f]'}`}>
       <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
@@ -276,11 +276,10 @@ export function Toggle({ on }: { on: boolean }) {
 /** Shows or hides media the history already has: one line at the top of the list. Nothing when there is none. */
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
-  const what = `${count} downloaded ${count === 1 ? 'video' : 'videos'}`;
   return (
     <div className="-mr-2 flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
-      <span className="min-w-0 truncate">{shown ? `${what} listed` : `${what} hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
+      <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12.5px] font-medium text-mute transition-colors hover:bg-panel3 hover:text-text">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
@@ -298,7 +297,7 @@ export function Toast({ message, actions = [], live }: { message: string | null;
         </span>
         <span className="min-w-0 flex-1 truncate">{message}</span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'text-fg2 hover:bg-white/[0.06] hover:text-text'}`}>
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'bg-white/[0.05] text-fg2 hover:bg-white/[0.09] hover:text-text'}`}>
             {a.label}
           </button>
         ))}

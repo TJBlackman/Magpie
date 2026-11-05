@@ -654,6 +654,8 @@ export class Engine {
       pageUrl: candidate.pageUrl,
       kind: candidate.kind,
       variantLabel: variant.label,
+      ...(shorterSide(variant.resolution) || candidate.info?.height ? { height: shorterSide(variant.resolution) || candidate.info?.height } : {}),
+      ...(variant.bandwidth && entry.inspection.duration ? { sizeEstimate: Math.round((variant.bandwidth / 8) * entry.inspection.duration) } : {}),
       state: 'queued',
       segmentsTotal: 0,
       segmentsDone: 0,

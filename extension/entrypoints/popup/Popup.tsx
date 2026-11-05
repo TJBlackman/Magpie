@@ -41,14 +41,19 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-/** A tab's count, tinted on the selected tab. A failure is an alert mark beside it, announced as "n failed". */
+/** A tab's count, tinted on the selected tab. A failure is a red dot on its corner, announced as "n failed"; with nothing else to count, a red count. */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
     <>
-      {n > 0 && <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>}
-      {failed > 0 && (
-        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="-ml-0.5 flex shrink-0 items-center text-live">
-          <IconError size={14} />
+      {n > 0 && (
+        <span role={failed ? 'img' : undefined} aria-label={failed ? `${n}, ${failed} failed` : undefined} title={failed ? `${failed} failed` : undefined} className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+          {n}
+          {failed > 0 && <span className="absolute -top-1.5 -right-1.5 size-[9px] rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
+        </span>
+      )}
+      {!n && failed > 0 && (
+        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
+          {failed}
         </span>
       )}
     </>
@@ -231,7 +236,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-btn-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#67e8f9]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-[9px] px-2 text-[12.5px] whitespace-nowrap transition-colors ${view === v ? 'bg-panel3 font-semibold text-text shadow-[inset_0_1px_0_rgba(255,255,255,.06),0_1px_3px_rgba(0,0,0,.45)] ring-1 ring-btn-edge ring-inset [--tab-bg:var(--color-panel3)] [&_.pill]:bg-shine/[0.16] [&_.pill]:text-[#7ff0ff]' : 'font-medium text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text'}`}
     >
       {label}
       {pill}
@@ -406,9 +411,11 @@ export function Popup() {
             {failed.length > 0 && (
               <>
                 <Section title="Failed" count={failed.length}>
-                  <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                    Clear failed
-                  </TextButton>
+                  {failed.length > 1 && (
+                    <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                      Clear failed
+                    </TextButton>
+                  )}
                 </Section>
                 <div className="flex flex-col gap-2">
                   {failed.map((j) => (
@@ -433,7 +440,7 @@ export function Popup() {
                 </IconButton>
               )}
             </div>
-            {q ? <Section title="Matches" count={matches.length} /> : <div className="h-3 shrink-0" />}
+            {q ? <p className="flex h-11 shrink-0 items-center text-[12px] text-mute">{`${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}</p> : <div className="h-3 shrink-0" />}
           </>
         )}
         <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={() => setView('page')} />

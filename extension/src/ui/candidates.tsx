@@ -108,10 +108,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
       )}
       {candidate.info?.drm && !candidate.archived && !inSheet && (
         <span className="shrink-0" title="Copy protected (DRM). Magpie can't save it">
-          <Badge>
-            <IconLock size={10} />
-            PROTECTED
-          </Badge>
+          <Badge>PROTECTED</Badge>
         </span>
       )}
       {candidate.archived && !inSheet && (
@@ -163,7 +160,7 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       title={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-white/[0.05] text-fg2 transition-colors ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live-soft' : 'hover:bg-accent-fill hover:text-shine'}`}
+      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-white/[0.05] text-fg2 transition-colors ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live-soft' : 'hover:bg-accent-fill hover:text-shine'}`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current">

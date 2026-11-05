@@ -166,6 +166,10 @@ export interface Job {
   bytes: number;
   /** Full size when the server tells us (plain files); drives the progress bar. */
   bytesTotal?: number;
+  /** The saved quality's shorter side in pixels, when known (a stream's rendition, a file's decoded frame). */
+  height?: number;
+  /** Bytes a stream should come to, from its bitrate and length, for a queued job's size. */
+  sizeEstimate?: number;
   /** 1 based place in the queue while state is 'queued'. */
   queuePosition?: number;
   /** Recording a live stream: runs until Stop or the stream ends. */

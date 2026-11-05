@@ -197,7 +197,7 @@ export function describeVariant(v: { label: string; resolution?: string; bandwid
   const [w, h] = (v.resolution ?? '').split('x').map(Number);
   if (w && h) {
     const p = Math.min(w, h);
-    const tag = p >= 2160 ? '4K' : p >= 1440 ? '2K' : p >= 1080 ? 'Full HD' : p >= 720 ? 'HD' : '';
+    const tag = p >= 4320 ? '8K' : p >= 2160 ? '4K' : '';
     // The frame size only when it is not plain 16:9, where the name and tag already say it.
     const wide = Math.abs(Math.max(w, h) / Math.min(w, h) - 16 / 9) < 0.02;
     return { name: `${p}p`, tag, detail: [wide ? '' : `${w}×${h}`, rate, codecs].filter(Boolean).join(' · '), audio };

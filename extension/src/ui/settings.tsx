@@ -45,7 +45,7 @@ function Switch({ id, testId, checked, onChange }: { id: string; testId: string;
   return (
     <span className="relative -m-2 inline-flex shrink-0 p-2">
       <input id={id} data-testid={testId} type="checkbox" role="switch" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer absolute inset-0 z-10 cursor-pointer opacity-0" />
-      <span className="block h-[18px] w-8 rounded-full bg-[#3d4b5d] ring-1 ring-dim ring-inset transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
+      <span className="block h-[18px] w-8 rounded-full bg-[#5b6a7f] transition-colors peer-checked:bg-shine peer-checked:ring-transparent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-text" />
       <span className="pointer-events-none absolute top-[11px] left-[11px] size-3 rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,.4)] transition-transform peer-checked:translate-x-3.5" />
     </span>
   );
@@ -135,8 +135,8 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
             >
               The rest wait in line. Live recordings don't count. 2 or 3 fill a fast connection.
             </Row>
-            <Row whole label="Show thumbnails" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
-              A frame, length and quality on each row. Reads a small piece of each video while this popup is open.
+            <Row whole label="Read video details" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
+              A frame, quality, length, size and DRM check on each row. Reads a small piece of each video while this popup is open.
             </Row>
           </Group>
           <Group title="History">

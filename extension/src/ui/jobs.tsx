@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
-import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
+import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtHeight, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
 import { Badge, Button, Callout, IconButton, MediaRow, MediaTile } from './components';
 import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
@@ -41,7 +41,7 @@ function statusText(job: Job, pct: number | null): string {
     case 'saving':
       return 'Saving to your downloads';
     case 'downloading': {
-      if (job.live) return `Recording ${fmtClock(job.duration ?? 0)} · ${fmtBytes(job.bytes)}`;
+      if (job.live) return `${fmtClock(job.duration ?? 0)} recorded · ${fmtBytes(job.bytes)}`;
       const total = job.bytesTotal ?? (job.segmentsDone && job.segmentsTotal ? (job.bytes / job.segmentsDone) * job.segmentsTotal : 0);
       const of = total ? `${fmtBytes(job.bytes)} of ${job.bytesTotal ? fmtBytes(total) : fmtApprox(total)}` : fmtBytes(job.bytes);
       return pct === null ? of : `${of} · ${Math.floor(pct * 100)}%`;
@@ -69,7 +69,17 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
   );
 }
 
-/** A meta line's lead value: the quality or size, a step brighter than the rest. */
+/** "0:03 recorded · 27 MB · 8.5 MB/s": the time in the title's colour, the rest in the line's. */
+function RecordedText({ job, rate }: { job: Job; rate: number }) {
+  return (
+    <>
+      <span className="font-semibold text-text">{`${fmtClock(job.duration ?? 0)} recorded`}</span>
+      {` · ${fmtBytes(job.bytes)}${rate > 0 ? ` · ${fmtRate(rate)}` : ''}`}
+    </>
+  );
+}
+
+/** A meta line's lead value: the quality or size. */
 const LEAD = 'tabular-nums';
 
 const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' | 'shine' | 'bad' }>> = {
@@ -92,7 +102,7 @@ function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live'
   );
 }
 
-function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: ReactNode; left: string; right?: ReactNode; testId?: string }) {
+function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: ReactNode; left: ReactNode; right?: ReactNode; testId?: string }) {
   return (
     <div className="mt-2 flex min-h-5 items-center gap-2 text-[11.5px] text-mute tabular-nums has-[button]:min-h-8">
       {chip}
@@ -117,7 +127,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   const pct = jobProgress(job);
   const rate = useRate(job.bytes, job.state === 'downloading');
   const recording = !!job.live && job.state === 'downloading';
-  const rendition = shortVariant(job.variantLabel);
+  const rendition = shortVariant(job.variantLabel) || fmtHeight(job.height);
   const chip = recording ? (
     <span className="relative flex size-2 shrink-0" aria-hidden="true">
       <span className="ping absolute inline-flex size-full rounded-full bg-live/70" />
@@ -133,12 +143,12 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       <span className="min-w-0 truncate">{friendlyError(job.error ?? 'The download stopped.')}</span>
     </span>
   ) : queued ? (
-    <span className="min-w-0 flex-1 truncate text-dim">
-      <span data-testid="job-status" className="text-fg2">{statusText(job, pct)}</span>
-      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
+    <span className="min-w-0 flex-1 truncate">
+      <span data-testid="job-status" className="font-semibold">{statusText(job, pct)}</span>
+      {[rendition, job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).map((part) => ` · ${part}`).join('')}
     </span>
   ) : (
-    <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
+    <span className="min-w-0 flex-1 truncate" title={job.url}>
       {lead}
       {rendition ? '' : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)}
     </span>
@@ -207,8 +217,8 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
                 setDiscarding(false);
               }}
             >
-              <p className="text-[12.5px] font-medium text-text tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)} of recording?`}</p>
-              <p className="mt-0.5 text-[11.5px] text-mute">Nothing is saved. The recording keeps running if you keep it.</p>
+              <p className="text-[12.5px] font-medium text-text">Discard this recording?</p>
+              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes the ${fmtClock(job.duration ?? 0)} recorded so far. Nothing is written to your downloads.`}</p>
               <div className="mt-2.5 flex justify-end gap-2">
                 <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                   Keep recording
@@ -221,7 +231,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
           ) : (
           <StatusLine
             chip={chip}
-            left={recording && rate > 0 ? `${statusText(job, pct)} · ${fmtRate(rate)}` : statusText(job, pct)}
+            left={recording ? <RecordedText job={job} rate={rate} /> : statusText(job, pct)}
             right={
               recording ? (
                 <>
