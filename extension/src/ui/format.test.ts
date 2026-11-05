@@ -28,6 +28,7 @@ describe('format helpers', () => {
   it('formats time left', () => {
     expect(fmtEta(42)).toBe('42s left');
     expect(fmtEta(125)).toBe('2m 5s left');
+    expect(fmtEta(120)).toBe('2m left');
     expect(fmtEta(NaN)).toBe('');
   });
 });

@@ -44,11 +44,9 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const lead = [fmtHeight(candidate.info?.height), size].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
-  // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says
-  // nothing new. It also fills a line that would otherwise be empty.
+  // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
   const host = hostOf(candidate.url);
-  const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
-  let rest = candidate.info?.drm && !candidate.archived ? "Can't be saved" : [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
+  let rest = candidate.info?.drm && !candidate.archived ? '' : showFile ? file : '';
   if (!lead && !rest && !tagged) rest = host;
   return { lead, rest };
 }
@@ -117,12 +115,14 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
         </span>
       )}
       {candidate.archived && !inSheet && (
-        <span data-testid="archived-badge" className="flex shrink-0 items-center gap-1 font-medium text-fg2" title={`Downloaded ${savedAs(candidate.archived)}`}>
-          <IconCheckCircle size={13} className="text-saved" />
-          Downloaded
+        <span data-testid="archived-badge" className="shrink-0" title={`Downloaded ${savedAs(candidate.archived)}`}>
+          <Badge>
+            <IconCheck size={11} className="-ml-px text-saved" />
+            DOWNLOADED
+          </Badge>
         </span>
       )}
-      {candidate.archived && !inSheet && <span className="-ml-0.5 shrink-0 text-mute">{fmtAgo(candidate.archived.at)}</span>}
+      {candidate.archived && !inSheet && <span className="shrink-0 text-mute">{fmtAgo(candidate.archived.at).replace(/^./, (ch) => ch.toUpperCase())}</span>}
     </>
   );
 }
@@ -132,6 +132,7 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
   return (
     <>
       <StatusTags candidate={candidate} job={job} />
+      {candidate.archived && (candidate.kind === 'post' || src.lead || src.rest) && <span className="shrink-0 text-dim" aria-hidden="true">·</span>}
       {candidate.kind === 'post' ? (
         <span className="min-w-0 flex-1 truncate" title={candidate.url}>
           {postLabel(candidate)}
@@ -162,9 +163,9 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
       title={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg ring-inset transition-colors ${candidate.live ? 'text-live hover:bg-live/[0.12] hover:ring-1 hover:ring-live/45' : 'text-mute group-hover:text-text hover:!text-shine hover:bg-accent-fill hover:ring-1 hover:ring-accent-edge'}`}
+      className={`absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-[10px] bg-panel2 text-fg2 ring-1 ring-edge2 transition-colors ring-inset ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live hover:ring-live/45' : 'hover:bg-accent-fill hover:text-shine hover:ring-accent-edge'}`}
     >
-      {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
+      {candidate.live ? <span className="size-2.5 rounded-full bg-current" /> : <IconDownload size={17} />}
     </button>
   );
 }
@@ -180,8 +181,8 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
       );
     if (candidate.live)
       return (
-        <span className={`${box} text-live ring-transparent`} aria-hidden="true">
-          <IconRadio size={17} className="pulse" />
+        <span className={`${box} text-mute ring-transparent`} aria-hidden="true">
+          <IconChevron size={16} />
         </span>
       );
     return <ProgressRing pct={job.pct} />;
@@ -189,16 +190,9 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
   // A card that can be saved in one click draws its own button over this slot (QuickAction); the slot keeps the room.
   if (quickable(candidate)) return <span className="size-9 shrink-0" aria-hidden="true" />;
   const blocked = candidate.info?.drm && !candidate.archived;
-  const cls = blocked
-    ? 'text-dim ring-transparent'
-    : candidate.archived
-      ? 'text-dim ring-transparent group-hover:text-text group-has-[:focus-visible]:text-text'
-      : candidate.live
-        ? 'text-live ring-transparent'
-        : 'text-mute ring-transparent group-hover:text-text group-has-[:focus-visible]:text-text';
   return (
-    <span className={`${box} ${cls}`} aria-hidden="true">
-      {blocked ? <IconLock size={16} /> : candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
+    <span className={`${box} text-dim ring-transparent`} aria-hidden="true">
+      {blocked ? <IconLock size={16} /> : <IconChevron size={16} />}
     </span>
   );
 }
@@ -477,7 +471,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           )}
           {!post && inspection && footnote && <p className="text-[11.5px] text-pretty text-mute">{footnote}</p>}
         </div>
-        {inspection && !error && saveAs && (
+        {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-dim" title={`Downloads/${saveAs}`} data-testid="save-as">
             <IconFolder size={13} className="shrink-0" />
             <span className="shrink-0">Downloads /</span>
@@ -485,8 +479,8 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           </div>
         )}
         {inspection && !error && (!post || files > 0) && (
-          <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
-            {candidate.live ? <span className="size-2.5 rounded-full bg-live ring-2 ring-[#ffd5dd]/60" aria-hidden="true" /> : <IconDownload size={17} />}
+          <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
+            {candidate.live ? <span className="size-2.5 rounded-full bg-current" aria-hidden="true" /> : <IconDownload size={17} />}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}

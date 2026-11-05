@@ -171,7 +171,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" framed onClick={() => setDiscarding(true)}>
-              <IconTrash size={16} />
+              <IconX size={17} />
             </IconButton>
           )
         ) : (

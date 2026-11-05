@@ -41,18 +41,20 @@ async function resolveScope(): Promise<Scope> {
   return scopeFor(r.ok ? r.value : null);
 }
 
-/** A tab's count, and beside it a red count of failures with its own mark, so the failure is not told by colour alone. */
+/** A tab's count. A failure is a red dot on it, named for screen readers; with nothing else to count, a red count of its own. */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
+  if (!n && !failed) return null;
+  if (!n)
+    return (
+      <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
+        {failed}
+      </span>
+    );
   return (
-    <>
-      {n > 0 && <span className="pill inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">{n}</span>}
-      {failed > 0 && (
-        <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="-ml-0.5 inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-full bg-[#2d1e28] pr-1.5 pl-1 text-[10.5px] font-semibold text-live-soft tabular-nums">
-          <IconError size={11} />
-          {failed}
-        </span>
-      )}
-    </>
+    <span role={failed ? 'img' : undefined} aria-label={failed ? `${n}, ${failed} failed` : undefined} title={failed ? `${failed} failed` : undefined} className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
+      {n}
+      {failed > 0 && <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
+    </span>
   );
 }
 
@@ -188,12 +190,12 @@ export function Popup() {
   // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
     const r = await api.start(c.id, 'best');
-    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Added to downloads', view: true });
+    if (r.ok) setToast({ text: c.live ? 'Recording started' : 'Added to downloads', view: true, undo: r.value.id });
     else setSheetId(c.id);
   }, []);
   const sheet = sheetId ? candidates.find((c) => c.id === sheetId) : undefined;
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; view?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ text: string; view?: boolean; undo?: string } | null>(null);
   // A toast belongs to the moment: switching views clears it.
   useEffect(() => setToast(null), [view]);
   const onMissing = useCallback(() => setToast({ text: 'That file is no longer in your downloads' }), []);
@@ -261,7 +263,7 @@ export function Popup() {
             {scope && (scope.all ? tabsWithMedia(candidates) : hostOf(scope.url))}
           </div>
         </div>
-        {recordingJob && (
+        {recordingJob && view !== 'jobs' && (
           <button
             type="button"
             onClick={() => setView('jobs')}
@@ -279,7 +281,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.3fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -328,6 +330,12 @@ export function Popup() {
           )
         ) : (
           <div className="mt-2 flex flex-col gap-2">
+            {!showDownloaded && downloaded > 0 && (
+              <div className="-mr-2 -mb-1 flex h-8 items-center justify-between gap-2 text-[12px] text-dim">
+                {`${downloaded} downloaded ${downloaded === 1 ? 'video' : 'videos'} hidden`}
+                <TextButton onClick={toggleDownloaded}>Show</TextButton>
+              </div>
+            )}
             {groups.map((g) => (
               <div key={g.key} className="flex flex-col gap-2 first:[&>div:first-child]:mt-0">
                 {scope?.all && (
@@ -441,7 +449,13 @@ export function Popup() {
         )}
       </Panel>
 
-      <Toast message={toast?.text ?? null} action={toast?.view && view !== 'jobs' ? { label: 'View', onClick: () => (setView('jobs'), setToast(null)) } : undefined} />
+      <Toast
+        message={toast?.text ?? null}
+        actions={[
+          ...(toast?.undo ? [{ label: 'Undo', onClick: () => (void api.cancel(toast.undo!), setToast({ text: 'Download canceled' })) }] : []),
+          ...(toast?.view && view !== 'jobs' ? [{ label: 'View', onClick: () => (setView('jobs'), setToast(null)) }] : []),
+        ]}
+      />
 
       {sheet && (
         <QualitySheet

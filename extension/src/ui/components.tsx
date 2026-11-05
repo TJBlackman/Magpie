@@ -50,7 +50,7 @@ export function Button({
     ghost: 'text-mute hover:bg-btn-hover hover:text-text active:bg-btn',
     danger: 'text-err hover:bg-err/10 active:bg-err/[0.06]',
     accent: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
-    stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845] [&_svg]:text-live',
+    stop: 'bg-accent-fill text-[#7ff0ff] ring-1 ring-inset ring-accent-edge hover:bg-[#163845]',
     destroy: 'bg-live text-[#1a0a0f] font-semibold hover:bg-[#ff7590] active:bg-[#f0466a]',
     live: 'bg-live text-[#1a0a0f] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.3),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#ff7590] active:bg-[#f0466a]',
   }[tone];
@@ -265,7 +265,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title, label }: { 
 /** The one switch look, 32 by 18: the list filter and every setting. */
 export function Toggle({ on }: { on: boolean }) {
   return (
-    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#4a586a] ring-1 ring-btn-edge ring-inset'}`}>
+    <span className={`relative inline-block h-[18px] w-8 shrink-0 rounded-full transition-colors ${on ? 'bg-shine' : 'bg-[#3d4b5d] ring-1 ring-dim ring-inset'}`}>
       <span className={`absolute top-[3px] left-[3px] size-3 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-3.5' : ''}`} />
     </span>
   );
@@ -283,21 +283,21 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   );
 }
 
-/** A short message at the bottom of the popup that fades after a few seconds, with an optional action. */
-export function Toast({ message, action }: { message: string | null; action?: { label: string; onClick: () => void } }) {
+/** A short message at the bottom of the popup that fades after a few seconds, with up to two actions; the last is the main one. */
+export function Toast({ message, actions = [] }: { message: string | null; actions?: { label: string; onClick: () => void }[] }) {
   if (!message) return null;
   return (
     <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
       <div className="rise-in flex h-11 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
-        <span className="flex size-[18px] items-center justify-center rounded-full bg-shine/15 text-shine">
+        <span className="flex size-[18px] items-center justify-center rounded-full bg-white/[0.08] text-fg2">
           <IconCheck size={12} />
         </span>
         <span className="min-w-0 flex-1 truncate">{message}</span>
-        {action && (
-          <button type="button" onClick={action.onClick} className="h-8 rounded-lg bg-accent-fill px-3 text-[12.5px] font-semibold text-[#7ff0ff] ring-1 ring-accent-edge transition-colors ring-inset hover:bg-[#163845]">
-            {action.label}
+        {actions.map((a, i) => (
+          <button key={a.label} type="button" onClick={a.onClick} className={`h-8 rounded-lg px-3 text-[12.5px] font-semibold transition-colors ${i === actions.length - 1 ? 'bg-accent-fill text-[#7ff0ff] ring-1 ring-accent-edge ring-inset hover:bg-[#163845]' : 'text-fg2 hover:bg-white/[0.06] hover:text-text'}`}>
+            {a.label}
           </button>
-        )}
+        ))}
       </div>
     </div>
   );

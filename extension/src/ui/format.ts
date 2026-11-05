@@ -81,7 +81,7 @@ export function fmtEta(seconds: number): string {
   const s = Math.round(seconds);
   if (s < 60) return `${s}s left`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ${s % 60}s left`;
+  if (m < 60) return `${m}m${s % 60 ? ` ${s % 60}s` : ''} left`;
   return `${Math.floor(m / 60)}h ${m % 60}m left`;
 }
 

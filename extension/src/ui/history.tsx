@@ -30,7 +30,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   return (
     <span
       ref={box}
-      className={`absolute top-1/2 right-[54px] -translate-y-1/2 items-center ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
+      className={`absolute top-1/2 right-2.5 -translate-y-1/2 items-center rounded-lg bg-[#18202b] ${open ? 'z-40 flex' : 'z-10 hidden group-focus-within:flex group-hover:flex'}`}
       onKeyDown={(e) => {
         if (!open) return;
         const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -47,7 +47,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
       <IconButton
         label="More"
         active={open}
-        className="size-9"
+        className={open ? 'size-9' : 'size-9 !text-fg2'}
         ref={trigger}
         onClick={() => {
           const r = box.current?.getBoundingClientRect();
@@ -55,7 +55,7 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
           setOpen((o) => !o);
         }}
       >
-        <IconMore size={18} />
+        <IconMore size={20} />
       </IconButton>
       {open && (
         <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-panel3 p-1 shadow-[0_12px_32px_rgba(0,0,0,.55)] ring-1 ring-edge3 ring-inset ${up ? 'bottom-full mb-1' : 'top-full mt-1'}`}>
@@ -127,11 +127,10 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           )}
         </span>
       }
-      reserve
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={
-        <span className="flex size-9 shrink-0 items-center justify-center text-dim transition-colors group-hover:text-text group-has-[>button:focus-visible]:text-text" aria-hidden="true">
+        <span className="flex size-9 shrink-0 items-center justify-center text-mute" aria-hidden="true">
           <IconFolder size={16} />
         </span>
       }
