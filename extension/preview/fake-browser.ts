@@ -202,7 +202,7 @@ function seedJobs(): Job[] {
 }
 
 function entry(id: string, title: string, file: string, page: string, src: string, at: number, secs: number): ArchiveEntry {
-  const p = Number(/[(d+)p]/.exec(file)?.[1] ?? 1080);
+  const p = Number(/\[(\d+)p\]/.exec(file)?.[1] ?? 1080);
   return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title), bytes: Math.round((secs * (p >= 2160 ? 15_200_000 : p >= 1080 ? 6_000_000 : 3_100_000)) / 8) };
 }
 
