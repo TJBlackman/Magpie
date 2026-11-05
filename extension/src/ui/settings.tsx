@@ -129,14 +129,14 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
         <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3.5 pt-3.5 pb-4 scroll-thin">
           <Group title="Downloads">
             <Row
-              label="Parallel downloads"
+              label="Downloads at a time"
               htmlFor="max-concurrent"
               control={<Stepper id="max-concurrent" testId="max-concurrent" value={settings.maxConcurrent} min={1} max={MAX_CONCURRENT_LIMIT} onChange={(n) => void update({ maxConcurrent: n })} lessTitle="One fewer" moreTitle="One more" />}
             >
               The rest wait in line. Live recordings don't count. 2 or 3 fill a fast connection.
             </Row>
             <Row whole label="Read video details" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
-              A frame, quality, length, size and DRM check on each row. Reads a small piece of each video while this popup is open.
+              Shows each video's frame, quality, length and size, and whether it is protected. Reads a small piece of each video while this popup is open.
             </Row>
           </Group>
           <Group title="History">

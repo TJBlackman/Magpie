@@ -75,7 +75,7 @@ export function IconButton({ label, onClick, children, active, tone = 'default',
             ? 'text-fg2 hover:text-text'
             : 'text-mute ring-inset hover:bg-btn hover:text-text hover:ring-1 hover:ring-btn-edge active:bg-btn';
   return (
-    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn-hover ring-1 ring-edge3 ring-inset hover:!bg-[#2a3441]' : ''} ${color} ${className}`}>
+    <button ref={ref} type="button" aria-label={label} title={label} onClick={onClick} className={`inline-flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors ${framed ? 'size-9 bg-btn ring-1 ring-btn-edge ring-inset hover:!bg-[#2a3442]' : ''} ${color} ${className}`}>
       {children}
     </button>
   );

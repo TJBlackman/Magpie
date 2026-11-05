@@ -91,7 +91,7 @@ interface LiveOutput {
   /** Save the current file as a finished part and open the next one. */
   nextPart(): Promise<void>;
 }
-const LIVE_NOTE = 'Records from about 30 seconds back until you press Stop or the stream ends. Quality is whatever the stream sends.';
+const LIVE_NOTE = 'Records from about 30 seconds back until you press Stop and save, or the stream ends. The quality is the one the stream sends.';
 
 /**
  * Stop for a live recording: unlike cancel, the job finishes its current step,
@@ -320,6 +320,7 @@ export class Engine {
     if (top) info.height = top;
     // Variants are sorted by bandwidth, highest first.
     if (video[0]?.bandwidth) info.bitrate = video[0].bandwidth;
+    if (video.length > 1) info.qualities = video.length;
     if (entry.inspection.duration) info.duration = entry.inspection.duration;
     if (entry.inspection.notes.some((n) => n.includes('looks like DRM'))) info.drm = true;
     let media = entry.media;

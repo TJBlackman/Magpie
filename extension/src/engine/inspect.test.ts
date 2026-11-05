@@ -390,7 +390,7 @@ describe('media info for cards', () => {
   it('reports the best quality and length even when no frame decodes', async () => {
     serve({ [MPD_URL]: text(mpd(videoSet(`${HD}</Representation>${SD}`) + audioSet(AUDIO))) });
     const r = await new Engine(platform).thumbnail(candidate(MPD_URL));
-    expect(r.ok && r.value.info).toEqual({ height: 1080, duration: 8, bitrate: 6000000 });
+    expect(r.ok && r.value.info).toEqual({ height: 1080, duration: 8, bitrate: 6000000, qualities: 2 });
   });
 });
 

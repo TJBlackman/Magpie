@@ -41,7 +41,9 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   const file = sourceLabel(candidate.url).split(' · ')[1];
   const est = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
   const size = est || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
-  const lead = [fmtHeight(candidate.info?.height), size].filter(Boolean).join(' · ');
+  // The count of qualities tells that the card opens a choice; the arrow takes the best.
+  const choice = candidate.info?.qualities && !candidate.archived ? `${candidate.info.qualities} qualities` : '';
+  const lead = [fmtHeight(candidate.info?.height), size, choice].filter(Boolean).join(' · ');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
   // The host only fills a line that would otherwise be empty: a CDN name says nothing new.
@@ -157,14 +159,14 @@ function QuickAction({ candidate, onQuick }: { candidate: Candidate; onQuick: (c
     <button
       type="button"
       aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
-      title={[label, size].filter(Boolean).join(', ')}
+      data-tip={[label, size].filter(Boolean).join(', ')}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
-      className={`quick absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn-hover text-fg2 ring-1 ring-edge3 transition-colors ring-inset ${candidate.live ? 'hover:bg-live/[0.12] hover:text-live-soft hover:ring-live/45' : 'hover:bg-accent-fill hover:text-shine hover:ring-accent-edge'}`}
+      className={`quick tip absolute top-1/2 right-2.5 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg bg-btn text-fg2 ring-1 ring-btn-edge transition-colors ring-inset hover:bg-[#2a3442] hover:text-text`}
     >
       {candidate.live ? (
         <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current">
-          <span className="size-2 rounded-full bg-live" />
+          <span className="rec size-2 rounded-full bg-live" />
         </span>
       ) : (
         <IconDownload size={17} />
@@ -296,6 +298,18 @@ function ArchivedNote({ archived }: { archived: Archived }) {
   );
 }
 
+/** "Downloads / Reddit / EarthPorn / name": folders quiet, the last part a step brighter, cut in the middle when long. */
+function SavePath({ path }: { path: string }) {
+  const cut = midTruncate(path.replace(/\//g, ' / '), 62);
+  const at = cut.lastIndexOf(' / ');
+  return (
+    <span className="min-w-0 truncate">
+      {at >= 0 ? cut.slice(0, at + 3) : ''}
+      <span className="text-fg2">{at >= 0 ? cut.slice(at + 3) : cut}</span>
+    </span>
+  );
+}
+
 /** A long path with its middle cut, so both the top folder and the file's own name show. */
 function midTruncate(text: string, max: number): string {
   if (text.length <= max) return text;
@@ -320,14 +334,18 @@ function fileWord(variants: Variant[], n: number): string {
 function PostFiles({ variants }: { variants: Variant[] }) {
   const n = variants.length;
   return (
-    <div className="overflow-hidden rounded-[10px] bg-[#141a22] ring-1 ring-edge2 ring-inset">
+    <div>
       <details className="group/files text-[12px] text-mute">
-        <summary className="flex h-11 cursor-pointer list-none items-center gap-3 px-3 text-[12.5px] text-text transition-colors hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
+        <summary className="-mx-1 flex h-9 cursor-pointer list-none items-center gap-2.5 rounded-lg px-1 text-[12.5px] text-fg2 [&::-webkit-details-marker]:hidden">
           <IconImages size={16} className="shrink-0 text-mute" />
           <span className="flex-1">{n === 1 ? `1 ${fileWord(variants, 1)}` : `${n} ${fileWord(variants, n)}, saved to one folder`}</span>
-          <IconChevron size={15} className="rotate-90 text-mute transition-transform group-open/files:-rotate-90" />
+          <span className="flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-fg2 transition-colors hover:bg-panel3 hover:text-text">
+            <span className="group-open/files:hidden">See files</span>
+            <span className="hidden group-open/files:inline">Hide files</span>
+            <IconChevron size={13} className="transition-transform group-open/files:rotate-90" />
+          </span>
         </summary>
-        <ol className="flex flex-col gap-px px-1.5 pb-1.5" data-testid="post-files">
+        <ol className="mt-1 flex flex-col gap-px rounded-[10px] bg-[#141a22] p-1.5 ring-1 ring-edge2 ring-inset" data-testid="post-files">
           {variants.map((v, i) => (
             <li key={v.id} className="flex h-7 items-center gap-2.5 rounded-md px-1.5 hover:bg-white/[0.03]" title={v.uri}>
               <span className="w-5 shrink-0 text-right text-dim tabular-nums">{i + 1}</span>
@@ -422,7 +440,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} thumb={thumbs ? candidate.thumb : undefined} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="line-clamp-2 text-[15px] leading-5 font-semibold text-balance" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
+            <div className="line-clamp-2 text-[16px] leading-[21px] font-semibold text-pretty" title={fullTitle}>{title.replace(/(\d) (?=\p{L})/gu, '$1\u00a0')}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
@@ -488,8 +506,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         {inspection && !error && saveAs && !candidate.archived && (
           <div className="mt-3 flex h-4 items-center gap-1.5 text-[11.5px] text-mute" title={`Downloads/${saveAs}`} data-testid="save-as">
             <IconFolder size={13} className="shrink-0" />
-            <span className="shrink-0 text-mute">Downloads /</span>
-            <span className="min-w-0 truncate text-mute">{midTruncate((post ? saveAs.replace(/ \[\w+\](?=\.\w+$|$)/, '') : saveAs).replace(/\//g, ' / '), 54)}</span>
+            <SavePath path={`Downloads/${post ? saveAs.replace(/ \[\w+\](?=\.\w+$|$)/, '') : saveAs}`} />
           </div>
         )}
         {inspection && !error && folded && (
@@ -506,7 +523,13 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         )}
         {inspection && !error && (!post || files > 0) && !folded && (
           <Button tone={candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
-            {candidate.live ? <span className="size-2.5 rounded-full bg-current" aria-hidden="true" /> : <IconDownload size={17} />}
+            {candidate.live ? (
+              <span className="flex size-4 items-center justify-center rounded-full ring-2 ring-current" aria-hidden="true">
+                <span className="size-2 rounded-full bg-current" />
+              </span>
+            ) : (
+              <IconDownload size={17} />
+            )}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>
         )}

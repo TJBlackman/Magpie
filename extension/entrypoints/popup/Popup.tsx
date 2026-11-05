@@ -46,20 +46,17 @@ function foundLabel(n: number): string {
   return n === 1 ? 'Show the one found on this page' : `Show the ${n} found on this page`;
 }
 
-/** A tab's count, tinted on the selected tab, and a red count of failures beside it, announced as "n failed". */
+/** A tab's count, tinted on the selected tab. A failure is a red dot on its corner, announced as "n failed"; with nothing else to count, a red count. */
 function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
   return (
     <>
       {n > 0 && (
         <span role={failed ? 'img' : undefined} aria-label={failed ? `${n}, ${failed} failed` : undefined} title={failed ? `${failed} failed` : undefined} className="pill relative inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white/[0.08] px-1.5 text-[10.5px] font-semibold text-mute tabular-nums transition-colors">
           {n}
+          {failed > 0 && <span className="absolute -top-1 -right-1 size-2 rounded-full bg-live ring-2 ring-[var(--tab-bg)]" />}
         </span>
       )}
-      {n > 0 && failed > 0 && (
-        <span aria-hidden="true" className="-ml-0.5 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-live px-1 text-[10.5px] font-bold text-[#1a090e] tabular-nums">
-          {failed}
-        </span>
-      )}
+
       {!n && failed > 0 && (
         <span role="img" aria-label={`${failed} failed`} title={`${failed} failed`} className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-live/[0.16] px-1.5 text-[10.5px] font-semibold text-live-soft tabular-nums">
           {failed}
@@ -292,7 +289,7 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-[1fr_1.2fr_1fr] gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
+      <div role="tablist" className="mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-panel p-[3px] ring-1 ring-edge ring-inset">
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={shown.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
@@ -367,8 +364,8 @@ export function Popup() {
             ))}
             {scope && !scope.all && (
               <div className="-mr-2 -mt-1 flex justify-end">
-                <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page. Playing it again lists it again.">
-                  Clear list
+                <TextButton onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Removes these from This page. Files you saved and History stay; playing a video lists it again.">
+                  Clear detected media
                 </TextButton>
               </div>
             )}
