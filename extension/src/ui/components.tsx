@@ -346,7 +346,7 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
   return (
     <div className="flex h-8 shrink-0 items-center justify-between gap-2 text-[12px] text-mute">
       <span className="min-w-0 truncate">{shown ? `${count} already downloaded` : `${count} already downloaded, hidden`}</span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-medium text-fg2 ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:text-text hover:ring-[#90959b]">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="inline-flex h-8 shrink-0 items-center rounded-lg bg-btn px-2.5 text-[12px] font-semibold text-text ring-1 ring-ctl-edge transition-colors ring-inset hover:bg-btn-hover hover:ring-[#90959b]">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
