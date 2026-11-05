@@ -70,7 +70,10 @@ export function nextRate(prev: RateSample | null, bytes: number, now: number): R
 
 /** "9.5 MB/s": two figures, so the number does not flicker as it updates. */
 export function fmtRate(bytesPerSec: number): string {
-  return `${sized(Math.round(bytesPerSec), 2)}/s`;
+  const n = Math.round(bytesPerSec);
+  if (n < 1024 ** 2) return `${sized(n, 2)}/s`;
+  const mb = n / 1024 ** 2;
+  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB/s`;
 }
 
 export function fmtEta(seconds: number): string {
@@ -242,11 +245,11 @@ export function fmtHeight(height: number | undefined): string {
  * as the detail (a tooltip), since it names the status and the URL.
  */
 export function friendlyError(message: string): string {
-  if (/\b(401|403)\b/.test(message)) return 'The link expired. Open the page, play the video again, then try again.';
-  if (/\b(404|410)\b/.test(message)) return 'The video is gone from the server. Reload the page, then try again.';
-  if (/\b(429|5\d\d)\b/.test(message)) return 'The server is busy or failing. Try again in a moment.';
-  if (/failed to fetch|networkerror|network error|connection/i.test(message)) return 'The connection dropped. Check your connection, then try again.';
-  if (/timed? ?out|timeout/i.test(message)) return 'The server stopped answering. Try again in a moment.';
+  if (/\b(401|403)\b/.test(message)) return 'The link expired.';
+  if (/\b(404|410)\b/.test(message)) return 'The video is gone from the server.';
+  if (/\b(429|5\d\d)\b/.test(message)) return 'The server is busy. Try again soon.';
+  if (/failed to fetch|networkerror|network error|connection/i.test(message)) return 'The connection dropped.';
+  if (/timed? ?out|timeout/i.test(message)) return 'The server stopped answering.';
   return message;
 }
 

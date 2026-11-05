@@ -57,12 +57,13 @@ function SpeedText({ job, rate }: { job: Job; rate: number }) {
   if (job.state !== 'downloading' || rate <= 0) return null;
   const eta = job.live ? '' : fmtEta(remaining(job) / rate);
   return (
-    <span className="flex min-w-0 shrink-0 items-center gap-1.5">
-      <span className="truncate">{fmtRate(rate)}</span>
+    <span className="shrink-0">
+      {fmtRate(rate)}
       {eta && (
-        <span className="shrink-0">
-          · <span className="font-semibold text-text">{eta}</span>
-        </span>
+        <>
+          {' · '}
+          <span className="font-semibold text-text">{eta}</span>
+        </>
       )}
     </span>
   );
@@ -118,14 +119,14 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
-      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} muted={job.state === 'queued'} />}
+      tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
       title={job.title || job.filename}
       titleTip={job.filename}
       meta={
         <>
           {job.group && <Badge>{`${job.group.index + 1} OF ${job.group.total}`}</Badge>}
           <span className="min-w-0 flex-1 truncate text-dim" title={job.url}>
-            {rendition && <span className="font-medium text-text/90">{rendition}</span>}
+            {rendition && <span className="font-medium text-[#c3ccd7] tabular-nums">{rendition}</span>}
             {`${rendition ? ' · ' : ''}${failed ? statusText(job, pct) || hostOf(job.url) : hostOf(job.url)}`}
           </span>
         </>
@@ -151,9 +152,9 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
       {!failed && !job.live && job.state !== 'queued' && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
       {failed ? (
         <div className="flex items-center gap-3">
-          <p className="flex min-w-0 flex-1 gap-2 text-[12px] leading-[1.45] text-[#c9d2dd]" title={job.error}>
-            <IconError size={14} className="mt-0.5 shrink-0 text-live" />
-            <span className="line-clamp-2">{friendlyError(job.error ?? 'The download stopped.')}</span>
+          <p className="flex min-w-0 flex-1 items-center gap-2 text-[12px] text-[#c9d2dd]" title={job.error}>
+            <IconError size={15} className="shrink-0 text-live" />
+            <span className="truncate">{friendlyError(job.error ?? 'The download stopped.')}</span>
           </p>
           {onRetry ? (
             <Button tone="default" size="md" onClick={onRetry} title="Open the quality sheet for this video again">
@@ -161,7 +162,7 @@ export function JobRow({ job, thumbs, onRetry }: { job: Job; thumbs: boolean; on
               Try again
             </Button>
           ) : job.pageUrl ? (
-            <Button tone="default" size="md" onClick={() => openPage(job.pageUrl!)} title={`Open ${job.pageUrl} in a new tab`}>
+            <Button tone="default" size="md" onClick={() => openPage(job.pageUrl!)} title="Opens the page in a new tab. Play the video there and it comes back on This page with a fresh link">
               <IconExternal size={13} />
               Open page
             </Button>
@@ -216,7 +217,7 @@ export function GroupRow({ jobs, thumbs }: { jobs: Job[]; thumbs: boolean }) {
   return (
     <MediaRow
       attrs={{ 'data-testid': 'job-group', 'data-group-id': first.group?.id, 'data-jobs': ids, 'data-state': active ? 'downloading' : 'queued', 'data-saved': saved, 'data-pct': Math.floor(pct * 100) }}
-      tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} muted={!active} />}
+      tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} />}
       title={first.title || first.filename}
       titleTip={first.filename}
       meta={

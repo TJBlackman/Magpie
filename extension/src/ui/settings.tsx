@@ -4,6 +4,7 @@ import { ARCHIVE_LIMIT, MAX_CONCURRENT_LIMIT, type Settings } from '../core/sett
 import { SITE_URL } from '../core/update';
 import { openPage, useSettings } from './api';
 import { IconButton } from './components';
+import { useDialogFocus } from './focus';
 import { IconBack, IconCheck, IconMinus, IconPlus, Logo } from './icons';
 
 function Stepper({ id, value, min, max, onChange, draft, onDraft, onCommit, lessTitle, moreTitle, testId }: { id: string; value: number; min: number; max: number; onChange: (n: number) => void; draft?: string | null; onDraft?: (v: string | null) => void; onCommit?: () => void; lessTitle: string; moreTitle: string; testId: string }) {
@@ -77,6 +78,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 export function SettingsPanel({ latest, onClose }: { latest: string | null; onClose: () => void }) {
   const [settings, save] = useSettings();
   const [saved, setSaved] = useState(false);
+  const dialog = useDialogFocus();
   /** The history size being typed. Saved on Enter or leaving the field, so typing "50" never saves a 5 that trims the list. */
   const [sizeDraft, setSizeDraft] = useState<string | null>(null);
 
@@ -99,7 +101,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
   };
 
   return (
-    <div className="panel-in absolute inset-0 z-20 flex flex-col bg-ink" role="dialog" aria-label="Settings">
+    <div className="panel-in absolute inset-0 z-20 flex flex-col bg-ink outline-none" role="dialog" aria-modal="true" aria-label="Settings" {...dialog}>
       <header className="flex h-[52px] shrink-0 items-center gap-1.5 border-b border-edge px-2.5">
         <IconButton label="Back" onClick={onClose}>
           <IconBack size={18} />

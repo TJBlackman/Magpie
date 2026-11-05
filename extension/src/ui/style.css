@@ -43,10 +43,9 @@ body {
 }
 
 /* One focus ring everywhere: 2px accent, offset, only for the keyboard. */
-:where(button, a, input, [tabindex]):focus-visible {
+:where(button, a, input, summary, [tabindex]):focus-visible {
   outline: 2px solid var(--color-shine);
   outline-offset: 2px;
-  border-radius: 8px;
 }
 /* Inside a clipped card the ring goes inside the edge so it is never cut off. */
 .focus-inset:focus-visible {
@@ -54,6 +53,10 @@ body {
 }
 :where(input[type='search'], input[type='number']):focus-visible {
   outline: none;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 ::selection {

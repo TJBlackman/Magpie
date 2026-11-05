@@ -43,7 +43,7 @@ export function Button({
 }) {
   const cls = {
     default: 'bg-white/[0.07] text-text ring-1 ring-inset ring-white/[0.08] hover:bg-white/[0.11] active:bg-white/[0.05]',
-    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6]',
+    shine: 'bg-shine text-shine-ink font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.35),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#4fe0f4] active:bg-[#14bdd6] focus-visible:!outline-text',
     ghost: 'text-mute hover:bg-white/[0.06] hover:text-text active:bg-white/[0.04]',
     danger: 'text-[#ff9fb1] hover:bg-live/10 active:bg-live/[0.06]',
     live: 'bg-live-solid text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_1px_2px_rgba(0,0,0,.5)] hover:bg-[#f0335a] active:bg-[#c8133c]',
@@ -97,12 +97,13 @@ export function MediaTile({ kind, live, thumb, muted, corner, className = 'h-9 w
   return (
     <div className={`relative ${className} shrink-0 overflow-hidden rounded-md bg-gradient-to-br from-panel3 to-panel2 ring-1 ring-white/[0.06] ring-inset ${live && !thumb ? 'text-live' : 'text-dim'}`}>
       {thumb ? (
-        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-55 grayscale' : ''}`} />
+        <img src={thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover transition ${muted ? 'opacity-60 grayscale' : ''}`} />
       ) : (
         <div className={`flex size-full items-center justify-center ${muted ? 'opacity-50' : ''}`}>{live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
       )}
       {thumb && <span className="pointer-events-none absolute inset-0 rounded-md ring-1 ring-white/[0.06] ring-inset" />}
       {thumb && live && <span className="pulse absolute top-1 left-1 size-1.5 rounded-full bg-live shadow-[0_0_4px_var(--color-live)]" />}
+      {muted && <span className="absolute right-1 bottom-1 flex size-4 items-center justify-center rounded-full bg-saved text-ink shadow-[0_1px_3px_rgba(0,0,0,.5)]"><IconCheck size={11} /></span>}
       {corner && <span className="absolute right-0.5 bottom-0.5 rounded-[4px] bg-black/75 px-1 py-px text-[9.5px] leading-[13px] font-semibold text-white tabular-nums">{corner}</span>}
     </div>
   );
@@ -176,7 +177,7 @@ export function Section({ title, count, children }: { title: ReactNode; count?: 
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim/80 tabular-nums">{count}</span>}
       </h2>
-      {children && <div className="-mr-2 flex shrink-0 items-center gap-0.5 [&_button]:h-7 [&_button]:px-2 [&_button]:text-[12px]">{children}</div>}
+      {children && <div className="flex shrink-0 items-center gap-1.5 [&_button]:h-7 [&_button]:bg-white/[0.04] [&_button]:px-2.5 [&_button]:text-[12px] [&_button]:ring-1 [&_button]:ring-white/[0.06] [&_button]:ring-inset">{children}</div>}
     </div>
   );
 }
@@ -242,7 +243,7 @@ export function ConfirmButton({ children, confirm, onConfirm, title }: { childre
 export function DownloadedToggle({ count, shown, onToggle }: { count: number; shown: boolean; onToggle: () => void }) {
   if (!count) return null;
   return (
-    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Show media already in your history'}>
+    <Button tone="ghost" onClick={onToggle} title={shown ? 'Hide media already in your history' : 'Hidden. Show media already in your history'} className={shown ? '' : '!bg-shine/10 !text-[#7ff0ff] !ring-shine/30'}>
       {shown ? <IconEyeOff size={14} /> : <IconEye size={14} />}
       {shown ? 'Hide downloaded' : `${count} downloaded`}
     </Button>
@@ -253,14 +254,14 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
 export function Toast({ message, action }: { message: string | null; action?: { label: string; onClick: () => void } }) {
   if (!message) return null;
   return (
-    <div role="status" className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center">
-      <div className="rise-in pointer-events-auto flex h-10 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.6),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
+    <div role="status" className="shrink-0 px-3.5 pt-1 pb-3">
+      <div className="rise-in flex h-11 items-center gap-2.5 rounded-xl bg-panel3 pr-1.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_8px_24px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-edge3 ring-inset">
         <span className="flex size-[18px] items-center justify-center rounded-full bg-shine/15 text-shine">
           <IconCheck size={12} />
         </span>
-        {message}
+        <span className="min-w-0 flex-1 truncate">{message}</span>
         {action && (
-          <button type="button" onClick={action.onClick} className="ml-1 h-7 rounded-lg px-2.5 text-[12.5px] font-semibold text-shine transition-colors hover:bg-shine/10">
+          <button type="button" onClick={action.onClick} className="h-8 rounded-lg px-3 text-[12.5px] font-semibold text-shine transition-colors hover:bg-shine/10">
             {action.label}
           </button>
         )}

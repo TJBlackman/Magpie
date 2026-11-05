@@ -42,7 +42,12 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       meta={
         <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
           {fmtDay(entry.at)}
-          {facts && <span className="font-medium text-text/90 tabular-nums">{` · ${facts}`}</span>}
+          {facts && (
+            <>
+              {' · '}
+              <span className="font-medium text-[#c3ccd7] tabular-nums">{facts}</span>
+            </>
+          )}
         </span>
       }
       action={

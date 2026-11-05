@@ -1,4 +1,5 @@
 import { memo, useEffect, useState } from 'react';
+import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
@@ -30,13 +31,14 @@ function Source({ candidate, tagged }: { candidate: Candidate; tagged: boolean }
   const lead = fmtHeight(candidate.info?.height) || (candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
   // Before the stream is read, the file name tells apart streams that share a page title. Once a frame or the size is known, it is noise.
   const showFile = !lead && !candidate.info && !candidate.thumb && !!file && !tagged;
-  // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says nothing new.
+  // The host only when it belongs to another site than the page, like an ad server; the page's own CDN says
+  // nothing new. It also fills a line that would otherwise be empty.
   const host = hostOf(candidate.url);
-  const showHost = !lead || siteOf(host) !== siteOf(hostOf(candidate.pageUrl));
+  const showHost = siteOf(host) !== siteOf(hostOf(candidate.pageUrl)) || (!lead && !tagged);
   const rest = [showHost ? host : '', showFile ? file : ''].filter(Boolean).join(' · ');
   return (
     <span className="min-w-0 flex-1 truncate text-dim" title={candidate.url}>
-      {lead && <span className="font-medium text-text/90 tabular-nums">{lead}</span>}
+      {lead && <span className="font-medium text-[#c3ccd7] tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
@@ -292,6 +294,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
   const [error, setError] = useState<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const dialog = useDialogFocus();
 
   useEffect(() => {
     let alive = true;
@@ -337,9 +340,11 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
       <div className="veil-in absolute inset-0 z-10 bg-[#03050a]/70 backdrop-blur-[3px]" onClick={onClose} data-testid="veil" />
       <div
         role="dialog"
+        aria-modal="true"
         aria-label={`Download ${title}`}
         data-testid="sheet"
-        className="sheet-in absolute inset-x-0 bottom-0 z-20 flex max-h-[528px] flex-col rounded-t-[18px] border-t border-white/[0.09] bg-panel px-3.5 pt-2 pb-3.5 shadow-[0_-20px_50px_rgba(0,0,0,.6)]"
+        {...dialog}
+        className="sheet-in outline-none absolute inset-x-0 bottom-0 z-20 flex max-h-[528px] flex-col rounded-t-[18px] border-t border-white/[0.09] bg-panel px-3.5 pt-2 pb-3.5 shadow-[0_-20px_50px_rgba(0,0,0,.6)]"
       >
         <div className="mx-auto mb-2.5 h-1 w-9 shrink-0 rounded-full bg-edge3" />
         <div className="mb-3 flex items-start gap-3">
@@ -357,7 +362,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <IconX size={17} />
           </IconButton>
         </div>
-        <div className={`flex min-h-0 flex-col gap-2 overflow-y-auto scroll-thin`}>
+        <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error && (
             <Callout tone={drm ? 'neutral' : 'error'} icon={drm ? <IconLock size={15} /> : undefined} title={drm ? 'Copy protected' : 'Magpie can’t save this one'} testId="inspect-error">
               {error}
@@ -389,7 +394,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
           {sharedAudio && !inspection?.notes.some((n) => n.startsWith('Audio:')) && <p className="px-1 text-[11.5px] text-mute">{`${single ? 'Includes' : 'Every quality includes'} ${sharedAudio} audio, merged into one file.`}</p>}
         </div>
         {inspection && !error && (!post || files > 0) && (
-          <Button tone={candidate.live ? 'live' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">
+          <Button tone={candidate.live ? 'live' : candidate.archived ? 'default' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className="mt-3 w-full" testId="start">
             {candidate.live ? <IconRadio size={17} /> : <IconDownload size={17} />}
             {candidate.live ? 'Start recording' : post ? `Download ${files} ${fileWord(variants, files)}${again}` : `Download${short ? ` ${short}` : ''}${again}`}
           </Button>

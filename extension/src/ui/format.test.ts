@@ -162,6 +162,8 @@ describe('sizes', () => {
     expect(fmtBytes(512)).toBe('512 B');
     expect(fmtApprox(1.738 * 1024 ** 3)).toBe('~1.7 GB');
     expect(fmtRate(9.52 * 1024 * 1024)).toBe('9.5 MB/s');
+    expect(fmtRate(6 * 1024 * 1024)).toBe('6.0 MB/s');
+    expect(fmtRate(12.4 * 1024 * 1024)).toBe('12 MB/s');
   });
   it('names the site a host belongs to', () => {
     expect(siteOf('cdn.wildframe.tv')).toBe('wildframe.tv');
@@ -173,9 +175,9 @@ describe('sizes', () => {
 
 describe('friendlyError', () => {
   it('says what to do for refused, missing and dropped downloads', () => {
-    expect(friendlyError('HTTP 403 for https://cdn.example/seg-119.ts')).toMatch(/^The link expired/);
-    expect(friendlyError('Server returned 404 for segment 3')).toMatch(/^The video is gone/);
-    expect(friendlyError('TypeError: Failed to fetch')).toMatch(/^The connection dropped/);
+    expect(friendlyError('HTTP 403 for https://cdn.example/seg-119.ts')).toBe('The link expired.');
+    expect(friendlyError('Server returned 404 for segment 3')).toBe('The video is gone from the server.');
+    expect(friendlyError('TypeError: Failed to fetch')).toBe('The connection dropped.');
     expect(friendlyError('No variant to download.')).toBe('No variant to download.');
   });
 });

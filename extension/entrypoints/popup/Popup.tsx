@@ -209,16 +209,8 @@ export function Popup() {
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="text-[14px] font-semibold tracking-[0.01em]">Magpie</div>
-          <div className="truncate text-[11.5px] text-dim" title={scope?.url}>
-            {scope &&
-              (scope.all ? (
-                scope.label
-              ) : (
-                <>
-                  <span className="text-mute">{hostOf(scope.url)}</span>
-                  {` · ${scope.label}`}
-                </>
-              ))}
+          <div className="truncate text-[11.5px] text-dim" title={scope && !scope.all ? `${scope.label}\n${scope.url}` : undefined}>
+            {scope && (scope.all ? scope.label : hostOf(scope.url))}
           </div>
         </div>
         <IconButton label="Settings" onClick={() => setSettingsOpen(true)} active={settingsOpen}>
@@ -242,13 +234,13 @@ export function Popup() {
         {tab('history', 'History', <Pill n={archive.length} />)}
       </div>
 
-      <Panel shown={view === 'page'} roomy={!!toast}>
+      <Panel shown={view === 'page'}>
         {candidates.length > 0 && (
           <Section title={scope?.all ? 'Media in open tabs' : 'Media on this page'}>
             <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
             {scope && !scope.all && (
               <Button tone="ghost" onClick={() => void api.clearCandidates(scope.tabId).then(refreshCandidates)} title="Forget the media seen on this page">
-                Clear
+                Clear list
               </Button>
             )}
           </Section>
@@ -307,20 +299,6 @@ export function Popup() {
           </Empty>
         ) : (
           <>
-            {failed.length > 0 && (
-              <>
-                <Section title="Failed" count={failed.length}>
-                  <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                    Clear failed
-                  </Button>
-                </Section>
-                <div className="flex flex-col gap-2">
-                  {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
-                  ))}
-                </div>
-              </>
-            )}
             {active.length === 0 && <p className="mt-3 px-0.5 text-[12px] text-mute">Nothing downloading</p>}
             {recordings.length > 0 && (
               <>
@@ -354,6 +332,20 @@ export function Popup() {
                 </div>
               </>
             )}
+            {failed.length > 0 && (
+              <>
+                <Section title="Failed" count={failed.length}>
+                  <Button tone="ghost" onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                    Clear
+                  </Button>
+                </Section>
+                <div className="flex flex-col gap-2">
+                  {failed.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} />
+                  ))}
+                </div>
+              </>
+            )}
           </>
         )}
       </Panel>
@@ -382,6 +374,8 @@ export function Popup() {
         <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} />
       </Panel>
 
+      <Toast message={toast?.text ?? null} action={toast?.view && view !== 'jobs' ? { label: 'View', onClick: () => (setView('jobs'), setToast(null)) } : undefined} />
+
       {sheet && (
         <QualitySheet
           onMissing={onMissing}
@@ -398,7 +392,6 @@ export function Popup() {
         />
       )}
       {settingsOpen && <SettingsPanel latest={update.latest} onClose={() => setSettingsOpen(false)} />}
-      <Toast message={toast?.text ?? null} action={toast?.view && view !== 'jobs' ? { label: 'View', onClick: () => (setView('jobs'), setToast(null)) } : undefined} />
     </div>
   );
 }

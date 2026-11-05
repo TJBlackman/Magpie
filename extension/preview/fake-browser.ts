@@ -320,7 +320,7 @@ async function inspect(c: Candidate): Promise<Result<Inspection>> {
   const notes: string[] = [];
   if (c.live) notes.push(LIVE_NOTE);
   if (c.id === 'c5') notes.push('Audio: English (default). Other languages are not selectable yet.');
-  const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live };
+  const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live, duration: c.live || c.kind === 'post' ? undefined : infoFor(c).duration };
   state.inspections.set(c.id, ins);
   return ok(ins);
 }
