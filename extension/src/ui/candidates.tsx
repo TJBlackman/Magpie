@@ -56,7 +56,13 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
 function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string; rest: string }) {
   return (
     <span className="min-w-0 flex-1 truncate" title={candidate.url}>
-      {lead && <span className="tabular-nums">{lead}</span>}
+      {lead && (
+        <span className="tabular-nums">
+          {lead}
+          {/* The count of qualities is the card's cue that a click opens the choice. */}
+          {/ qualities$/.test(lead) && <IconChevron size={11} className="-mt-px ml-0.5 inline opacity-70" />}
+        </span>
+      )}
       {rest && `${lead ? ' · ' : ''}${rest}`}
     </span>
   );
@@ -277,8 +283,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             </span>
             {meta && (
               <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db]">
-                {duration ? <span className="-mr-0.5 shrink-0 tabular-nums">{fmtClock(duration)}</span> : null}
-                {duration ? <span aria-hidden="true">·</span> : null}
+                {/* The length joins the line with the same separator as the rest: "17:17 · 2160p". */}
+                {duration ? <span className="-mr-1.5 shrink-0 tabular-nums">{`${fmtClock(duration)} ·`}&nbsp;</span> : null}
                 {meta}
               </span>
             )}
