@@ -207,6 +207,13 @@ export const IconFolder = (p: IconProps) => (
   </Icon>
 );
 
+export const IconFile = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V8z" />
+    <path d="M14 3v5h5" />
+  </Icon>
+);
+
 export const IconExternal = (p: IconProps) => (
   <Icon {...p}>
     <path d="M14 4h6v6" />

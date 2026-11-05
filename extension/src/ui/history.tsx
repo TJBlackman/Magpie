@@ -2,8 +2,8 @@ import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
-import { Button, Empty, IconButton, MediaRow, MediaTile } from './components';
-import { IconExternal, IconFolder, IconHistory, IconMore, IconSearch, IconTrash } from './icons';
+import { Button, Empty, FitText, IconButton, MediaRow, MediaTile } from './components';
+import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
 
 /**
  * A row's extra actions behind one small button, shown while the row is
@@ -70,10 +70,19 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
                 setOpen(false);
                 it.run();
               }}
-              className={`flex h-9 items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#ff8b8b]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-white/[0.12]' : ''}`}
+              className={`flex ${it.danger && it.hint ? 'py-2' : 'h-9'} items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#ff8b8b]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-white/[0.12]' : ''}`}
             >
               <span className={it.danger ? 'text-err' : 'text-mute'}>{it.icon}</span>
-              {it.label}
+              {it.danger && it.hint ? (
+                <span className="flex flex-col">
+                  {it.label}
+                  <span aria-hidden="true" className="text-[11.5px] leading-4 text-mute">
+                    {it.hint}
+                  </span>
+                </span>
+              ) : (
+                it.label
+              )}
             </button>
           ))}
         </span>
@@ -82,19 +91,6 @@ function RowMenu({ items }: { items: { label: string; hint?: string; icon: React
   );
 }
 
-/** The title with the part that matches the search marked. */
-function highlight(text: string, query: string): ReactNode {
-  const q = query.trim();
-  const at = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
-  if (at < 0) return text;
-  return (
-    <>
-      {text.slice(0, at)}
-      <mark className="rounded-[3px] bg-shine/[0.2] text-[#83f3e5]">{text.slice(at, at + q.length)}</mark>
-      {text.slice(at + q.length)}
-    </>
-  );
-}
 
 /**
  * One finished download: its frame with the length on it, the day, the
@@ -114,7 +110,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
       tile={<MediaTile kind={kind} thumb={thumbs ? entry.thumb : undefined} corner={entry.secs ? fmtClock(entry.secs) : entry.files ? `${entry.files} files` : undefined} />}
-      title={highlight(title, query)}
+      title={<FitText text={title} mark={query} />}
       titleTip={entry.file}
       titleTestId="archive-title"
       meta={
@@ -134,7 +130,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
           items={[
             { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
-            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconTrash size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
+            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}
         />
       }

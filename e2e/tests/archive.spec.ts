@@ -40,7 +40,7 @@ test('a finished download moves to history and its media is marked as downloaded
   await expect(row).toContainText(/just now|\dm ago/i);
   await expect(badge).toHaveAttribute('title', /^Downloaded .+ as Harbor at Dusk\.mp4$/);
   const sheet = await openCandidate(popup, '/media/hls-ts/index.m3u8');
-  await expect(sheet.getByTestId('archived-note')).toContainText('as Harbor at Dusk.mp4');
+  await expect(sheet.getByTestId('archived-note')).toContainText('Harbor at Dusk.mp4');
   await expect(sheet.getByTestId('start')).toHaveText(/^Download.* again$/);
   await popup.keyboard.press('Escape');
   await expect(sheet).toHaveCount(0);

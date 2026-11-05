@@ -143,10 +143,10 @@ function fitLength(text: string, width: number, style: CSSStyleDeclaration): num
     if (measure.measureText(`${trim(text.slice(0, mid))}…`).width <= width) lo = mid;
     else hi = mid - 1;
   }
-  // A cut that would leave a stub of three letters or fewer ("Platte R…") steps back to the word before.
+  // A cut inside a word ("Platt…") steps back to the end of the word before. Only a word longer than the line is cut in the middle.
   const inWord = /[\p{L}\p{N}]/u.test(text[lo] ?? '') && /[\p{L}\p{N}]/u.test(text[lo - 1] ?? '');
   const space = inWord ? text.lastIndexOf(' ', lo) : -1;
-  return trim(text.slice(0, space > 0 && lo - space <= 4 ? space : lo)).length;
+  return trim(text.slice(0, space > 0 && lo - space <= 16 ? space : lo)).length;
 }
 
 /**
@@ -154,7 +154,7 @@ function fitLength(text: string, width: number, style: CSSStyleDeclaration): num
  * letter, never after a space. The cut part stays in the page for screen
  * readers and search; CSS truncation still applies if the measure is off.
  */
-export function FitText({ text }: { text: string }) {
+export function FitText({ text, mark }: { text: string; mark?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [cut, setCut] = useState(text.length);
   useLayoutEffect(() => {
@@ -166,13 +166,29 @@ export function FitText({ text }: { text: string }) {
     watch.observe(box);
     return () => watch.disconnect();
   }, [text]);
-  if (cut >= text.length) return <span ref={ref}>{text}</span>;
+  const shown = marked(text.slice(0, cut), text, mark);
+  if (cut >= text.length) return <span ref={ref}>{shown}</span>;
   return (
     <span ref={ref}>
-      {text.slice(0, cut)}
+      {shown}
       <span aria-hidden="true" className="after:content-['…']" />
       <span className="sr-only">{text.slice(cut)}</span>
     </span>
+  );
+}
+
+/** `shown` (the start of `full`) with the part that matches `query` marked, as far as it shows. */
+function marked(shown: string, full: string, query?: string): ReactNode {
+  const q = query?.trim() ?? '';
+  const at = q ? full.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  if (at < 0 || at >= shown.length) return shown;
+  const end = Math.min(at + q.length, shown.length);
+  return (
+    <>
+      {shown.slice(0, at)}
+      <mark className="rounded-[3px] bg-shine/[0.2] text-[#83f3e5]">{shown.slice(at, end)}</mark>
+      {shown.slice(end)}
+    </>
   );
 }
 

@@ -4,7 +4,7 @@ import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
 import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing } from './components';
-import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFilm, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
+import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFile, IconFilm, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
 
@@ -53,17 +53,15 @@ function sourceParts(candidate: Candidate, tagged: boolean): { lead: string; res
   return { lead, rest };
 }
 
-function Source({ candidate, lead, rest }: { candidate: Candidate; lead: string; rest: string }) {
+const CUE = <IconChevron size={11} className="-mt-px ml-0.5 inline opacity-70" />;
+
+function Source({ candidate, lead, rest, cue }: { candidate: Candidate; lead: string; rest: string; cue?: boolean }) {
   return (
     <span className="min-w-0 flex-1 truncate" title={candidate.url}>
-      {lead && (
-        <span className="tabular-nums">
-          {lead}
-          {/* The count of qualities is the card's cue that a click opens the choice. */}
-          {!candidate.archived && !candidate.info?.drm && <IconChevron size={11} className="-mt-px ml-0.5 inline opacity-70" />}
-        </span>
-      )}
+      {lead && <span className="tabular-nums">{lead}</span>}
       {rest && `${lead ? ' · ' : ''}${rest}`}
+      {/* The chevron is the card's cue that a click opens the sheet. Rows draw it on the right instead, unless they have a count of qualities. */}
+      {(cue || (lead && !candidate.archived && !candidate.info?.drm)) && CUE}
     </span>
   );
 }
@@ -142,7 +140,7 @@ function StatusTags({ candidate, job, inSheet }: { candidate: Candidate; job?: C
   );
 }
 
-function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
+function Meta({ candidate, job, cue }: { candidate: Candidate; job?: CardJob; cue?: boolean }) {
   const src = sourceParts(candidate, tagged(candidate, job));
   return (
     <>
@@ -151,9 +149,12 @@ function Meta({ candidate, job }: { candidate: Candidate; job?: CardJob }) {
       {candidate.kind === 'post' ? (
         <span className="min-w-0 flex-1 truncate" title={candidate.url}>
           {postLabel(candidate)}
+          {cue && CUE}
         </span>
+      ) : cue && !src.lead && !src.rest ? (
+        <span className="-ml-1 shrink-0">{CUE}</span>
       ) : (
-        <Source candidate={candidate} {...src} />
+        <Source candidate={candidate} {...src} cue={cue} />
       )}
     </>
   );
@@ -253,7 +254,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
     candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? (
       <>
         <span className="contents group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">
-          <Meta candidate={candidate} job={job} />
+          <Meta candidate={candidate} job={job} cue={!!tile || (!!hero && leads(candidate, thumbs, job))} />
         </span>
         {!job && quickable(candidate) && (
           <span className="hidden min-w-0 flex-1 truncate font-medium text-text group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
@@ -392,45 +393,49 @@ function VariantRow({ variant, on, single, duration, showAudio, hideCodecs, onPi
   );
 }
 
-/** When this media was downloaded and as what, with a button that shows the file before another copy is saved. */
+/** When this media was downloaded and where the file is, before another copy is saved. */
 function ArchivedNote({ archived }: { archived: Archived }) {
   const ago = fmtAgo(archived.at);
   const time = new Date(archived.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   const when = /ago$|just now/.test(ago) ? ago : `${ago} at ${time}`;
+  const { folders, name } = splitPath(`Downloads/${archived.file}`);
   return (
     <Callout tone="info" icon={<IconCheckCircle size={15} className="!text-shine" />} title={`Saved ${when}`} testId="archived-note">
-      <span className="block truncate" title={archived.file}>{`as ${archived.file}${archived.files ? ` (${archived.files} files)` : ''} in Downloads`}</span>
-      <span className="block text-mute">Downloading again saves a second copy beside it.</span>
+      <span className="block" title={archived.file}>
+        <Destination label={archived.files ? `${archived.files} files in ${folders}` : `In ${folders}`} name={name} folder={!!archived.files} />
+      </span>
+      <span className="mt-1.5 block text-mute">Downloading again saves a second copy beside it.</span>
     </Callout>
   );
 }
 
-/** "Downloads / Reddit / EarthPorn / name": folders quiet, the last part a step brighter, cut in the middle when long. */
-function SavePath({ path, files }: { path: string; files?: number }) {
-  const cut = path.lastIndexOf('/');
-  const folders = cut >= 0 ? path.slice(0, cut).split('/').join(' / ') : '';
-  const name = path.slice(cut + 1);
+/** Where a file goes or went: a label line, then a file or folder glyph and the name on up to two lines. The quality and type at the end never break. */
+function Destination({ label, name, folder }: { label: string; name: string; folder?: boolean }) {
   const suffix = /(?:\s\d{4}-\d{2}-\d{2} \d{2}\.\d{2})?(?:\s*\[[^\]]*\])*(?:\.\w+)?$/.exec(name)?.[0] ?? '';
   const stem = name.slice(0, name.length - suffix.length);
-  if (files)
-    return (
-      <span className="block min-w-0 flex-1">
-        <span className="block truncate">{`Saves ${files} files to ${folders}`}</span>
-        <span className="mt-0.5 flex gap-1.5">
-          <IconFolder size={13} className="mt-0.5 shrink-0" />
-          <span className="line-clamp-2 min-w-0 break-words">{name}</span>
-        </span>
-      </span>
-    );
   return (
     <span className="block min-w-0 flex-1">
-      <span className="block truncate">Saves to {folders}</span>
-      <span className="mt-0.5 line-clamp-2 break-words">
-        {stem}
-        <span className="whitespace-nowrap">{suffix}</span>
+      <span className="block truncate">{label}</span>
+      <span className="mt-1 flex gap-1.5">
+        {folder ? <IconFolder size={13} className="mt-[1.5px] shrink-0" /> : <IconFile size={13} className="mt-[1.5px] shrink-0" />}
+        <span className="line-clamp-2 min-w-0 break-words">
+          {stem}
+          <span className="whitespace-nowrap">{suffix}</span>
+        </span>
       </span>
     </span>
   );
+}
+
+/** "Downloads/Reddit/EarthPorn/name" as a destination: the folders on the label line, the name below. */
+function splitPath(path: string): { folders: string; name: string } {
+  const cut = path.lastIndexOf('/');
+  return { folders: cut >= 0 ? path.slice(0, cut).split('/').join(' / ') : '', name: path.slice(cut + 1) };
+}
+
+function SavePath({ path, files }: { path: string; files?: number }) {
+  const { folders, name } = splitPath(path);
+  return <Destination label={files ? `Saves ${files} files to ${folders}` : `Saves to ${folders}`} name={name} folder={!!files} />;
 }
 
 /** "images" when every file of a post is a picture, else "files". */

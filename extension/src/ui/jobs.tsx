@@ -166,7 +166,6 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
   return (
     <MediaRow
       inset={inset}
-      wrapTitle={failed}
       attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
       tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} />}
       title={job.title || job.filename}
@@ -175,21 +174,19 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
         <>
           {job.group && <Badge>{`${job.group.index + 1} of ${job.group.total}`}</Badge>}
           {meta}
+          {recover && (
+            <button type="button" onClick={recover.run} title={recover.hint} className="-my-[7px] -mr-1 inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10">
+              {recover.label}
+              {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
+            </button>
+          )}
         </>
       }
       action={
         failed ? (
-          <span className="flex items-center gap-1">
-            {recover && (
-              <button type="button" onClick={recover.run} title={recover.hint} className="inline-flex h-8 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10">
-                {recover.label}
-                {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
-              </button>
-            )}
-            <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
-              <IconX size={17} />
-            </IconButton>
-          </span>
+          <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-9">
+            <IconX size={17} />
+          </IconButton>
         ) : job.live ? (
           discarding ? null : (
             <IconButton label="Discard the recording" tone="danger" className="size-9" onClick={() => setDiscarding(true)}>
