@@ -97,7 +97,7 @@ function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live'
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
-        <div className={`h-full rounded-full transition-[width] duration-300 ${color} ${moving ? 'bar-sheen' : ''}`} style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%`, backgroundSize: `${100 / Math.max(pct, 0.02)}% 100%` }} />
+        <div className={`h-full rounded-full transition-[width] duration-300 ${color} ${moving ? 'bar-sheen' : ''}`} style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%` }} />
       )}
     </div>
   );
@@ -178,8 +178,8 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
     const line = span?.parentElement?.parentElement;
     if (!failed || !hasFix || !span || !line || typeof ResizeObserver === 'undefined') return;
     const run = () => {
-      // Icon 13 + gap 6, the reason, gap 6, the fix (its -4px margin tucks it in).
-      const need = 13 + 6 + textWidth(reason, getComputedStyle(span)) + 6 + (fixRef.current?.offsetWidth ?? 0) - 4;
+      // Icon 13 + gap 6, the reason, gap 6, the fix (its -4px and -6px margins tuck it in).
+      const need = 13 + 6 + textWidth(reason, getComputedStyle(span)) + 6 + (fixRef.current?.offsetWidth ?? 0) - 10;
       setTight(need > line.clientWidth);
     };
     run();
@@ -189,7 +189,7 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
     return () => watch.disconnect();
   }, [failed, hasFix, reason]);
   const fix = recover && (
-    <button ref={fixRef} type="button" onClick={recover.run} title={recover.hint} className={`${tight ? '-ml-2' : '-my-[7px] -mr-1 pb-0.5'} inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10`}>
+    <button ref={fixRef} type="button" onClick={recover.run} title={recover.hint} className={`${tight ? '-ml-2 px-2' : '-my-[7px] -mr-1.5 -ml-1 px-1.5 pb-0.5'} inline-flex h-8 shrink-0 items-center rounded-lg text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10`}>
       {recover.label}
       {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
     </button>

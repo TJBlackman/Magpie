@@ -293,7 +293,7 @@ export function Popup() {
         {label}
         {pill}
       </span>
-      {view === v && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,#3d8fe0,#1fd8cf)]" />}
+      {view === v && <span aria-hidden="true" className="absolute bottom-px left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,#3d8fe0,#1fd8cf)]" />}
     </button>
   );
 

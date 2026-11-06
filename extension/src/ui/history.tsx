@@ -141,18 +141,13 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       action={<span className="h-9 w-7 shrink-0" aria-hidden="true" />}
       inset
       overlay={
-        <>
-          <button type="button" onClick={show} aria-label={folder ? 'Show the folder' : 'Show in folder'} title={folder ? 'Show the folder' : 'Show in folder'} className="absolute top-1/2 right-11 z-10 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full bg-row-hover text-mute transition-colors group-focus-within:flex group-hover:flex before:pointer-events-none before:absolute before:inset-y-0 before:right-full before:w-8 before:bg-[linear-gradient(to_left,var(--color-row-hover),transparent)] hover:bg-[#383b40] hover:text-text">
-            <IconFolder size={16} />
-          </button>
-          <RowMenu
+        <RowMenu
           items={[
             { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
             { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}
-          />
-        </>
+        />
       }
     />
   );
