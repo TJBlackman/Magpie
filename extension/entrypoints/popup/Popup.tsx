@@ -287,12 +287,13 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-[#6e7279] bg-[#313439] text-text shadow-[0_1px_3px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.09)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#313439] text-text shadow-[0_1px_3px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
         {pill}
       </span>
+      {view === v && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-shine" />}
     </button>
   );
 
@@ -342,7 +343,7 @@ export function Popup() {
         {tab(
           'jobs',
           'Downloads',
-          <Pill n={active.length + failed.length} />,
+          <Pill n={active.length + failed.length} failed={failed.length} />,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
         )}
         {tab('history', 'History', null)}
@@ -426,8 +427,7 @@ export function Popup() {
             )}
             {scope && !scope.all && (
               <div className="mt-5 flex justify-center">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-medium text-fg2 ring-1 ring-ctl-edge ring-inset transition-colors hover:bg-white/[0.06] hover:text-text">
-                  <IconX size={13} className="text-mute" />
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-3 text-[12px] font-medium text-fg2 transition-colors hover:bg-btn-hover hover:text-text">
                   Clear detected media
                 </button>
               </div>

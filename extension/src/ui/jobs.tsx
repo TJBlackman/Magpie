@@ -248,23 +248,25 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
   if (card && thumbs && job.thumb && !failed && !queued) {
     const stopLabel = job.live ? 'Discard the recording' : 'Cancel the download';
     return (
-      <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative overflow-hidden rounded-[16px]">
-        <div className="relative h-[76px] overflow-hidden">
-          <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover object-[center_40%]" />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_12%,rgba(11,12,13,.74)_44%,rgba(11,12,13,.92)_100%)]" />
-          <span className="absolute inset-x-3.5 bottom-2.5 block">
-            <span className="font-display block truncate text-[15px] leading-[19px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" title={job.filename}>
-              <FitText text={job.title || job.filename} />
-            </span>
-            <span className="mt-0.5 flex text-[11.5px] text-[#d6d8db] tabular-nums">{meta}</span>
-          </span>
-          {!(job.live && discarding) && (
-            <button type="button" aria-label={stopLabel} title={stopLabel} onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))} className="absolute top-2 right-2 flex size-8 items-center justify-center rounded-full bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset transition-colors hover:bg-[#16181b] hover:text-[#83f3e5] focus-visible:shadow-[0_0_0_2px_#0b0c0d]">
-              {job.live ? <IconTrash size={15} /> : <IconX size={15} />}
-            </button>
-          )}
+      <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative rounded-[16px] p-2.5">
+        <div className="flex items-center gap-3">
+          <div className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-[10px] bg-[#202326] shadow-[0_2px_6px_rgba(0,0,0,.4)]">
+            <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
+            <span className="pointer-events-none absolute inset-0 rounded-[10px] ring-1 ring-white/[0.08] ring-inset" />
+          </div>
+          <div className="min-w-0 flex-1 pr-9">
+            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-pretty text-text" title={job.filename}>
+              {job.title || job.filename}
+            </div>
+            <div className="mt-1 flex text-[11.5px] text-mute tabular-nums">{meta}</div>
+          </div>
         </div>
-        <div className="px-3.5 pt-2 pb-3">{progress}</div>
+        {!(job.live && discarding) && (
+          <IconButton label={stopLabel} tone="danger" className="absolute top-2 right-2 size-8" onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))}>
+            {job.live ? <IconTrash size={16} /> : <IconX size={16} />}
+          </IconButton>
+        )}
+        <div className="px-1 pt-1.5">{progress}</div>
       </div>
     );
   }

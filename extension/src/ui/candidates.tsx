@@ -312,14 +312,13 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
           <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover transition-[transform,filter] duration-700 ease-out group-hover:scale-[1.035] group-hover:brightness-[1.08] group-has-[.quick:hover]:brightness-100" />
           <span className="absolute inset-0 bg-white/0 transition-colors duration-200 group-hover:bg-white/[0.05] group-has-[.quick:hover]:bg-white/0" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_30%,rgba(11,12,13,.62)_60%,rgba(11,12,13,.92)_100%)]" />
+          {duration ? <span className="absolute top-3 right-3 rounded-[6px] bg-[#0b0c0d]/60 px-1.5 text-[11.5px] leading-[19px] font-medium text-white tabular-nums backdrop-blur-sm">{fmtClock(duration)}</span> : null}
           <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
             <span className="font-display line-clamp-2 block text-[20px] leading-[23px] font-semibold text-pretty text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
               {bind(title)}
             </span>
             {meta && (
               <span className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[12px] text-[#d6d8db] transition-colors [text-shadow:0_1px_2px_rgba(0,0,0,.7)] group-hover:text-white group-hover:[&_svg]:opacity-100">
-                {/* The length joins the line with the same separator as the rest: "17:17 · 2160p". */}
-                {duration ? <span className="-mr-1.5 shrink-0 tabular-nums group-has-[.quick:focus-visible]:hidden group-has-[.quick:hover]:hidden">{`${fmtClock(duration)} ·`}&nbsp;</span> : null}
                 {meta}
               </span>
             )}
@@ -594,7 +593,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <Callout tone="neutral" testId="inspect-error">
+              <Callout tone="neutral" icon={<IconLock size={15} className="text-mute" />} testId="inspect-error">
                 {error}
               </Callout>
             ) : (
@@ -647,17 +646,28 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
             <SavePath path={`Downloads/${post ? saveAs.replace(/(\s*\[[^\]]*\])+(?=\.\w+$|$)/, '') : saveAs}`} files={post ? files : undefined} />
           </div>
         )}
+        {drm && (
+          <Button size="lg" className="mt-3 w-full" onClick={onClose}>
+            Close
+          </Button>
+        )}
         {inspection && !error && folded && (
           <div className="mt-3 flex gap-2">
-            <Button size="lg" className="flex-1" testId="start" onClick={() => setExpanded(true)} title="Pick a quality for a second copy">
+            <Button size="lg" className="flex-1" testId="start" onClick={() => void start()} disabled={!variantId || busy} title="Save a second copy beside the first">
               <IconDownload size={17} />
-              Download again
+              {short ? `Download ${short} again` : 'Download again'}
             </Button>
             <Button tone="shine" size="lg" className="flex-1" onClick={() => void api.showFile(candidate.archived!.file, !!candidate.archived!.files).then((r) => r.ok && !r.value && onMissing())}>
               <IconFolder size={16} />
               Show in folder
             </Button>
           </div>
+        )}
+        {inspection && !error && folded && variants.length > 1 && (
+          <button type="button" onClick={() => setExpanded(true)} className="mt-1.5 inline-flex h-8 items-center gap-0.5 self-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
+            Other qualities
+            <IconChevron size={14} />
+          </button>
         )}
         {inspection && !error && (!post || files > 0) && !folded && (
           <Button tone={candidate.archived ? 'default' : candidate.live ? 'live' : 'shine'} size="lg" onClick={() => void start()} disabled={(!variantId && !post) || busy} className={`${saveAs && !candidate.archived ? 'mt-2.5' : 'mt-3'} w-full`} testId="start">
