@@ -7,7 +7,7 @@ import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
 import { SettingsPanel, Stepper } from '../../src/ui/settings';
 import { MAX_CONCURRENT_LIMIT } from '../../src/core/settings';
-import { IconCheck, IconChevron, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
+import { IconCheck, IconDownload, IconError, IconRedo, IconSearch, IconSettings, IconVideo, IconX, Logo } from '../../src/ui/icons';
 import { fmtClock, hostOf, jobProgress, shortUrl } from '../../src/ui/format';
 import type { Candidate, Job } from '../../src/core/types';
 import { SITE_URL } from '../../src/core/update';
@@ -73,7 +73,10 @@ function Pill({ n, failed = 0 }: { n: number; failed?: number }) {
       )}
 
       {failed > 0 && (
-        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="ml-0.5 inline-block size-[7px] shrink-0 rounded-full bg-[#f2b84b]" />
+        <span role="img" data-chip aria-label={`${failed} failed`} title={`${failed} failed`} className="ml-1 inline-flex h-[18px] shrink-0 items-center gap-[3px] rounded-full bg-[#f2b84b]/[0.16] pr-1.5 pl-[5px] text-[11px] leading-[18px] font-semibold text-[#f5c76a] tabular-nums">
+          <IconError size={11} />
+          {failed}
+        </span>
       )}
     </span>
   );
@@ -287,7 +290,7 @@ export function Popup() {
       aria-selected={view === v}
       onClick={() => setView(v)}
       title={tip}
-      className={`relative flex h-8 min-w-0 items-center justify-center rounded-[9px] px-2 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#313439] text-text shadow-[0_1px_3px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
+      className={`relative flex h-8 min-w-0 flex-auto items-center justify-center rounded-[9px] px-3 text-[12.5px] font-semibold whitespace-nowrap transition-colors ${view === v ? 'border border-transparent bg-[#313439] text-text shadow-[0_1px_3px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] [--tab-bg:#2a2d31] [&_.pill]:text-[#83f3e5]' : 'border border-transparent text-mute [--tab-bg:var(--color-panel)] hover:bg-white/[0.03] hover:text-text [&_.pill]:text-dim'}`}
     >
       <span className="inline-flex h-5 items-center gap-1 leading-5">
         {label}
@@ -338,12 +341,12 @@ export function Popup() {
 
       {update.latest && !update.dismissed && <UpdateBanner version={update.latest} onGet={() => openPage(SITE_URL)} onDismiss={update.dismiss} />}
 
-      <div role="tablist" className={`mx-3.5 mb-1 grid shrink-0 grid-cols-3 gap-0.5 rounded-xl bg-[#17191c] p-[3px] ring-1 ring-white/[0.05] ring-inset`}>
+      <div role="tablist" className={`mx-3.5 mb-1 flex shrink-0 gap-0.5 rounded-xl bg-[#17191c] p-[3px] ring-1 ring-white/[0.05] ring-inset`}>
         {tab('page', all ? 'All tabs' : 'This page', <Pill n={candidates.length} />, downloaded ? `${fresh.length} new, ${downloaded} already downloaded` : undefined)}
         {tab(
           'jobs',
           'Downloads',
-          <Pill n={active.length + failed.length} failed={failed.length} />,
+          <Pill n={active.length} failed={failed.length} />,
           [recording ? 'Recording' : '', failed.length ? `${failed.length} failed` : ''].filter(Boolean).join(', ') || undefined,
         )}
         {tab('history', 'History', null)}
@@ -466,10 +469,12 @@ export function Popup() {
               <>
                 <Section title="Downloading" count={running.length}>
                   {settings && (
-                    <button type="button" onClick={() => setSettingsOpen(true)} title="Change in Settings" aria-label={`Up to ${settings.maxConcurrent} downloads at once. Change in Settings`} className="-mr-2 inline-flex h-8 items-center gap-0.5 rounded-lg pr-1 pl-2.5 text-[12px] font-medium text-mute tabular-nums transition-colors hover:bg-white/[0.06] hover:text-text">
-                      {`Up to ${settings.maxConcurrent} at once`}
-                      <IconChevron size={14} />
-                    </button>
+                    <>
+                      <span className="text-[12.5px] text-dim tabular-nums">{`Up to ${settings.maxConcurrent} at once`}</span>
+                      <TextButton onClick={() => setSettingsOpen(true)} title="Change how many download at once, in Settings" label={`Change how many download at once. Now ${settings.maxConcurrent}`}>
+                        Change
+                      </TextButton>
+                    </>
                   )}
                 </Section>
                 {thumbs ? (
@@ -500,19 +505,41 @@ export function Popup() {
                     </TextButton>
                   )}
                 </Section>
-                <RowList divided>
-                  {failed.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
-                  ))}
-                </RowList>
+                {thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {failed.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} card />
+                    ))}
+                  </div>
+                ) : (
+                  <RowList divided>
+                    {failed.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
+                    ))}
+                  </RowList>
+                )}
               </>
             )}
             {waiting.length > 0 && (
               <>
                 <Section title="Queued" count={waiting.length} />
-                <RowList divided>
-                  {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
-                </RowList>
+                {thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {rowsOf(waiting).map((r) =>
+                      r.group !== undefined ? (
+                        <RowList key={r.group}>
+                          <GroupRow jobs={r.jobs} thumbs={thumbs} inset />
+                        </RowList>
+                      ) : (
+                        <JobRow key={r.job.id} job={r.job} thumbs={thumbs} card />
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <RowList divided>
+                    {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                  </RowList>
+                )}
               </>
             )}
           </>

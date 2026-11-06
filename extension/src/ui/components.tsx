@@ -292,7 +292,7 @@ export function RowList({ children, testId, divided }: { children: ReactNode; te
 export function Section({ title, count, children }: { title: ReactNode; count?: number; children?: ReactNode }) {
   return (
     <div className="mt-5 mb-2 flex h-7 items-center justify-between gap-2 first:mt-1.5">
-      <h2 className="min-w-0 translate-y-px truncate text-[13px] font-medium text-mute">
+      <h2 className="min-w-0 truncate text-[13px] font-medium text-mute">
         {title}
         {count !== undefined && <span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>}
       </h2>
@@ -344,7 +344,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
 /** The one text action in a section header: grey until hovered, 32px tall, its words saying what it acts on. */
 export function TextButton({ children, onClick, title, label, armed }: { children: ReactNode; onClick: () => void; title?: string; label?: string; armed?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12px] font-semibold ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : '-mr-2.5 text-[#83f3e5] ring-transparent hover:bg-shine/10'}`}>
+    <button type="button" onClick={onClick} title={title} aria-label={label} className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-lg px-2.5 text-[12.5px] font-semibold tabular-nums ring-1 ring-inset transition-colors ${armed ? 'bg-err/[0.16] text-[#fecaca] ring-err/40' : '-mr-2.5 text-[#83f3e5] ring-transparent hover:bg-shine/10'}`}>
       {children}
     </button>
   );
@@ -391,19 +391,19 @@ export function DownloadedToggle({ count, shown, onToggle }: { count: number; sh
       <span className="min-w-0 truncate text-[13px] font-medium text-mute">
         Already downloaded<span className="ml-1.5 font-medium text-dim tabular-nums">{count}</span>
       </span>
-      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="-mr-2.5 inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
+      <button type="button" role="switch" aria-checked={shown} aria-label="Show downloaded" onClick={onToggle} className="-mr-2.5 inline-flex h-8 shrink-0 items-center rounded-lg px-2.5 text-[12.5px] font-semibold text-[#83f3e5] transition-colors hover:bg-shine/10">
         {shown ? 'Hide' : 'Show'}
       </button>
     </div>
   );
 }
 
-/** A short message at the bottom of the popup that fades after a few seconds, with up to two actions; the last is the main one. */
+/** A short message at the bottom of the popup that fades after a few seconds, with up to two actions in one style. */
 export function Toast({ message, detail, actions = [], live, queued, duration, held, onHold }: { message: string | null; detail?: string; actions?: { label: string; onClick: () => void }[]; live?: boolean; queued?: boolean; duration?: number; held?: boolean; onHold?: (on: boolean) => void }) {
   if (!message) return null;
   return (
     <div role="status" onMouseEnter={() => onHold?.(true)} onMouseLeave={() => onHold?.(false)} onFocus={() => onHold?.(true)} onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node | null) && onHold?.(false)} className="absolute inset-x-0 bottom-0 z-[15] bg-[linear-gradient(180deg,rgba(11,12,13,0),#0b0c0d_28px)] px-3.5 pt-9 pb-3">
-      <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-panel3 py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_12px_32px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)] ring-1 ring-white/[0.07] ring-inset">
+      <div className="rise-in relative flex min-h-11 items-center gap-2.5 overflow-hidden rounded-xl bg-[#2a2d31] py-2.5 pr-2.5 pl-3 text-[12.5px] font-medium text-text shadow-[0_16px_40px_rgba(0,0,0,.7),0_2px_6px_rgba(0,0,0,.5),inset_0_1px_0_rgba(255,255,255,.08)] ring-1 ring-white/[0.10] ring-inset">
         <span className={`flex size-[18px] items-center justify-center rounded-full ${live ? 'bg-[#4a2631]' : 'bg-[#0d4041] text-shine'}`}>
           {live ? <span className="size-2 rounded-full bg-live" /> : queued ? <IconClock size={12} /> : <IconCheck size={12} />}
         </span>
@@ -412,7 +412,7 @@ export function Toast({ message, detail, actions = [], live, queued, duration, h
           {detail && <span className="block truncate text-[12px] font-normal text-mute">{detail}</span>}
         </span>
         {actions.map((a, i) => (
-          <button key={a.label} type="button" onClick={a.onClick} className="h-8 rounded-lg bg-[#33363b] px-3 text-[12.5px] font-semibold text-text transition-colors hover:bg-[#3d4046]">
+          <button key={a.label} type="button" onClick={a.onClick} className="h-8 rounded-lg bg-[#3d4046] px-3 text-[12.5px] font-semibold text-text transition-colors hover:bg-[#474a50]">
             {a.label}
           </button>
         ))}

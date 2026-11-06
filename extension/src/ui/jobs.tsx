@@ -3,7 +3,7 @@ import type { Job } from '../core/types';
 import { api, openPage } from './api';
 import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtHeight, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
 import { Badge, Button, Callout, FitText, IconButton, MediaRow, MediaTile, textWidth } from './components';
-import { IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
+import { IconClock, IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
  * Smoothed bytes per second for an active job, from the byte counts it reports.
@@ -245,15 +245,43 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
     </>
   );
   // A running or recording download with a frame is a card: the whole frame beside the title, progress below.
-  if (card && thumbs && job.thumb && !failed && !queued) {
-    const stopLabel = job.live ? 'Discard the recording' : 'Cancel the download';
+  if (card && thumbs) {
+    const stopLabel = failed ? 'Remove from the list' : queued ? 'Remove from the queue' : job.live ? 'Discard the recording' : 'Cancel the download';
+    const bottom = failed ? (
+      <StatusLine
+        testId="job-error"
+        chip={<IconError size={14} className="shrink-0 text-[#f5c76a]" />}
+        left={
+          <span className="block min-w-0 text-[#f5c76a]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`}>
+            <FitText text={reason} />
+          </span>
+        }
+        right={
+          recover && (
+            <Button tone="default" size="md" onClick={recover.run} title={recover.hint}>
+              {recover.label === 'Retry' ? recover.icon : null}
+              {recover.label}
+              {recover.label === 'Open page' && <IconExternal size={13} />}
+            </Button>
+          )
+        }
+      />
+    ) : queued ? (
+      <StatusLine chip={<Badge><IconClock size={11} className="text-shine" />Queued</Badge>} left={[statusText(job, pct), job.bytesTotal ? fmtBytes(job.bytesTotal) : job.sizeEstimate ? fmtApprox(job.sizeEstimate) : ''].filter(Boolean).join(' · ')} />
+    ) : (
+      progress
+    );
     return (
       <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative rounded-[16px] p-3.5">
         <div className="flex items-center gap-3">
-          <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-[10px] bg-[#202326] shadow-[0_2px_6px_rgba(0,0,0,.4)]">
-            <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
-            <span className="pointer-events-none absolute inset-0 rounded-[10px] ring-1 ring-white/[0.08] ring-inset" />
-          </div>
+          {job.thumb && thumbs ? (
+            <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-[10px] bg-[#202326] shadow-[0_2px_6px_rgba(0,0,0,.4)]">
+              <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className={`size-full object-cover ${failed ? 'brightness-[.8] saturate-[.8]' : ''}`} />
+              <span className="pointer-events-none absolute inset-0 rounded-[10px] ring-1 ring-white/[0.08] ring-inset" />
+            </div>
+          ) : (
+            <MediaTile kind={job.kind} live={job.live} className="h-[54px] w-24" />
+          )}
           <div className="min-w-0 flex-1 pr-9">
             <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-pretty text-text" title={job.filename}>
               {job.title || job.filename}
@@ -264,11 +292,11 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
           </div>
         </div>
         {!(job.live && discarding) && (
-          <IconButton label={stopLabel} tone="danger" className="absolute top-3 right-3.5 size-8" onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))}>
-            {job.live ? <IconTrash size={16} /> : <IconX size={16} />}
+          <IconButton label={stopLabel} tone="danger" className="absolute top-3 right-3.5 size-8" onClick={() => (failed ? void api.removeJob(job.id) : job.live ? setDiscarding(true) : void api.cancel(job.id))}>
+            {job.live && !failed ? <IconTrash size={16} /> : <IconX size={16} />}
           </IconButton>
         )}
-        <div className="pt-1.5">{progress}</div>
+        <div className="pt-1.5">{bottom}</div>
       </div>
     );
   }
