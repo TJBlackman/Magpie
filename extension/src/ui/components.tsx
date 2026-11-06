@@ -149,8 +149,7 @@ function fitLength(text: string, width: number, style: CSSStyleDeclaration): num
   const space = inWord ? text.lastIndexOf(' ', lo) : -1;
   let out = trim(text.slice(0, space > 0 && lo - space <= 16 ? space : lo));
   // Nor does it end on a small joining word ("Breaching off…").
-  const last = /\s(\p{L}+)$/u.exec(out);
-  if (last && SMALL.has(last[1]!.toLowerCase())) out = trim(out.slice(0, last.index));
+  for (let last = /\s(\p{L}+)$/u.exec(out); last && SMALL.has(last[1]!.toLowerCase()); last = /\s(\p{L}+)$/u.exec(out)) out = trim(out.slice(0, last.index));
   return out.length;
 }
 

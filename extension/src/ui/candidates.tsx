@@ -579,7 +579,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className="font-display line-clamp-2 text-[18px] leading-[22px] font-semibold text-balance" title={fullTitle}>{bind(title)}</div>
+            <div className={`font-display ${post ? 'line-clamp-3' : 'line-clamp-2'} text-[18px] leading-[22px] font-semibold text-balance`} title={fullTitle}>{bind(title)}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
