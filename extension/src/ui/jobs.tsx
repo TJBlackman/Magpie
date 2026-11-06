@@ -93,7 +93,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-1 h-1 rounded-full bg-[#50545a]">
+    <div className="mt-1 h-1 rounded-full bg-[#63676d]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -248,7 +248,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
   if (card && thumbs && job.thumb && !failed && !queued) {
     const stopLabel = job.live ? 'Discard the recording' : 'Cancel the download';
     return (
-      <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative rounded-[16px] p-2.5">
+      <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative rounded-[16px] p-3.5">
         <div className="flex items-center gap-3">
           <div className="relative aspect-video w-[104px] shrink-0 overflow-hidden rounded-[10px] bg-[#202326] shadow-[0_2px_6px_rgba(0,0,0,.4)]">
             <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
@@ -258,15 +258,17 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
             <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-pretty text-text" title={job.filename}>
               {job.title || job.filename}
             </div>
-            <div className="mt-1 flex text-[11.5px] text-mute tabular-nums">{meta}</div>
+            <div className="mt-1 truncate text-[11.5px] text-mute tabular-nums" title={job.url}>
+              {[rendition, job.live ? `since ${new Date(job.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)].filter(Boolean).join(' · ')}
+            </div>
           </div>
         </div>
         {!(job.live && discarding) && (
-          <IconButton label={stopLabel} tone="danger" className="absolute top-2 right-2 size-8" onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))}>
+          <IconButton label={stopLabel} tone="danger" className="absolute top-3 right-3.5 size-8" onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))}>
             {job.live ? <IconTrash size={16} /> : <IconX size={16} />}
           </IconButton>
         )}
-        <div className="px-1 pt-1.5">{progress}</div>
+        <div className="pt-1.5">{progress}</div>
       </div>
     );
   }

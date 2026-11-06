@@ -331,7 +331,7 @@ export function Callout({ tone, title, children, testId, icon }: { tone: 'info' 
   }[tone];
   const Icon = tone === 'warn' ? IconAlert : tone === 'error' ? IconError : IconInfo;
   return (
-    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#181a1c] px-3.5 py-3 text-[12px] leading-[1.5] text-fg2 ${cls}`}>
+    <div data-testid={testId} className={`flex gap-3 rounded-xl bg-[#181a1c] px-3.5 py-3 text-[12px] leading-[1.5] text-pretty text-fg2 ${cls}`}>
       <span className="mt-px shrink-0">{icon ?? <Icon size={15} />}</span>
       <div className="min-w-0 text-pretty">
         {title && <div className="mb-0.5 font-semibold text-text">{title}</div>}

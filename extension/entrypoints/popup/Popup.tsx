@@ -406,7 +406,7 @@ export function Popup() {
                   ) : (
                     <Fragment key={run.items[0]!.id}>
                       {run.archived && (
-                        <div className="mt-3 mb-0.5">
+                        <div className="mt-3 -mb-1.5">
                           <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
                         </div>
                       )}
@@ -427,7 +427,7 @@ export function Popup() {
             )}
             {scope && !scope.all && (
               <div className="mt-5 flex justify-center">
-                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-btn px-3 text-[12px] font-medium text-fg2 transition-colors hover:bg-btn-hover hover:text-text">
+                <button type="button" onClick={() => void api.clearCandidates(scope.tabId).then(() => (refreshCandidates(), setToast({ text: 'List cleared', detail: 'Saved files and History stay' })))} title="Removes these from This page. Files you saved and History stay; playing a video lists it again." className="inline-flex h-8 items-center rounded-lg bg-[#2c2f33] px-3 text-[12.5px] font-medium text-text transition-colors hover:bg-[#363a3f] active:bg-[#2c2f33]">
                   Clear detected media
                 </button>
               </div>

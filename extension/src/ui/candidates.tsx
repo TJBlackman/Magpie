@@ -312,7 +312,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
           <img src={candidate.thumb} alt="" data-testid="thumb" draggable={false} className="absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] max-w-none object-cover transition-[transform,filter] duration-700 ease-out group-hover:scale-[1.035] group-hover:brightness-[1.08] group-has-[.quick:hover]:brightness-100" />
           <span className="absolute inset-0 bg-white/0 transition-colors duration-200 group-hover:bg-white/[0.05] group-has-[.quick:hover]:bg-white/0" />
           <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_30%,rgba(11,12,13,.62)_60%,rgba(11,12,13,.92)_100%)]" />
-          {duration ? <span className="absolute top-3 right-3 rounded-[6px] bg-[#0b0c0d]/60 px-1.5 text-[11.5px] leading-[19px] font-medium text-white tabular-nums backdrop-blur-sm">{fmtClock(duration)}</span> : null}
+          {duration ? <span className="absolute top-4 right-4 rounded-[6px] bg-[#0b0c0d]/60 px-1.5 text-[11.5px] leading-[19px] font-medium text-white tabular-nums backdrop-blur-sm">{fmtClock(duration)}</span> : null}
           <span className="absolute inset-x-0 bottom-0 block p-4 pr-[76px]">
             <span className="font-display line-clamp-2 block text-[20px] leading-[23px] font-semibold text-pretty text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" data-testid="candidate-title" title={full}>
               {bind(title)}
@@ -578,7 +578,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="mb-3 flex items-start gap-3">
           <MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className="h-[50px] w-[88px]" corner={duration ? fmtClock(duration) : (candidate.post?.assets.length ?? 0) > 1 ? <FileCount n={candidate.post!.assets.length} /> : undefined} />
           <div className="min-w-0 flex-1 pt-0.5">
-            <div className={`font-display ${post ? 'line-clamp-3' : 'line-clamp-2'} text-[18px] leading-[22px] font-semibold text-balance`} title={fullTitle}>{bind(title)}</div>
+            <div className={`font-display ${post ? 'line-clamp-3 text-pretty' : 'line-clamp-2 text-balance'} text-[18px] leading-[22px] font-semibold`} title={fullTitle}>{bind(title)}</div>
             <div className="mt-1.5 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">
               <StatusTags candidate={candidate} inSheet />
               <span className="min-w-0 flex-1 truncate text-mute" title={candidate.url}>
@@ -593,7 +593,7 @@ export function QualitySheet({ candidate, thumbs, onClose, onStarted, onMissing 
         <div className="-m-1 flex min-h-0 flex-col gap-2 overflow-y-auto p-1 scroll-thin">
           {error &&
             (drm ? (
-              <Callout tone="neutral" icon={<IconLock size={15} className="text-mute" />} testId="inspect-error">
+              <Callout tone="neutral" testId="inspect-error">
                 {error}
               </Callout>
             ) : (
