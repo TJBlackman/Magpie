@@ -189,7 +189,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
     return () => watch.disconnect();
   }, [failed, hasFix, reason]);
   const fix = recover && (
-    <button ref={fixRef} type="button" onClick={recover.run} title={recover.hint} className={`${tight ? '-ml-2' : '-my-[7px] -mr-1'} inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10`}>
+    <button ref={fixRef} type="button" onClick={recover.run} title={recover.hint} className={`${tight ? '-ml-2' : '-my-[7px] -mr-1 pb-0.5'} inline-flex h-8 shrink-0 items-center rounded-lg px-2 text-[12px] font-semibold whitespace-nowrap text-[#83f3e5] transition-colors hover:bg-shine/10`}>
       {recover.label}
       {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
     </button>

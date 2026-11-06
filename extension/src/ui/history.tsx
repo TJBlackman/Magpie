@@ -185,7 +185,7 @@ export const HistoryList = memo(function HistoryList({ entries, total, query, th
     <div className="flex flex-col" data-testid="archive">
       {groups.map((g, i) => (
         <Fragment key={`${g.label}${i}`}>
-          {g.label && <h2 className="mt-4 mb-1.5 px-0.5 text-[13px] font-medium text-mute first:mt-0.5">{g.label}</h2>}
+          {g.label && <h2 className="mt-4 mb-1.5 text-[13px] font-medium text-mute first:mt-0.5">{g.label}</h2>}
           <div className="card-surface flex flex-col rounded-[16px] p-1.5">
             {g.items.map((e) => (
               <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} />
