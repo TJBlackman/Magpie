@@ -221,7 +221,7 @@ export async function newestEntry(popup: Page): Promise<string> {
  * DOM while hidden, so this works whichever tab is showing.
  */
 export async function finished(popup: Page, previous = '') {
-  const newest = popup.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-child:not([data-job-id="${previous}"])`);
+  const newest = popup.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-of-type:not([data-job-id="${previous}"])`);
   const failed = popup.locator('[data-testid="job"][data-state="error"]');
   await expect(newest.or(failed.first())).toBeAttached({ timeout: 90_000 });
   if (await failed.count()) throw new Error(`job failed: ${await failed.first().textContent()}`);
