@@ -280,9 +280,9 @@ export function MediaRow({
 }
 
 /** Rows that share one raised surface, each lighting up on hover: This page and History. */
-export function RowList({ children, testId }: { children: ReactNode; testId?: string }) {
+export function RowList({ children, testId, divided }: { children: ReactNode; testId?: string; divided?: boolean }) {
   return (
-    <div data-testid={testId} className="card-surface flex flex-col rounded-[16px] p-1.5">
+    <div data-testid={testId} className={`card-surface flex flex-col rounded-[16px] p-1.5 ${divided ? '[&>*+*]:before:pointer-events-none [&>*+*]:before:absolute [&>*+*]:before:inset-x-2 [&>*+*]:before:top-0 [&>*+*]:before:h-px [&>*+*]:before:bg-white/[0.06]' : ''}`}>
       {children}
     </div>
   );

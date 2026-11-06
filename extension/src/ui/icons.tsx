@@ -285,11 +285,11 @@ export const Logo = ({ size = 22 }: { size?: number }) => {
       <defs>
         <linearGradient id={`${id}t`} x1="13" y1="15" x2="1" y2="22.5" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#1fd8cf" />
-          <stop offset="1" stopColor="#2f86d6" />
+          <stop offset="1" stopColor="#3d8fe0" />
         </linearGradient>
         <linearGradient id={`${id}w`} x1="18" y1="8.5" x2="9.5" y2="16" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stopColor="#2f86d6" />
-          <stop offset="1" stopColor="#2a5fb4" />
+          <stop offset="0" stopColor="#4a9ae6" />
+          <stop offset="1" stopColor="#3d8fe0" />
         </linearGradient>
         <linearGradient id={`${id}p`} x1="0" y1="8" x2="0" y2="16.5" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#f6f8f9" />

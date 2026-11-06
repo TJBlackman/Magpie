@@ -293,7 +293,7 @@ export function Popup() {
         {label}
         {pill}
       </span>
-      {view === v && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-shine" />}
+      {view === v && <span aria-hidden="true" className="absolute bottom-[3px] left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[linear-gradient(90deg,#3d8fe0,#1fd8cf)]" />}
     </button>
   );
 
@@ -310,7 +310,7 @@ export function Popup() {
   return (
     <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(31,216,207,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(133,90,231,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[linear-gradient(180deg,#3b3f45,#26292d)] shadow-[inset_0_0_0_1px_rgba(255,255,255,.1),0_1px_2px_rgba(0,0,0,.5)]">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#2e3135] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]">
           <Logo size={26} />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
@@ -447,19 +447,11 @@ export function Popup() {
             {recordings.length > 0 && (
               <>
                 <Section title="Recording" count={recordings.length} />
-                {thumbs ? (
-                  <div className="flex flex-col gap-3">
-                    {recordings.map((j) => (
-                      <JobRow key={j.id} job={j} thumbs={thumbs} card />
-                    ))}
-                  </div>
-                ) : (
-                  <RowList>
-                    {recordings.map((j) => (
-                      <JobRow key={j.id} job={j} thumbs={thumbs} inset />
-                    ))}
-                  </RowList>
-                )}
+                <RowList divided>
+                  {recordings.map((j) => (
+                    <JobRow key={j.id} job={j} thumbs={thumbs} inset />
+                  ))}
+                </RowList>
               </>
             )}
             {running.length > 0 && (
@@ -472,23 +464,9 @@ export function Popup() {
                     </button>
                   )}
                 </Section>
-                {thumbs ? (
-                  <div className="flex flex-col gap-3">
-                    {rowsOf(running).map((r) =>
-                      r.group !== undefined ? (
-                        <RowList key={r.group}>
-                          <GroupRow jobs={r.jobs} thumbs={thumbs} inset />
-                        </RowList>
-                      ) : (
-                        <JobRow key={r.job.id} job={r.job} thumbs={thumbs} card />
-                      ),
-                    )}
-                  </div>
-                ) : (
-                  <RowList>
-                    {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
-                  </RowList>
-                )}
+                <RowList divided>
+                  {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                </RowList>
               </>
             )}
             {failed.length > 0 && (
@@ -500,7 +478,7 @@ export function Popup() {
                     </TextButton>
                   )}
                 </Section>
-                <RowList>
+                <RowList divided>
                   {failed.map((j) => (
                     <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
                   ))}
@@ -510,7 +488,7 @@ export function Popup() {
             {waiting.length > 0 && (
               <>
                 <Section title="Queued" count={waiting.length} />
-                <RowList>
+                <RowList divided>
                   {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
                 </RowList>
               </>

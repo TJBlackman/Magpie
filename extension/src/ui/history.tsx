@@ -138,7 +138,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       }
       onOpen={show}
       openTip={folder ? 'Show the folder' : 'Show in folder'}
-      action={<span className="size-9 shrink-0" aria-hidden="true" />}
+      action={<span className="h-9 w-7 shrink-0" aria-hidden="true" />}
       inset
       overlay={
         <>
