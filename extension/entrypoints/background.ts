@@ -6,11 +6,11 @@ import { pageTitleFor } from '../src/background/pagetitle';
 import { collectTab, mayHoldPosts, readPosts } from '../src/background/reddit';
 import { Archive } from '../src/background/archive';
 import { assetPaths, sidecar, type RedditPost } from '../src/core/reddit';
-import type { ArchiveEntry } from '../src/core/archive';
+import { downloadPattern, type ArchiveEntry } from '../src/core/archive';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { pickThumbs, withoutThumb, type ThumbMap } from '../src/core/thumbs';
 import { UPDATE_KEY, VERSION_URL, checkDue, normalizeUpdate, parseVersionFile, type UpdateState } from '../src/core/update';
-import { err, ok, type Candidate, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type UiRequest } from '../src/core/types';
+import { err, ok, type Candidate, type EngineRequest, type Envelope, type Inspection, type Job, type Result, type Thumbnail, type UiRequest } from '../src/core/types';
 
 export default defineBackground(() => {
   const sniffer = new Sniffer();
@@ -310,8 +310,11 @@ export default defineBackground(() => {
         thumbInFlight = c.id;
         const r = await toEngine({ type: 'thumbnail', candidate: c }).catch((e) => err(String(e)));
         thumbInFlight = null;
-        if (r.ok && typeof r.value === 'string') sniffer.setThumb(c.id, r.value);
-        else thumbFailed.set(c.id, Date.now());
+        const t = r.ok ? (r.value as Thumbnail) : null;
+        if (t && Object.keys(t.info).length) sniffer.setInfo(c.id, t.info);
+        if (t?.frame) sniffer.setThumb(c.id, t.frame);
+        // A protected stream will not decode a frame later either: never tried again.
+        else thumbFailed.set(c.id, t?.info.drm ? Infinity : Date.now());
       }
     } finally {
       thumbBusy = false;
@@ -334,7 +337,7 @@ export default defineBackground(() => {
           const e = archive.find(c, byTab.get(c.tabId));
           if (!e) return c;
           // A card for media already saved shows the frame its history entry kept, so it needs no capture.
-          return { ...c, archived: { at: e.at, file: e.file, files: e.files }, thumb: c.thumb ?? e.thumb };
+          return { ...c, archived: { at: e.at, file: e.file, files: e.files, secs: e.secs }, thumb: c.thumb ?? e.thumb };
         });
         wantThumbs(shown);
         return ok(shown);
@@ -347,6 +350,12 @@ export default defineBackground(() => {
       case 'clearArchive':
         await archive.clear();
         return ok(null);
+      case 'showFile': {
+        const [d] = await browser.downloads.search({ filenameRegex: downloadPattern(req.file, req.folder), orderBy: ['-startTime'], limit: 1, exists: true }).catch(() => []);
+        if (!d) return ok(false);
+        browser.downloads.show(d.id);
+        return ok(true);
+      }
       case 'clearCandidates':
         sniffer.clear(req.tabId);
         return ok(null);

@@ -24,13 +24,13 @@ for (const churn of ['cachebust', 'msn']) {
 
 async function startRecording(popup: Page, prefix = '/live/', manifest = 'master.m3u8') {
   const sheet = await openCandidate(popup, [prefix, manifest]);
-  await expect(sheet).toContainText('Live stream', { timeout: 15_000 });
+  await expect(sheet).toContainText('Starts about 30 seconds back', { timeout: 15_000 });
   const start = sheet.getByTestId('start');
-  await expect(start).toHaveText('Start recording');
+  await expect(start).toHaveText(/^(Start recording|Record \d+p)$/);
   await start.click();
   await view(popup, 'Downloads');
   const job = popup.locator('[data-testid="job"]').first();
-  await expect(job.getByTestId('job-status')).toContainText(/Recording \d+:\d\d/, { timeout: 15_000 });
+  await expect(job.getByTestId('job-status')).toContainText(/\d+:\d\d recorded/, { timeout: 15_000 });
   return job;
 }
 
@@ -112,9 +112,9 @@ async function startDashRecording(popup: Page, prefix = '/live-dash/') {
   return startRecording(popup, prefix, 'manifest.mpd');
 }
 
-/** Seconds a recording job's row says it holds, from its "Recording m:ss" status: the video segments written so far. */
+/** Seconds a recording job's row says it holds, from its "m:ss recorded" status: the video segments written so far. */
 async function recordedSeconds(job: Locator): Promise<number> {
-  const m = /Recording (\d+):(\d\d)/.exec((await job.getByTestId('job-status').textContent()) ?? '');
+  const m = /(\d+):(\d\d) recorded/.exec((await job.getByTestId('job-status').textContent()) ?? '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
 }
 

@@ -1,78 +1,191 @@
-import { memo } from 'react';
+import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
-import { fmtClock, fmtDate, fmtDateTime, isWebUrl, kindOfUrl, shortUrl } from './format';
-import { Empty, IconButton, KindBadge, MediaRow, MediaTile } from './components';
-import { IconHistory, IconX } from './icons';
+import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
+import { Button, Empty, FitText, IconButton, MediaRow, MediaTile } from './components';
+import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
 
 /**
- * One finished download: the same row it had on the page, with the date, length
- * and a link to the page it came from. Memoized: entries only change on an
- * archive event, while the popup re-renders with every progress event.
+ * A row's extra actions behind one small button, shown while the row is
+ * hovered or holds keyboard focus. The list opens above the button when the
+ * row sits low in the panel. Escape or a click elsewhere closes it.
  */
-export const HistoryRow = memo(function HistoryRow({ entry, thumbs }: { entry: ArchiveEntry; thumbs: boolean }) {
+function RowMenu({ items }: { items: { label: string; hint?: string; icon: ReactNode; run: () => void; danger?: boolean }[] }) {
+  const [open, setOpen] = useState(false);
+  const [up, setUp] = useState(false);
+  const box = useRef<HTMLSpanElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', away);
+    // Opened from the keyboard, focus goes to the first item.
+    if (box.current?.contains(document.activeElement) && document.activeElement?.matches(':focus-visible')) box.current.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    return () => document.removeEventListener('mousedown', away);
+  }, [open]);
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
+  return (
+    <span
+      ref={box}
+      className={`absolute top-1/2 right-2 -translate-y-1/2 items-center rounded-full ${open ? 'z-40' : 'z-10'} flex`}
+      onKeyDown={(e) => {
+        if (!open) return;
+        const list = [...(box.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+        const at = list.indexOf(document.activeElement as HTMLElement);
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          close();
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          list[(at + (e.key === 'ArrowDown' ? 1 : list.length - 1)) % list.length]?.focus();
+        }
+      }}
+    >
+      <IconButton
+        label="More"
+        active={open}
+        className={open ? 'size-8 !rounded-full !bg-white/[0.1] !text-text !ring-0' : 'size-8 !rounded-full !text-mute group-hover:!text-fg2 hover:!bg-white/[0.08]'}
+        ref={trigger}
+        onClick={() => {
+          const r = box.current?.getBoundingClientRect();
+          setUp(!!r && r.top > window.innerHeight / 2);
+          setOpen((o) => !o);
+        }}
+      >
+        <IconMore size={20} />
+      </IconButton>
+      {open && (
+        <span role="menu" className={`rise-in absolute right-0 z-30 flex w-max min-w-44 flex-col rounded-xl bg-[#34373c] p-1 shadow-[0_12px_32px_rgba(0,0,0,.6)] ring-1 ring-ctl-edge ring-inset ${up ? 'bottom-full mb-3.5' : 'top-full mt-3.5'}`}>
+          {items.map((it, i) => (
+            <button
+              key={it.label}
+              data-danger={it.danger || undefined}
+              type="button"
+              role="menuitem"
+              title={it.hint ? `${it.label}. ${it.hint}` : it.label}
+              onClick={() => {
+                setOpen(false);
+                it.run();
+              }}
+              className={`flex ${it.danger && it.hint ? 'py-2' : 'h-9'} items-center gap-2.5 rounded-lg px-3 text-left text-[12.5px] whitespace-nowrap transition-colors hover:bg-btn-hover focus-visible:bg-btn-hover focus-visible:outline-offset-[-2px] ${it.danger ? 'text-[#ff8b8b]' : 'text-text'} ${it.danger && i > 0 ? 'relative mt-[5px] before:absolute before:inset-x-1 before:-top-[3px] before:h-px before:bg-white/[0.12]' : ''}`}
+            >
+              <span className={it.danger ? 'text-err' : 'text-mute'}>{it.icon}</span>
+              {it.danger && it.hint ? (
+                <span className="flex flex-col">
+                  {it.label}
+                  <span aria-hidden="true" className="text-[11.5px] leading-4 text-mute">
+                    {it.hint}
+                  </span>
+                </span>
+              ) : (
+                it.label
+              )}
+            </button>
+          ))}
+        </span>
+      )}
+    </span>
+  );
+}
+
+
+/** Days since `ms`, by the calendar: 0 today, 1 yesterday. */
+function daysAgo(ms: number, now = Date.now()): number {
+  const midnight = (t: number) => {
+    const d = new Date(t);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  };
+  return Math.round((midnight(now) - midnight(ms)) / 86_400_000);
+}
+
+/** The heading a history entry falls under: Today, Yesterday, Past 7 days, Earlier. */
+function dayGroup(ms: number): string {
+  const days = daysAgo(ms);
+  return days <= 0 ? 'Today' : days === 1 ? 'Yesterday' : days < 7 ? 'Past 7 days' : 'Earlier';
+}
+
+/**
+ * One finished download: its frame with the length on it, the day, the
+ * quality and size. Clicking the row shows the file on disk; More opens its
+ * page or forgets it, so the media shows as new again. Memoized: entries only
+ * change on an archive event, while the popup re-renders with every progress event.
+ */
+export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMissing, grouped }: { entry: ArchiveEntry; thumbs: boolean; query: string; onMissing: () => void; grouped?: boolean }) {
+  // Under a Today or Yesterday heading the time says more than the day again.
+  const when = grouped && daysAgo(entry.at) <= 1 ? new Date(entry.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : fmtDay(entry.at);
   const page = entry.page;
   const kind = entry.kind ?? kindOfUrl(entry.src);
+  const title = entry.title || entry.file;
+  const folder = !!entry.files;
+  // "2160p · 1.4 GB": the quality from the file name Magpie gave it, and the size it saved.
+  const facts = [qualityOfFile(entry.file), entry.bytes ? fmtBytes(entry.bytes) : ''].filter(Boolean).join(' · ');
+  const show = () => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing());
   return (
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
-      tile={<MediaTile kind={kind} thumb={thumbs ? entry.thumb : undefined} />}
-      title={entry.title || entry.file}
+      tile={<MediaTile kind={kind} thumb={thumbs ? entry.thumb : undefined} corner={entry.secs ? fmtClock(entry.secs) : entry.files ? `${entry.files} files` : undefined} />}
+      title={<FitText text={title} mark={query} />}
       titleTip={entry.file}
       titleTestId="archive-title"
       meta={
-        <>
-          <KindBadge kind={kind} />
-          <span className="shrink-0" title={fmtDateTime(entry.at)}>
-            {fmtDate(entry.at)}
-          </span>
-          {entry.secs ? <span className="shrink-0">{`· ${fmtClock(entry.secs)}`}</span> : null}
-          {entry.files ? <span className="shrink-0">{`· ${entry.files} files`}</span> : null}
-          {page && <span className="shrink-0">·</span>}
-          {page && isWebUrl(page) ? (
-            <a
-              href={page}
-              target="_blank"
-              rel="noreferrer"
-              title={`Open ${page} in a new tab`}
-              className="min-w-0 truncate text-shine hover:underline"
-              onClick={(e) => {
-                e.preventDefault();
-                openPage(page);
-              }}
-            >
-              {shortUrl(page)}
-            </a>
-          ) : page ? (
-            <span className="min-w-0 truncate" title={page}>
-              {shortUrl(page)}
-            </span>
-          ) : null}
-        </>
+        <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
+          {when}
+          {facts && <span className="tabular-nums">{` · ${facts}`}</span>}
+        </span>
       }
-      action={
-        <IconButton label="Remove from history. The video shows as new again." onClick={() => void api.removeArchive(entry.id)} className="size-9">
-          <IconX />
-        </IconButton>
+      onOpen={show}
+      openTip={folder ? 'Show the folder' : 'Show in folder'}
+      action={<span className="h-9 w-7 shrink-0" aria-hidden="true" />}
+      inset
+      overlay={
+        <RowMenu
+          items={[
+            { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
+            ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
+            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
+          ]}
+        />
       }
     />
   );
 });
 
 /** History entries, or a line saying there are none. */
-export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean }) {
+export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse, browseLabel }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse?: () => void; browseLabel: string }) {
   if (!total) {
     return (
-      <Empty icon={<IconHistory size={26} />} title="Nothing downloaded yet">
-        Finished downloads are remembered here, so you never grab the same video twice.
+      <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={onBrowse ? <Button tone="accent" size="md" onClick={onBrowse}>{browseLabel}</Button> : undefined}>
+        Finished downloads are listed here and marked on the page, so you can tell what you already have.
       </Empty>
     );
   }
-  if (!entries.length) return <div className="rounded-xl border border-dashed border-edge2 p-4 text-center text-mute">{`No match for "${query}".`}</div>;
+  if (!entries.length)
+    return (
+      <Empty icon={<IconSearch size={22} />} title="No matches">
+        {`Nothing in history matches "${query.trim()}".`}
+      </Empty>
+    );
+  // A search lists its matches flat; otherwise entries fall under Today, Yesterday, Past 7 days and Earlier.
+  const grouped = !query.trim();
+  const groups: { label: string; items: ArchiveEntry[] }[] = [];
+  for (const e of entries) {
+    const label = grouped ? dayGroup(e.at) : '';
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.items.push(e);
+    else groups.push({ label, items: [e] });
+  }
   return (
-    <div className="flex flex-col gap-1.5" data-testid="archive">
-      {entries.map((e) => (
-        <HistoryRow key={e.id} entry={e} thumbs={thumbs} />
+    <div className="card-surface flex flex-col rounded-[16px] p-1.5" data-testid="archive">
+      {groups.map((g, i) => (
+        <Fragment key={`${g.label}${i}`}>
+          {g.label && <h2 className={`px-2 pb-1 text-[12px] font-medium text-mute ${i ? 'pt-3' : 'pt-1.5'}`}>{g.label}</h2>}
+          {g.items.map((e) => (
+            <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} />
+          ))}
+        </Fragment>
       ))}
     </div>
   );

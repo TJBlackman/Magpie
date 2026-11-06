@@ -31,6 +31,10 @@ export const test = base.extend<{ magpie: Magpie }>({
     });
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker');
+    // A fresh install only learns the worker's listeners once its script has run; a page loaded
+    // before that loses its first requests. An evaluate runs after the script's top level, so
+    // past it the request listener is registered.
+    await worker.evaluate(() => true);
     const extensionId = new URL(worker.url()).host;
 
     const magpie: Magpie = {
@@ -164,7 +168,8 @@ export async function playAndWait(page: Page, path: string) {
 
 /** Switch the popup to one of its three tabs. The other two stay mounted but hidden. */
 export async function view(popup: Page, name: View) {
-  await popup.getByRole('tab', { name }).click();
+  // Opened as a page of its own, the popup names its first tab "All tabs".
+  await popup.getByRole('tab', { name: name === 'This page' ? /^(This page|All tabs)/ : name }).click();
 }
 
 /** Open the popup's settings panel. */
@@ -216,7 +221,7 @@ export async function newestEntry(popup: Page): Promise<string> {
  * DOM while hidden, so this works whichever tab is showing.
  */
 export async function finished(popup: Page, previous = '') {
-  const newest = popup.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-child:not([data-job-id="${previous}"])`);
+  const newest = popup.locator(`[data-testid="archive"] > [data-testid="archive-entry"]:first-of-type:not([data-job-id="${previous}"])`);
   const failed = popup.locator('[data-testid="job"][data-state="error"]');
   await expect(newest.or(failed.first())).toBeAttached({ timeout: 90_000 });
   if (await failed.count()) throw new Error(`job failed: ${await failed.first().textContent()}`);

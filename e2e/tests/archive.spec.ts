@@ -29,9 +29,6 @@ test('a finished download moves to history and its media is marked as downloaded
   await expect(entry).toHaveCount(1);
   await expect(entry.getByTestId('archive-title')).toHaveText('Harbor at Dusk');
   await expect(entry).toContainText('0:20');
-  const link = entry.getByRole('link');
-  await expect(link).toHaveAttribute('href', 'http://127.0.0.1:8787/hls-ts.html');
-  await expect(link).toHaveText('127.0.0.1/hls-ts.html');
   await expect(popup.getByTestId('job')).toHaveCount(0);
 
   // Already downloaded: still listed, gray, with when and as what. The sheet says so before a second copy.
@@ -39,34 +36,39 @@ test('a finished download moves to history and its media is marked as downloaded
   const row = candidate(popup, '/media/hls-ts/index.m3u8');
   await expect(row).toHaveAttribute('data-state', 'archived');
   const badge = row.getByTestId('archived-badge');
-  await expect(badge).toHaveText(/^DOWNLOADED (just now|\dm ago)$/);
+  await expect(badge).toHaveText('Saved');
+  await expect(row).toContainText(/just now|\dm ago/i);
   await expect(badge).toHaveAttribute('title', /^Downloaded .+ as Harbor at Dusk\.mp4$/);
   const sheet = await openCandidate(popup, '/media/hls-ts/index.m3u8');
-  await expect(sheet.getByTestId('archived-note')).toContainText('as Harbor at Dusk.mp4');
+  await expect(sheet.getByTestId('archived-note')).toContainText('Harbor at Dusk.mp4');
   await expect(sheet.getByTestId('start')).toHaveText(/^Download.* again$/);
   await popup.keyboard.press('Escape');
   await expect(sheet).toHaveCount(0);
 
   // Hidden on request, and the next popup keeps that choice.
-  await popup.getByRole('button', { name: 'Hide downloaded' }).click();
+  await popup.getByRole('switch', { name: 'Downloaded' }).click();
   await expect(row).toHaveCount(0);
   // The popup for that tab says so instead of "Nothing detected yet".
   const forTab = await magpie.popupFor(page);
   await expect(forTab.getByText('Everything here is already downloaded')).toBeVisible({ timeout: 15_000 });
   await expect(forTab.getByTestId('archive-entry')).toHaveCount(1);
-  await forTab.getByRole('button', { name: '1 downloaded' }).click();
+  await forTab.getByRole('switch', { name: 'Downloaded', checked: false }).click();
   await expect(candidate(forTab, '/media/hls-ts/index.m3u8')).toHaveAttribute('data-state', 'archived');
-  await expect(popup.getByRole('button', { name: 'Hide downloaded' })).toBeVisible();
+  await expect(popup.getByRole('switch', { name: 'Downloaded', checked: true })).toBeVisible();
   await expect(row).toBeVisible();
 
-  // The page link opens in a new tab.
+  // The row's More menu opens the page in a new tab.
   await view(popup, 'History');
+  await entry.hover();
+  await entry.getByRole('button', { name: 'More' }).click();
   const opened = magpie.context.waitForEvent('page');
-  await link.click();
+  await popup.getByRole('menuitem', { name: 'Open page' }).click();
   await expect(await opened).toHaveURL('http://127.0.0.1:8787/hls-ts.html');
 
   // Removing the entry makes the media available again.
-  await entry.getByTitle(/^Remove from history/).click();
+  await entry.hover();
+  await entry.getByRole('button', { name: 'More' }).click();
+  await popup.getByRole('menuitem', { name: 'Remove from history' }).click();
   await expect(entry).toHaveCount(0);
   await view(popup, 'This page');
   await expect(row.first()).toBeVisible();

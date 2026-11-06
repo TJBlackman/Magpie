@@ -1,6 +1,6 @@
 /*
  * Thumbnails: one frame of the stream, decoded by the browser from a small
- * sample of the media and scaled to a 16:9 JPEG of a few kilobytes.
+ * sample of the media and scaled to a 16:9 JPEG of 20 to 50 kilobytes.
  *
  * The engine fetches the sample (one segment of the lowest rendition, or the
  * first megabyte of a plain file) and this file turns it into a picture with a
@@ -8,8 +8,9 @@
  * the offscreen document on Chrome and the background page on Firefox.
  */
 
-export const THUMB_W = 128;
-export const THUMB_H = 72;
+/** Large enough for the lead card on This page (372 CSS px wide), and sharp in the grid on high density screens. */
+export const THUMB_W = 384;
+export const THUMB_H = 216;
 /** Bytes of a plain file to fetch: enough for the index and the first frames of most MP4s. */
 export const FILE_SAMPLE = 1024 * 1024;
 /** Cap on one HLS segment fetched for a frame. Lowest renditions are far smaller than this. */
@@ -17,7 +18,7 @@ export const SEGMENT_CAP = 4 * 1024 * 1024;
 /** Whole capture, fetch and decode, before it gives up. */
 export const THUMB_TIMEOUT = 12_000;
 /** A data URL longer than this is not kept: something went wrong with the encode. */
-export const THUMB_MAX_CHARS = 24_000;
+export const THUMB_MAX_CHARS = 96_000;
 
 /** The first `max` bytes of `url`: a Range request, with the body cancelled past the cap when the server ignores Range. */
 export async function fetchPrefix(url: string, max: number, signal: AbortSignal): Promise<Uint8Array> {
@@ -47,12 +48,13 @@ export async function fetchPrefix(url: string, max: number, signal: AbortSignal)
 
 /**
  * Decode `parts` (an MP4, or the start of one) in a hidden <video> and return
- * one frame as a JPEG data URL, or null when nothing decodes. `seek` picks a
+ * one frame as a JPEG data URL, or null when nothing decodes, with the
+ * video's shorter side in pixels (0 when nothing decodes). `seek` picks a
  * frame about a second in, past any fade from black; off for a cut file,
  * where only the first frames have all their bytes.
  */
-export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<string | null> {
-  if (typeof document === 'undefined') return Promise.resolve(null);
+export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<{ frame: string | null; height: number }> {
+  if (typeof document === 'undefined') return Promise.resolve({ frame: null, height: 0 });
   return new Promise((resolve) => {
     const url = URL.createObjectURL(new Blob(parts as BlobPart[], { type: 'video/mp4' }));
     const video = document.createElement('video');
@@ -60,14 +62,14 @@ export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<string
     video.preload = 'auto';
     let done = false;
     let seeking = false;
-    const finish = (out: string | null) => {
+    const finish = (out: string | null, height = 0) => {
       if (done) return;
       done = true;
       clearTimeout(timer);
       video.removeAttribute('src');
       video.load();
       URL.revokeObjectURL(url);
-      resolve(out);
+      resolve({ frame: out, height });
     };
     /** Draw the current frame. When nothing is decoded yet, give up only on the final try; earlier triggers just pass. */
     const draw = (final: boolean) => {
@@ -81,14 +83,15 @@ export function frameFromMp4(parts: Uint8Array[], seek: boolean): Promise<string
       canvas.height = THUMB_H;
       const ctx = canvas.getContext('2d');
       if (!ctx) return finish(null);
+      ctx.imageSmoothingQuality = 'high';
       // Cover: scale to fill the 16:9 slot and crop the rest, centred.
       const scale = Math.max(THUMB_W / video.videoWidth, THUMB_H / video.videoHeight);
       const w = video.videoWidth * scale;
       const h = video.videoHeight * scale;
       ctx.drawImage(video, (THUMB_W - w) / 2, (THUMB_H - h) / 2, w, h);
       try {
-        const out = canvas.toDataURL('image/jpeg', 0.6);
-        finish(out.length <= THUMB_MAX_CHARS ? out : null);
+        const out = canvas.toDataURL('image/jpeg', 0.7);
+        finish(out.length <= THUMB_MAX_CHARS ? out : null, Math.min(video.videoWidth, video.videoHeight));
       } catch {
         finish(null);
       }

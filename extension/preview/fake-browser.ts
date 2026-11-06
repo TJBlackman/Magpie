@@ -13,9 +13,10 @@
  */
 import type { ArchiveEntry } from '../src/core/archive';
 import { pickThumbs, withoutThumb } from '../src/core/thumbs';
+import { paintScene } from './paint';
 import { DEFAULT_SETTINGS, SETTINGS_KEY, normalizeSettings, type Settings } from '../src/core/settings';
 import { UPDATE_KEY } from '../src/core/update';
-import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type Result, type UiRequest, type Variant } from '../src/core/types';
+import { err, ok, type Candidate, type Envelope, type Inspection, type Job, type MediaInfo, type Result, type UiRequest, type Variant } from '../src/core/types';
 
 const MB = 1024 * 1024;
 const DAY = 86_400_000;
@@ -40,57 +41,9 @@ function hash(s: string): number {
   for (const ch of s) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
   return h >>> 0;
 }
-const PALETTES: [string, string, string][] = [
-  ['#9fd0ff', '#f5e2c8', '#4b6b8a'],
-  ['#78c3f5', '#f8d9a8', '#1f6ea8'],
-  ['#ff9b6a', '#ffe0b3', '#d98a4a'],
-  ['#071633', '#12314f', '#0b1d2b'],
-  ['#bfe3c9', '#f1f7e8', '#2f6b3e'],
-  ['#ffb44f', '#ffe3a3', '#b58b3a'],
-  ['#cfe3f5', '#ffffff', '#9fb6c9'],
-  ['#4c5968', '#9aa6b2', '#5b6b3a'],
-];
-/** A 128 by 72 JPEG data URL of a sky, a horizon and sometimes a sun, the same for the same seed. */
+/** A frame for a title, painted like the footage it names (see paint.ts). */
 export function paintThumb(seed: string): string {
-  const c = document.createElement('canvas');
-  c.width = 128;
-  c.height = 72;
-  const ctx = c.getContext('2d')!;
-  const h = hash(seed);
-  const [top, bottom, ground] = PALETTES[h % PALETTES.length]!;
-  const g = ctx.createLinearGradient(0, 0, 0, 72);
-  g.addColorStop(0, top);
-  g.addColorStop(1, bottom);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, 128, 72);
-  if (h & 1) {
-    ctx.fillStyle = 'rgba(255,230,160,.9)';
-    ctx.beginPath();
-    ctx.arc(90 + (h % 24), 22, 8, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = ground;
-  ctx.beginPath();
-  ctx.moveTo(0, 72);
-  const shape = (h >> 4) % 3;
-  if (shape === 0) {
-    ctx.lineTo(0, 50);
-    ctx.lineTo(38, 24);
-    ctx.lineTo(64, 44);
-    ctx.lineTo(90, 18);
-    ctx.lineTo(128, 48);
-  } else if (shape === 1) {
-    ctx.lineTo(0, 46);
-    ctx.quadraticCurveTo(40, 30, 70, 46);
-    ctx.quadraticCurveTo(100, 60, 128, 42);
-  } else {
-    ctx.lineTo(0, 44);
-    for (let x = 0; x <= 128; x += 8) ctx.lineTo(x, 44 + ((x / 8) % 2 ? 3 : -3));
-  }
-  ctx.lineTo(128, 72);
-  ctx.closePath();
-  ctx.fill();
-  return c.toDataURL('image/jpeg', 0.7);
+  return paintScene(seed);
 }
 
 /* ---------- fake tabs and content ---------- */
@@ -136,6 +89,7 @@ function seedCandidates(): Candidate[] {
     cand('c4', tab(1), 'Old Faithful Geyser Live Cam', 'https://live.wildframe.tv/cams/old-faithful/chunklist.m3u8', 'hls', { live: true, reloads: 14 }),
     cand('c5', tab(2), 'Monsoon Storm over the Sonoran Desert', 'https://dash.wildframe.tv/v/sonoran-monsoon/manifest.mpd', 'dash'),
     cand('c6', tab(2), 'Aurora Borealis Timelapse, Tromso', 'https://cdn.wildframe.tv/v/aurora-tromso/master.m3u8', 'hls'),
+    cand('c13', tab(2), 'The Living Coast, official trailer', 'https://drm.streamhouse.example/living-coast/manifest.mpd', 'dash'),
     redditPost('1xr7a2', allTabs ? tabs[3]! : tabs[0]!, 'Dawn over the Dolomites, 12 shots from a week of hiking [OC]', 12),
     redditPost('1xq9zz', allTabs ? tabs[3]! : tabs[0]!, 'Fog in the valley this morning [OC] [4000x6000]', 1),
   ];
@@ -160,7 +114,7 @@ function job(id: string, title: string, kind: Job['kind'], variantLabel: string,
     candidateId: '',
     title,
     filename: `${title}${short ? ` [${short}p]` : ''}.mp4`,
-    url: '',
+    url: `https://cdn.wildframe.tv/v/${title.toLowerCase().replace(/[^a-z]+/g, '-')}/${short ? `${short}p/index.m3u8` : 'video.mp4'}`,
     kind,
     variantLabel,
     state,
@@ -178,12 +132,13 @@ function seedJobs(): Job[] {
   const list = [
     job('j1', 'Serengeti Wildebeest Migration', 'hls', '1920x1080 · 6000 kbps', 'downloading', { segmentsTotal: 412, segmentsDone: 256, bytes: 598 * MB, startedAt: now - 140_000 }),
     job('j2', 'Glacier Calving, Perito Moreno', 'hls', '3840x2160 · 15200 kbps', 'downloading', { segmentsTotal: 198, segmentsDone: 31, bytes: 240 * MB, startedAt: now - 40_000 }),
-    job('j3', 'Coral Reef Drift, Great Barrier Reef', 'file', 'video/mp4 · 980.0 MB', 'queued', { bytesTotal: 980 * MB, queuePosition: 1, startedAt: now - 20_000 }),
+    job('j3', 'Coral Reef Drift, Great Barrier Reef', 'file', 'video/mp4 · 980.0 MB', 'queued', { height: 1080, bytesTotal: 980 * MB, queuePosition: scenario === 'busy' ? 2 : 1, startedAt: now - 20_000 }),
     job('j4', 'Monarch Butterfly Migration, Michoacan', 'hls', '1920x1080 · 6000 kbps', 'error', {
       segmentsTotal: 300,
       segmentsDone: 118,
       bytes: 214 * MB,
-      error: 'Server returned 403 for segment 119. The link probably expired. Reload the page and try again.',
+      error: 'HTTP 403 for https://cdn.wildframe.tv/v/monarch-migration/1080p/seg-119.ts',
+      pageUrl: 'https://wildframe.tv/watch/monarch-migration',
       startedAt: now - 900_000,
       finishedAt: now - 870_000,
     }),
@@ -192,15 +147,17 @@ function seedJobs(): Job[] {
     list.splice(
       2,
       0,
-      job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'downloading', { segmentsTotal: 65, segmentsDone: 12, bytes: 70 * MB, startedAt: now - 15_000 }),
-      job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { bytesTotal: 640 * MB, queuePosition: 2, startedAt: now - 10_000 }),
+      job('j6', 'Bioluminescent Bay at Night, Vieques', 'hls', '1920x1080 · 6000 kbps', 'queued', { sizeEstimate: 290 * MB, segmentsTotal: 65, queuePosition: 1, startedAt: now - 15_000 }),
+      job('j8', 'Humpback Whales Breaching off Maui', 'hls', '1280x720 · 3100 kbps', 'error', { candidateId: 'c2', segmentsTotal: 102, segmentsDone: 40, bytes: 92 * MB, error: 'HTTP 404 for https://stream.wildframe.tv/v/humpback-maui/seg-41.ts', pageUrl: 'https://wildframe.tv/watch/humpback-maui', startedAt: now - 600_000, finishedAt: now - 590_000 }),
+      job('j7', 'Grand Canyon Sunset Timelapse', 'file', 'video/mp4 · 640.0 MB', 'queued', { height: 2160, bytesTotal: 640 * MB, queuePosition: 3, startedAt: now - 10_000 }),
     );
   }
   return list;
 }
 
 function entry(id: string, title: string, file: string, page: string, src: string, at: number, secs: number): ArchiveEntry {
-  return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title) };
+  const p = Number(/\[(\d+)p\]/.exec(file)?.[1] ?? 1080);
+  return { id, title, file, page, src, at, secs, kind: src.endsWith('.m3u8') ? 'hls' : 'file', thumb: paintThumb(title), bytes: Math.round((secs * (p >= 2160 ? 15_200_000 : p >= 1080 ? 6_000_000 : 3_100_000)) / 8) };
 }
 
 function seedArchive(): ArchiveEntry[] {
@@ -258,19 +215,33 @@ function captureThumbs(list: Candidate[]) {
   if (!settings().thumbnails) return;
   let delay = 500;
   for (const c of list) {
-    if (c.thumb || c.kind === 'dash' || capturing.has(c.id)) continue;
+    if (c.thumb || c.info?.drm || capturing.has(c.id)) continue;
     capturing.add(c.id);
     setTimeout(() => {
       // A new object, not the old one changed in place: memoized cards only redraw when their candidate is a new object.
-      const thumb = paintThumb(c.pageTitle);
-      state.candidates = state.candidates.map((x) => (x.id === c.id ? { ...x, thumb } : x));
+      // Like the engine: a protected stream gets no frame, only the info that it is protected.
+      const info = infoFor(c);
+      const thumb = info.drm ? undefined : paintThumb(c.pageTitle);
+      state.candidates = state.candidates.map((x) => (x.id === c.id ? { ...x, thumb, info } : x));
       capturing.delete(c.id);
       emit({ type: 'candidates', tabId: c.tabId });
     }, delay);
     delay += 700;
   }
 }
-const LIVE_NOTE = 'Live stream. Download records from about 30 seconds back until you press Stop or the stream ends.';
+/** What the engine's thumbnail capture learns about a stream: best quality, length, DRM. */
+function infoFor(c: Candidate): MediaInfo {
+  if (c.id === 'c13') return { drm: true };
+  if (c.kind === 'file') return { height: 1080 };
+  const variants = variantsFor(c);
+  // A single playlist states no resolution; the capture reads it from the decoded frame.
+  const best = Math.max(0, ...variants.map((v) => Number(v.resolution?.split('x')[1] ?? 0))) || (c.url.endsWith('playlist.m3u8') || c.live ? 1080 : 0);
+  const duration = c.live ? undefined : c.url.endsWith('playlist.m3u8') ? 612 : 180 + (hash(c.id) % 2400);
+  const bitrate = variants[0]?.bandwidth;
+  const qualities = variants.filter((v) => v.resolution).length;
+  return { ...(best ? { height: best } : {}), ...(duration ? { duration } : {}), ...(bitrate ? { bitrate } : {}), ...(qualities > 1 ? { qualities } : {}) };
+}
+const LIVE_NOTE = 'Starts about 30 seconds back. Ends when you press "Stop\u00a0and\u00a0save", or when the stream ends.';
 const fmtBytes = (n: number) => (n < 1024 ** 3 ? `${(n / MB).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`);
 
 function variantsFor(c: Candidate): Variant[] {
@@ -289,10 +260,11 @@ function variantsFor(c: Candidate): Variant[] {
   return defs.map(([resolution, bandwidth], i) => ({
     id: `v${i}`,
     label: `${resolution} · ${(bandwidth / 1000).toFixed(0)} kbps · avc1.640028,mp4a.40.2`,
-    uri: c.url.replace('master.m3u8', `${resolution.split('x')[1]}p/index.m3u8`),
+    uri: c.url.replace(/(master\.m3u8|manifest\.mpd)$/, `${resolution.split('x')[1]}p/index.m3u8`),
     bandwidth,
     resolution,
-    codecs: 'avc1.640028,mp4a.40.2',
+    codecs: c.kind === 'dash' ? 'avc1.640028' : 'avc1.640028,mp4a.40.2',
+    ...(c.kind === 'dash' ? { label: `${resolution} · ${(bandwidth / 1000).toFixed(0)} kbps · avc1.640028 + English`, audioUri: c.url, audioLabel: 'English' } : {}),
   }));
 }
 
@@ -302,11 +274,11 @@ async function inspect(c: Candidate): Promise<Result<Inspection>> {
   const cached = state.inspections.get(c.id);
   if (cached) return ok(cached);
   await delay(550);
-  if (c.kind === 'dash') return err('DASH manifests are detected but not downloadable yet (phase 2).');
+  if (c.id === 'c13') return err("The site locks this video with DRM, so Magpie can't save it.");
   const notes: string[] = [];
   if (c.live) notes.push(LIVE_NOTE);
-  if (c.id === 'c2') notes.push('Some renditions carry audio in a separate track. v1 saves video only for those; merging comes in phase 2.');
-  const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live };
+  if (c.id === 'c5') notes.push("Audio: English, the stream's default track.");
+  const ins: Inspection = { candidateId: c.id, kind: c.kind, variants: variantsFor(c), notes, live: c.live, duration: c.live || c.kind === 'post' ? undefined : (inHistory(c)?.secs ?? infoFor(c).duration) };
   state.inspections.set(c.id, ins);
   return ok(ins);
 }
@@ -361,7 +333,7 @@ function startPost(c: Candidate): Result<Job> {
 function start(c: Candidate, variantId: string): Result<Job> {
   if (c.kind === 'post') return startPost(c);
   const ins = state.inspections.get(c.id);
-  const v = ins?.variants.find((x) => x.id === variantId);
+  const v = variantId === 'best' ? (ins?.variants ?? variantsFor(c))[0] : ins?.variants.find((x) => x.id === variantId);
   if (!v) return err('Inspect the stream first.');
   const short = v.resolution?.split('x')[1];
   const live = !!c.live;
@@ -374,14 +346,17 @@ function start(c: Candidate, variantId: string): Result<Job> {
     url: v.uri,
     kind: c.kind,
     variantLabel: v.label,
+    // Like the engine: the rendition's height, else the one read from the decoded frame.
+    height: Number(short) || infoFor(c).height,
     state: willRun ? 'inspecting' : 'queued',
     segmentsTotal: c.kind === 'file' ? 0 : live ? 0 : 90 + Math.round(Math.random() * 300),
     segmentsDone: 0,
-    bytes: 0,
+    bytes: live ? 26 * MB : 0,
     bytesTotal: c.kind === 'file' ? (c.contentLength ?? undefined) : undefined,
     thumb: c.thumb,
     live,
-    duration: live ? 0 : undefined,
+    // The engine saves the playlist's window (about 30 seconds) as soon as it starts.
+    duration: live ? 30 : undefined,
     startedAt: Date.now(),
   };
   state.jobs.unshift(j);
@@ -415,7 +390,7 @@ function finish(j: Job) {
       emitArchive();
     } else if (size > 0) {
       const total = j.live ? j.duration : j.segmentsTotal ? j.segmentsTotal * 6 : 418;
-      state.archive.unshift({ id: j.id, title: j.title, file: j.filename, page: c?.pageUrl ?? '', src: c?.url ?? j.url, at: Date.now(), kind: j.kind, secs: total, thumb: j.thumb });
+      state.archive.unshift({ id: j.id, title: j.title, file: j.filename, page: c?.pageUrl ?? '', src: c?.url ?? j.url, at: Date.now(), kind: j.kind, secs: total, thumb: j.thumb, bytes: Math.round(j.bytes) });
       state.archive = state.archive.slice(0, size);
       emitArchive();
     }
@@ -462,7 +437,7 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
       return ok(
         list.map((c) => {
           const e = inHistory(c);
-          return e ? { ...c, archived: { at: e.at, file: e.file, files: e.files }, thumb: c.thumb ?? e.thumb } : c;
+          return e ? { ...c, archived: { at: e.at, file: e.file, files: e.files, secs: e.secs }, thumb: c.thumb ?? e.thumb } : c;
         }),
       );
     }
@@ -512,6 +487,9 @@ async function handle(req: UiRequest): Promise<Result<unknown>> {
       return ok({ jobs: pickThumbs(state.jobs, req.jobs), archive: pickThumbs(state.archive, req.archive) });
     case 'checkUpdate':
       return ok(null);
+    case 'showFile':
+      note(`Would show ${req.file} in its folder`);
+      return ok(true);
   }
 }
 
@@ -529,7 +507,7 @@ export const browser = {
       removeListener: (fn: (raw: unknown) => void) => void uiListeners.delete(fn),
     },
     getURL: (path: string) => new URL(path, location.href).href,
-    getManifest: () => ({ version: '0.3.0 preview' }),
+    getManifest: () => ({ version: '0.7.1' }),
   },
   storage: {
     local: {
@@ -566,5 +544,6 @@ export const browser = {
       return t;
     },
     create: async ({ url }: { url: string }) => note(`Would open ${url} in a new tab`),
+    reload: async (id: number) => note(`Would reload tab ${id}`),
   },
 };

@@ -374,3 +374,38 @@ describe('record: live DASH in memory', () => {
     expect(saved).toHaveLength(1);
   });
 });
+
+describe('media info for cards', () => {
+  it('gives a static MPD its length', async () => {
+    serve({ [MPD_URL]: text(mpd(videoSet(SD) + audioSet(AUDIO))) });
+    expect((await inspect(candidate(MPD_URL))).duration).toBe(8);
+  });
+
+  it('marks a fully protected stream as DRM from the thumbnail capture, without a frame', async () => {
+    serve({ [MPD_URL]: text(mpd(videoSet(`${HD}${DRM}</Representation>`) + audioSet(AUDIO))) });
+    const r = await new Engine(platform).thumbnail(candidate(MPD_URL));
+    expect(r).toEqual({ ok: true, value: { frame: null, info: { drm: true } } });
+  });
+
+  it('reports the best quality and length even when no frame decodes', async () => {
+    serve({ [MPD_URL]: text(mpd(videoSet(`${HD}</Representation>${SD}`) + audioSet(AUDIO))) });
+    const r = await new Engine(platform).thumbnail(candidate(MPD_URL));
+    expect(r.ok && r.value.info).toEqual({ height: 1080, duration: 8, bitrate: 6000000, qualities: 2 });
+  });
+});
+
+describe('length of an HLS master', () => {
+  const master = `${BASE}master.m3u8`;
+  const body = '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=6000000,RESOLUTION=1920x1080\nhi.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360\nlo.m3u8\n';
+  const media = '#EXTM3U\n#EXT-X-TARGETDURATION:6\n#EXTINF:6,\na.ts\n#EXTINF:6,\nb.ts\n#EXTINF:4.5,\nc.ts\n#EXT-X-ENDLIST\n';
+  it('reads the cheapest rendition for the length the sheet estimates sizes from', async () => {
+    serve({ [master]: text(body), [`${BASE}lo.m3u8`]: text(media) });
+    expect((await inspect(candidate(master, { kind: 'hls' }))).duration).toBe(16.5);
+  });
+  it('leaves the length unknown when that rendition cannot be read', async () => {
+    serve({ [master]: text(body) });
+    const i = await inspect(candidate(master, { kind: 'hls' }));
+    expect(i.variants).toHaveLength(2);
+    expect(i.duration).toBeUndefined();
+  });
+});

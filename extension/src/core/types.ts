@@ -28,6 +28,32 @@ export interface Archived {
   file: string;
   /** A post saved as several files: how many. */
   files?: number;
+  /** Length in seconds, when history knows it. */
+  secs?: number;
+}
+
+/**
+ * What the engine learned about a stream while capturing its thumbnail, so a
+ * card can say "2160p · 12:40" before the quality sheet opens. Never fetched
+ * on its own: thumbnails off means no info.
+ */
+export interface MediaInfo {
+  /** Best rendition's shorter side in pixels (1080 for 1920x1080 and for 1080x1920). */
+  height?: number;
+  /** Seconds, for media with an end. */
+  duration?: number;
+  /** Bits per second of that best rendition, for a size estimate. */
+  bitrate?: number;
+  /** How many video qualities the stream offers, when more than one. */
+  qualities?: number;
+  /** The stream is DRM protected; Magpie cannot save it. */
+  drm?: boolean;
+}
+
+/** A thumbnail capture's result: the frame, if one decoded, and what the capture learned on the way. */
+export interface Thumbnail {
+  frame: string | null;
+  info: MediaInfo;
 }
 
 /** A piece of media the sniffer saw a tab load. */
@@ -61,6 +87,8 @@ export interface Candidate {
   archived?: Archived;
   /** One frame of the stream as a small JPEG data URL, once captured. For a post, the URL of its preview image. */
   thumb?: string;
+  /** Quality, length and DRM, once the thumbnail capture has read the stream. */
+  info?: MediaInfo;
   /** The Reddit post this row is, with the files it saves. */
   post?: RedditPost;
   /** Set on one file of a post, a candidate the background makes for the engine. */
@@ -99,6 +127,8 @@ export interface Inspection {
   notes: string[];
   /** Media playlist without EXT-X-ENDLIST, or a dynamic MPD. Unknown for an HLS master. */
   live?: boolean;
+  /** Seconds of media, when the manifest says (a finished media playlist, a static MPD). Unknown for an HLS master. */
+  duration?: number;
   /**
    * For a master playlist: every variant and rendition playlist URL it lists.
    * For an MPD: rules that fold the player's own requests under it, so they
@@ -128,6 +158,8 @@ export interface Job {
   title: string;
   filename: string;
   url: string;
+  /** The page the media played on, so a failed job can send the user back to it. */
+  pageUrl?: string;
   kind: MediaKind;
   variantLabel: string;
   state: JobState;
@@ -136,6 +168,10 @@ export interface Job {
   bytes: number;
   /** Full size when the server tells us (plain files); drives the progress bar. */
   bytesTotal?: number;
+  /** The saved quality's shorter side in pixels, when known (a stream's rendition, a file's decoded frame). */
+  height?: number;
+  /** Bytes a stream should come to, from its bitrate and length, for a queued job's size. */
+  sizeEstimate?: number;
   /** 1 based place in the queue while state is 'queued'. */
   queuePosition?: number;
   /** Recording a live stream: runs until Stop or the stream ends. */
@@ -168,6 +204,7 @@ export type UiRequest =
   | { type: 'activeTab' }
   | { type: 'archive' }
   | { type: 'removeArchive'; id: string }
+  | { type: 'showFile'; file: string; folder: boolean }
   | { type: 'clearArchive' }
   /** Thumbnails for rows that arrived in a change event, which carries none. Answered with a ThumbMap. */
   | { type: 'thumbs'; jobs?: string[]; archive?: string[] }

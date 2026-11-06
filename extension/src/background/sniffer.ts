@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { candidateId, detect, manifestUrl, matchesFoldRule, sameStream } from '../core/detect';
-import type { Candidate, Envelope, Inspection, MediaKind } from '../core/types';
+import type { Candidate, Envelope, Inspection, MediaInfo, MediaKind } from '../core/types';
 import { pageTitleFor } from './pagetitle';
 
 /** Reloads after the first sighting that mark a manifest as live. Players fetch a VOD manifest once. */
@@ -135,6 +135,15 @@ export class Sniffer {
     void this.persist();
     void this.badge(tabId);
     this.notify(tabId);
+  }
+
+  /** What the thumbnail capture learned about a stream: quality, length, DRM. */
+  setInfo(id: string, info: MediaInfo): void {
+    const c = [...this.byTab.values()].map((m) => m.get(id)).find(Boolean);
+    if (!c || JSON.stringify(c.info) === JSON.stringify(info)) return;
+    c.info = info;
+    void this.persist();
+    this.notify(c.tabId);
   }
 
   /** Keep a captured frame with the candidate, so every popup after this one has it. */

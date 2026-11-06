@@ -3,7 +3,7 @@ import { availableRange, chooseAudio, parseMpd, utcTimingTime, videoLabel, type 
 import { fmtDuration, languageName } from '../core/format';
 import { segmentsFromSidx } from '../core/sidx';
 import { buildFilename, withPart, withTimestamp } from '../core/filename';
-import { err, ok, type Candidate, type Inspection, type Job, type Result, type Variant } from '../core/types';
+import { err, ok, type Candidate, type Inspection, type Job, type MediaInfo, type Result, type Thumbnail, type Variant } from '../core/types';
 import { DEFAULT_SETTINGS, normalizeSettings, type Settings } from '../core/settings';
 import { makeEntry } from '../core/archive';
 import { decryptSegment } from './crypto';
@@ -67,8 +67,8 @@ const AUDIO_EMPTY = 'The audio rendition lists no segments, so it is not merged;
 const AUDIO_NO_INIT = 'The stream names fMP4 segments but no init segment, so its separate audio is not merged; video only.';
 const AUDIO_DISCONTINUITY = 'The stream has discontinuities (usually ad breaks), so its separate audio is not merged; video only.';
 const AUDIO_NEW_INIT = 'The stream switches to another init segment partway through, so its separate audio is not merged; video only.';
-const DRM_MPD = 'This stream uses DRM (the MPD marks its video or its audio protected), which Magpie does not download.';
-const DRM_INIT = 'This stream uses DRM (its init segment is encrypted), which Magpie does not download.';
+const DRM_MPD = 'The site locks this video with DRM, so Magpie can\'t save it.';
+const DRM_INIT = 'The site locks this video with DRM (its first segment is encrypted), so Magpie can\'t save it.';
 const DASH_NO_AUDIO = 'No audio representation in the MPD can be used (see above), so the download is video only.';
 // Live DASH: what cannot be recorded.
 const LIVE_SEGMENT_BASE = 'This live MPD addresses its media with SegmentBase, which Magpie cannot record.';
@@ -91,7 +91,7 @@ interface LiveOutput {
   /** Save the current file as a finished part and open the next one. */
   nextPart(): Promise<void>;
 }
-const LIVE_NOTE = 'Live stream. Download records from about 30 seconds back until you press Stop or the stream ends.';
+const LIVE_NOTE = 'Starts about 30 seconds back. Ends when you press "Stop\u00a0and\u00a0save", or when the stream ends.';
 
 /**
  * Stop for a live recording: unlike cancel, the job finishes its current step,
@@ -153,6 +153,28 @@ interface DashLivePlan {
   audioId?: string;
   /** Seconds the server's clock is ahead of the local one, from the MPD's UTCTiming at inspect time. */
   clockOffset: number;
+}
+
+/** Seconds of a finished media playlist, or undefined when it is live, unreadable or another master. */
+async function mediaLength(uri: string, allow: (url: string) => Promise<void>, signal: AbortSignal): Promise<number | undefined> {
+  try {
+    await allow(uri);
+    const media = parseHls(await fetchText(uri, signal), uri);
+    return media.kind === 'media' && media.endList ? media.totalDuration : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** True when an inspection offers one video rendition, so the frame sampled from it shows the quality saved. */
+function single(inspection: Inspection | undefined): boolean {
+  return !!inspection && inspection.variants.filter((v) => !v.audioOnly).length === 1;
+}
+
+/** 1080 from "1920x1080" and from "1080x1920"; 0 when there is no resolution. */
+function shorterSide(resolution: string | undefined): number {
+  const [w, h] = (resolution ?? '').split('x').map(Number);
+  return w && h ? Math.min(w, h) : 0;
 }
 
 /**
@@ -259,15 +281,26 @@ export class Engine {
    * One frame of the stream as a small JPEG data URL. Costs one segment of the
    * lowest rendition, or the first megabyte of a plain file, and nothing more.
    */
-  async thumbnail(candidate: Candidate): Promise<Result<string>> {
+  /**
+   * One frame of the stream, plus what reading it taught: best quality,
+   * length, and whether it is DRM protected. A capture that decodes no frame
+   * still answers when it learned something, so a protected stream is marked
+   * on its card before anyone opens it.
+   */
+  async thumbnail(candidate: Candidate): Promise<Result<Thumbnail>> {
     const signal = AbortSignal.timeout(THUMB_TIMEOUT);
+    const info: MediaInfo = {};
     try {
       await this.platform.setHeaderRule(new URL(candidate.url).host, candidate.referer || candidate.pageUrl, originOf(candidate.pageUrl));
-      const parts = candidate.kind === 'file' ? [await fetchPrefix(candidate.url, FILE_SAMPLE, signal)] : await this.sample(candidate, signal);
-      const frame = await frameFromMp4(parts, candidate.kind !== 'file');
-      return frame ? ok(frame) : err('No frame could be decoded.');
+      const parts = candidate.kind === 'file' ? [await fetchPrefix(candidate.url, FILE_SAMPLE, signal)] : await this.sample(candidate, signal, info);
+      const { frame, height } = await frameFromMp4(parts, candidate.kind !== 'file');
+      // A plain file or a stream with one rendition and no stated resolution: the decoded frame says it.
+      if (height && !info.height && (candidate.kind === 'file' || single(this.inspections.get(candidate.id)?.inspection))) info.height = height;
+      return frame || Object.keys(info).length ? ok({ frame, info }) : err('No frame could be decoded.');
     } catch (e) {
-      return err(describe(e));
+      const message = describe(e);
+      if (message === DRM_MPD || message === DRM_INIT) info.drm = true;
+      return Object.keys(info).length ? ok({ frame: null, info }) : err(message);
     }
   }
 
@@ -275,13 +308,21 @@ export class Engine {
    * Init segment plus one media segment of the lowest HLS rendition or DASH
    * video representation, as fragmented MP4 that starts at 0.
    */
-  private async sample(candidate: Candidate, signal: AbortSignal): Promise<Uint8Array[]> {
+  private async sample(candidate: Candidate, signal: AbortSignal, info: MediaInfo): Promise<Uint8Array[]> {
     let entry = this.inspections.get(candidate.id);
     if (!entry || staleInspection(entry, candidate)) {
       const r = await this.inspect(candidate);
       if (!r.ok) throw new Error(r.error);
       entry = this.inspections.get(candidate.id)!;
     }
+    const video = entry.inspection.variants.filter((v) => !v.audioOnly);
+    const top = Math.max(0, ...video.map((v) => shorterSide(v.resolution)));
+    if (top) info.height = top;
+    // Variants are sorted by bandwidth, highest first.
+    if (video[0]?.bandwidth) info.bitrate = video[0].bandwidth;
+    if (video.length > 1) info.qualities = video.length;
+    if (entry.inspection.duration) info.duration = entry.inspection.duration;
+    if (entry.inspection.notes.some((n) => n.includes('looks like DRM'))) info.drm = true;
     let media = entry.media;
     if (candidate.kind === 'dash') {
       // The lowest bandwidth video representation. Variants are sorted highest first, and trick mode sets never become variants.
@@ -296,6 +337,8 @@ export class Engine {
       const parsed = parseHls(await fetchText(variant.uri, signal), variant.uri);
       if (parsed.kind !== 'media') throw new Error('Variant pointed at another master playlist');
       media = parsed;
+      // Every rendition of a master is equally long, so the cheapest one gives the length.
+      if (parsed.endList && !info.duration) info.duration = parsed.totalDuration;
     } else if (!media.endList) {
       // A live playlist from the inspection is stale; its segments may be gone.
       const parsed = parseHls(await fetchText(candidate.url, signal), candidate.url);
@@ -381,8 +424,13 @@ export class Engine {
       const playlist = parseHls(text, candidate.url);
       const notes: string[] = [];
       let variants: Variant[];
+      let length: Promise<number | undefined> = Promise.resolve(undefined);
       if (playlist.kind === 'master') {
         const sorted = [...playlist.variants].sort((a, b) => (b.bandwidth ?? 0) - (a.bandwidth ?? 0));
+        // The length, for size estimates in the sheet: every rendition is as long as the others, so the
+        // cheapest one is read, alongside the audio. A failure only leaves the length unknown.
+        const cheapest = sorted[sorted.length - 1];
+        if (cheapest && !candidate.live) length = mediaLength(cheapest.uri, allow, signal);
         // Each distinct audio playlist is read once, to tell whether it can be merged.
         const verdicts = new Map<string, Promise<string | null>>();
         const verdict = (uri: string) => {
@@ -410,7 +458,7 @@ export class Engine {
             variant.label = `${variant.label} + ${name}`;
             variant.audioUri = audio.uri;
             variant.audioLabel = name;
-            return { variant, note: group.length > 1 ? `Audio: ${name} (default). Other languages are not selectable yet.` : undefined };
+            return { variant, note: group.length > 1 ? `Audio: ${name}, the stream's default track.` : undefined };
           }),
         );
         variants = found.map((f) => f.variant);
@@ -441,7 +489,9 @@ export class Engine {
               notes,
               children: [...playlist.variants.map((v) => v.uri), ...playlist.renditions.flatMap((r) => (r.uri ? [r.uri] : []))],
             }
-          : { candidateId: candidate.id, kind: 'hls', variants, notes, live: !playlist.endList };
+          : { candidateId: candidate.id, kind: 'hls', variants, notes, live: !playlist.endList, ...(playlist.endList ? { duration: playlist.totalDuration } : {}) };
+      const seconds = await length;
+      if (seconds) inspection.duration = seconds;
       this.keepInspection(candidate.id, { candidate, inspection, media: playlist.kind === 'media' ? playlist : undefined });
       return ok(inspection);
     } catch (e) {
@@ -569,13 +619,14 @@ export class Engine {
     });
     if (!variants.length) throw new Error(notes.join(' ') || 'No representation in the MPD has segments.');
     if (merged && new Set(manifest.audio.map((r) => r.setIndex)).size > 1) {
-      notes.push(`Audio: ${audioName} (default). Other languages are not selectable yet.`);
+      notes.push(`Audio: ${audioName}, the stream's default track.`);
     }
     if (live) notes.push(LIVE_NOTE);
     // Fold rules of every representation, used or not: the player may fetch any of them, protected ones included.
     const children = [...new Set([...manifest.video, ...manifest.audio].flatMap((r) => r.fold))];
     const inspection: Inspection = { candidateId: candidate.id, kind: 'dash', variants, notes, children };
     if (live) inspection.live = true;
+    else if (manifest.duration) inspection.duration = manifest.duration;
     return { inspection, source: { text, url: candidate.url, at: readAt, clockOffset: offset, indexed, picks } };
   }
 
@@ -601,8 +652,11 @@ export class Engine {
       title: candidate.pageTitle || candidate.url,
       filename: candidate.saveAs ?? buildFilename(candidate.pageTitle, candidate.kind, variant.audioOnly ? 'audio' : undefined, candidate.mime, candidate.url, variant.label),
       url: variant.uri,
+      pageUrl: candidate.pageUrl,
       kind: candidate.kind,
       variantLabel: variant.label,
+      ...(shorterSide(variant.resolution) || candidate.info?.height ? { height: shorterSide(variant.resolution) || candidate.info?.height } : {}),
+      ...(variant.bandwidth && entry.inspection.duration ? { sizeEstimate: Math.round((variant.bandwidth / 8) * entry.inspection.duration) } : {}),
       state: 'queued',
       segmentsTotal: 0,
       segmentsDone: 0,

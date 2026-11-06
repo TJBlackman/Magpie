@@ -31,7 +31,7 @@ test('media list leads with the page title, not the URL', async ({ magpie }) => 
   const popup = await magpie.popup();
   const row = popup.locator('[data-testid="candidate"][data-url*="/media/hls-ts/index.m3u8"]').first();
   await expect(row.getByTestId('candidate-title')).toHaveText('Harbor at Dusk', { timeout: 15_000 });
-  await expect(row).toContainText('index.m3u8');
+  await expect(row).toContainText(/index\.m3u8|127\.0\.0\.1|\d{3,4}p/);
 });
 
 test('progress bar fills while a plain file downloads', async ({ magpie }) => {
@@ -80,8 +80,8 @@ test('settings limit concurrent downloads and extra clicks queue up', async ({ m
 
   const { maxActive, queued } = await observed(popup);
   expect(maxActive).toBe(1);
-  expect(queued).toContain('Waiting, #2 in queue');
-  expect(queued).toContain('Waiting, #1 in queue');
+  expect(queued).toContain('#2 in line');
+  expect(queued).toContain('#1 in line');
 });
 
 test('clear empties the popup list right away', async ({ magpie }) => {
@@ -89,7 +89,7 @@ test('clear empties the popup list right away', async ({ magpie }) => {
   await playAndWait(page, '/hls-ts.html');
   const popup = await magpie.popupFor(page);
   await expect(popup.getByTestId('candidate').first()).toBeVisible({ timeout: 15_000 });
-  await popup.getByRole('button', { name: 'Clear', exact: true }).click();
+  await popup.getByRole('button', { name: 'Clear detected media', exact: true }).click();
   await expect(popup.getByTestId('candidate')).toHaveCount(0, { timeout: 2_000 });
   await expect(popup.getByText('Nothing detected yet')).toBeVisible();
 });
@@ -104,7 +104,7 @@ test('quality sheet closes on Escape and on the veil', async ({ magpie }) => {
   const sheet = popup.getByTestId('sheet');
   await expect(sheet.getByTestId('variant')).toHaveCount(3, { timeout: 15_000 });
   // The top rendition is picked by default and the main button names it.
-  await expect(sheet.getByTestId('variant').first()).toHaveAttribute('aria-pressed', 'true');
+  await expect(sheet.getByTestId('variant').first()).toHaveAttribute('aria-checked', 'true');
   await expect(sheet.getByTestId('start')).toHaveText('Download 720p');
   await sheet.getByTestId('variant').nth(2).click();
   await expect(sheet.getByTestId('start')).toHaveText('Download 360p');

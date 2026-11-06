@@ -1,6 +1,23 @@
 import { manifestUrl } from './detect';
 import type { Candidate, MediaKind } from './types';
 
+const SEP = '[\\\\/]';
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * A regular expression for downloads.search that finds a saved file again by
+ * the name history kept: the file itself, or a file inside a post's folder.
+ * The browser may have added " (1)" to a name that was taken.
+ */
+export function downloadPattern(file: string, folder: boolean): string {
+  const parts = file.split('/').map(escapeRe);
+  if (folder) return `(^|${SEP})${parts.join(SEP)}${SEP}[^\\\\/]+$`;
+  const last = parts.pop()!;
+  const dot = last.lastIndexOf('\\.');
+  const name = dot > 0 ? `${last.slice(0, dot)}( \\(\\d+\\))?${last.slice(dot)}` : last;
+  return `(^|${SEP})${[...parts, name].join(SEP)}$`;
+}
+
 /** One finished download. Kept small on purpose: what it was, when, how long, and where it came from. */
 export interface ArchiveEntry {
   /** The job id. */
@@ -21,6 +38,8 @@ export interface ArchiveEntry {
   files?: number;
   /** Length in seconds, when known. */
   secs?: number;
+  /** Size of the saved file in bytes, when known. Missing on entries from before 0.8 and on posts. */
+  bytes?: number;
   /** Downloaded in a private window. Kept out of storage.local unless the user allows it. */
   priv?: true;
   /** The frame captured for the stream, a JPEG data URL of a few kilobytes. */
@@ -31,7 +50,8 @@ export const ARCHIVE_KEY = 'archive';
 const MAX_TEXT = 300;
 const MAX_URL = 2000;
 const MAX_SRC = 4000;
-const MAX_THUMB = 24_000;
+/** Same cap as the capture itself (THUMB_MAX_CHARS), so every captured frame is kept. */
+const MAX_THUMB = 96_000;
 
 /** Query parameter names that carry signatures, expiry times and cache busters, never the video. */
 const VOLATILE_NAMES = new Set([
@@ -175,7 +195,7 @@ export function isArchived(c: Seen, index: ArchiveIndex, siblings: Seen[] = []):
 
 /** The entry for a finished job. */
 export function makeEntry(
-  job: { id: string; filename: string; finishedAt?: number },
+  job: { id: string; filename: string; finishedAt?: number; bytes?: number },
   candidate: Pick<Candidate, 'url' | 'pageUrl' | 'pageTitle' | 'incognito' | 'kind' | 'thumb'>,
   secs?: number,
   files?: number,
@@ -193,6 +213,7 @@ export function makeEntry(
   };
   if (secs !== undefined && Number.isFinite(secs) && secs > 0) entry.secs = Math.round(secs * 10) / 10;
   if (files !== undefined && files > 1) entry.files = files;
+  if (job.bytes !== undefined && Number.isFinite(job.bytes) && job.bytes > 0 && !files) entry.bytes = Math.round(job.bytes);
   if (candidate.incognito) entry.priv = true;
   if (candidate.thumb && candidate.thumb.length <= MAX_THUMB) entry.thumb = candidate.thumb;
   return entry;
@@ -220,6 +241,7 @@ export function normalizeArchive(raw: unknown): ArchiveEntry[] {
     };
     if (typeof r.secs === 'number' && Number.isFinite(r.secs) && r.secs > 0) e.secs = r.secs;
     if (typeof r.files === 'number' && Number.isInteger(r.files) && r.files > 1) e.files = r.files;
+    if (typeof r.bytes === 'number' && Number.isFinite(r.bytes) && r.bytes > 0) e.bytes = Math.round(r.bytes);
     if (r.kind === 'hls' || r.kind === 'dash' || r.kind === 'file' || r.kind === 'post') e.kind = r.kind;
     if (typeof r.thumb === 'string' && r.thumb.length <= MAX_THUMB && r.thumb) e.thumb = r.thumb;
     if (r.priv === true) e.priv = true;
@@ -243,3 +265,4 @@ export function splitForStorage(entries: ArchiveEntry[], keepPrivate: boolean): 
   if (keepPrivate) return { local: entries, session: [] };
   return { local: entries.filter((e) => !e.priv), session: entries.filter((e) => e.priv) };
 }
+
