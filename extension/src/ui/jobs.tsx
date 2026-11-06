@@ -121,7 +121,7 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
  * failed one stay one row tall, with their state on the second line, so the
  * running downloads keep the room.
  */
-export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean }) {
+export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean; card?: boolean }) {
   const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
   // When a failure's reason and its fix do not both fit on the line, the fix takes its own line below.
@@ -244,6 +244,34 @@ export function JobRow({ job, thumbs, onRetry, inset }: { job: Job; thumbs: bool
           )}
     </>
   );
+  // A running or recording download with a frame is a card: the whole frame beside the title, progress below.
+  if (card && thumbs && job.thumb && !failed && !queued) {
+    const stopLabel = job.live ? 'Discard the recording' : 'Cancel the download';
+    return (
+      <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative rounded-[16px] p-3.5">
+        <div className="flex items-center gap-3">
+          <div className="relative aspect-video w-24 shrink-0 overflow-hidden rounded-[10px] bg-[#202326] shadow-[0_2px_6px_rgba(0,0,0,.4)]">
+            <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="size-full object-cover" />
+            <span className="pointer-events-none absolute inset-0 rounded-[10px] ring-1 ring-white/[0.08] ring-inset" />
+          </div>
+          <div className="min-w-0 flex-1 pr-9">
+            <div className="line-clamp-2 text-[13.5px] leading-[18px] font-semibold text-pretty text-text" title={job.filename}>
+              {job.title || job.filename}
+            </div>
+            <div className="mt-1 truncate text-[11.5px] text-mute tabular-nums" title={job.url}>
+              {[rendition, job.live ? `since ${new Date(job.startedAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : siteOf(hostOf(job.pageUrl || job.url)) || hostOf(job.url)].filter(Boolean).join(' · ')}
+            </div>
+          </div>
+        </div>
+        {!(job.live && discarding) && (
+          <IconButton label={stopLabel} tone="danger" className="absolute top-3 right-3.5 size-8" onClick={() => (job.live ? setDiscarding(true) : void api.cancel(job.id))}>
+            {job.live ? <IconTrash size={16} /> : <IconX size={16} />}
+          </IconButton>
+        )}
+        <div className="pt-1.5">{progress}</div>
+      </div>
+    );
+  }
   return (
     <MediaRow
       inset={inset}

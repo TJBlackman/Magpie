@@ -447,11 +447,19 @@ export function Popup() {
             {recordings.length > 0 && (
               <>
                 <Section title="Recording" count={recordings.length} />
-                <RowList divided>
-                  {recordings.map((j) => (
-                    <JobRow key={j.id} job={j} thumbs={thumbs} inset />
-                  ))}
-                </RowList>
+                {thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {recordings.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} card />
+                    ))}
+                  </div>
+                ) : (
+                  <RowList divided>
+                    {recordings.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} inset />
+                    ))}
+                  </RowList>
+                )}
               </>
             )}
             {running.length > 0 && (
@@ -464,9 +472,23 @@ export function Popup() {
                     </button>
                   )}
                 </Section>
-                <RowList divided>
-                  {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
-                </RowList>
+                {thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {rowsOf(running).map((r) =>
+                      r.group !== undefined ? (
+                        <RowList key={r.group}>
+                          <GroupRow jobs={r.jobs} thumbs={thumbs} inset />
+                        </RowList>
+                      ) : (
+                        <JobRow key={r.job.id} job={r.job} thumbs={thumbs} card />
+                      ),
+                    )}
+                  </div>
+                ) : (
+                  <RowList divided>
+                    {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                  </RowList>
+                )}
               </>
             )}
             {failed.length > 0 && (
