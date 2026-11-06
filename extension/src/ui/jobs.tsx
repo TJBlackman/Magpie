@@ -93,7 +93,7 @@ const STATE_CHIP: Partial<Record<Job['state'], { label: string; tone: 'default' 
 function Bar({ pct, tone, moving }: { pct: number | null; tone: 'shine' | 'live' | 'bad' | 'idle'; moving: boolean }) {
   const color = { shine: 'bg-shine', live: 'bg-live', bad: 'bg-live/80', idle: 'bg-edge3' }[tone];
   return (
-    <div className="mt-1 h-1 rounded-full bg-[#65696f]">
+    <div className="mt-1 h-1 rounded-full bg-[#3d4046]">
       {pct === null ? (
         <div className={`bar-indeterminate h-full rounded-full ${color}`} />
       ) : (
@@ -209,7 +209,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
               }}
             >
               <p className="text-[12.5px] font-medium text-text">Discard this recording?</p>
-              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes the ${fmtClock(job.duration ?? 0)} recorded so far, ${fmtBytes(job.bytes)}, without saving a file.`}</p>
+              <p className="mt-0.5 text-[11.5px] text-mute tabular-nums">{`Deletes ${fmtClock(job.duration ?? 0)} of recording, ${fmtBytes(job.bytes)}. No file is saved.`}</p>
               <div className="mt-2.5 flex justify-end gap-2">
                 <Button tone="default" size="md" onClick={() => setDiscarding(false)} autoFocus>
                   Keep recording
@@ -250,8 +250,8 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
     return (
       <div data-testid="job" data-job-id={job.id} data-state={job.state} data-filename={job.filename} data-pct={pct === null ? '' : Math.floor(pct * 100)} className="card-surface relative overflow-hidden rounded-[16px]">
         <div className="relative h-[76px] overflow-hidden">
-          <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover" />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,.1)_0%,rgba(11,12,13,.72)_42%,rgba(11,12,13,.92)_100%)]" />
+          <img src={job.thumb} alt="" data-testid="thumb" draggable={false} className="absolute inset-0 size-full object-cover object-[center_40%]" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,12,13,0)_12%,rgba(11,12,13,.74)_44%,rgba(11,12,13,.92)_100%)]" />
           <span className="absolute inset-x-3.5 bottom-2.5 block">
             <span className="font-display block truncate text-[15px] leading-[19px] font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,.5)]" title={job.filename}>
               <FitText text={job.title || job.filename} />
@@ -300,7 +300,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
         )
       }
     >
-      {failed ? (tight && fix ? <div className="-mt-1.5 pl-[102px]">{fix}</div> : null) : queued ? null : progress}
+      {failed ? (tight && fix ? <div className="-mt-3 pl-[102px]">{fix}</div> : null) : queued ? null : progress}
     </MediaRow>
   );
 }

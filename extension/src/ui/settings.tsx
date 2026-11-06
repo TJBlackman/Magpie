@@ -126,7 +126,7 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
         </span>
       </header>
       {settings && (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3.5 pt-3.5 pb-8 scroll-thin [mask-image:linear-gradient(to_bottom,#000_calc(100%-14px),rgb(0_0_0/0.15))]">
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3.5 pt-3.5 pb-8 scroll-thin [mask-image:linear-gradient(to_bottom,#000_calc(100%-28px),rgb(0_0_0/0))]">
           <Group title="Downloads">
             <Row
               label="Downloads at a time"

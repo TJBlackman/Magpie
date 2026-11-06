@@ -132,11 +132,7 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       titleTestId="archive-title"
       meta={
         <span className="min-w-0 flex-1 truncate" title={`Saved ${fmtDateTime(entry.at)}${page ? ` from ${page}` : ''}`}>
-          <span className="group-hover:hidden group-has-[.row-main:focus-visible]:hidden">{when}</span>
-          <span className="hidden font-medium text-text group-hover:inline group-has-[.row-main:focus-visible]:inline">
-            <IconFolder size={12} className="-mt-0.5 mr-1 inline" />
-            {folder ? 'Show the folder' : 'Show in folder'}
-          </span>
+          {when}
           {facts && <span className="tabular-nums">{` · ${facts}`}</span>}
         </span>
       }
@@ -144,14 +140,20 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={<span className="size-9 shrink-0" aria-hidden="true" />}
       inset
+      hoverReserve
       overlay={
-        <RowMenu
+        <>
+          <button type="button" onClick={show} aria-label={folder ? 'Show the folder' : 'Show in folder'} title={folder ? 'Show the folder' : 'Show in folder'} className="absolute top-1/2 right-11 z-10 hidden size-8 -translate-y-1/2 items-center justify-center rounded-full text-mute transition-colors group-focus-within:flex group-hover:flex hover:bg-white/[0.08] hover:text-text">
+            <IconFolder size={16} />
+          </button>
+          <RowMenu
           items={[
             { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
             ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
             { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
           ]}
-        />
+          />
+        </>
       }
     />
   );
@@ -182,15 +184,13 @@ export const HistoryList = memo(function HistoryList({ entries, total, query, th
     else groups.push({ label, items: [e] });
   }
   return (
-    <div className="flex flex-col" data-testid="archive">
+    <div className="card-surface flex flex-col rounded-[16px] p-1.5" data-testid="archive">
       {groups.map((g, i) => (
         <Fragment key={`${g.label}${i}`}>
-          {g.label && <h2 className="mt-4 mb-1.5 text-[13px] font-medium text-mute first:mt-0.5">{g.label}</h2>}
-          <div className="card-surface flex flex-col rounded-[16px] p-1.5">
-            {g.items.map((e) => (
-              <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} />
-            ))}
-          </div>
+          {g.label && <h2 className={`px-2 pb-1 text-[12px] font-medium text-mute ${i ? 'pt-3' : 'pt-1.5'}`}>{g.label}</h2>}
+          {g.items.map((e) => (
+            <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} />
+          ))}
         </Fragment>
       ))}
     </div>

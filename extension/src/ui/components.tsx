@@ -113,7 +113,7 @@ export function MediaTile({ kind, live, locked, thumb, muted, corner, className 
           <div className={`flex size-full items-center justify-center ${locked ? 'bg-[repeating-linear-gradient(135deg,rgba(255,255,255,.035)_0_6px,transparent_6px_12px)]' : ''} ${muted ? 'opacity-50' : ''}`}>{locked ? <IconLock size={17} /> : live ? <IconRadio size={17} className="pulse" /> : kind === 'post' ? <IconImages size={17} /> : <IconFilm size={17} />}</div>
         )}
         {thumb && <span className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-white/[0.08] ring-inset" />}
-        {corner && <span className={`absolute right-0.5 bottom-0.5 rounded-[3px] px-[3px] text-[10px] leading-[13px] font-medium tabular-nums bg-black/70 text-text`}>{corner}</span>}
+        {corner && <span className={`absolute right-1 bottom-1 rounded-[4px] px-1 text-[10px] leading-[13px] font-medium tabular-nums bg-black/65 text-text`}>{corner}</span>}
       </div>
     </div>
   );
