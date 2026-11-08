@@ -278,7 +278,8 @@ export const IconMore = (p: IconProps) => (
  * darker shape on the graphite tile; the whites, the eye and the sheen carry the
  * silhouette.
  */
-export const Logo = ({ size = 22 }: { size?: number }) => {
+/** `outline`: a thin light edge around the black head and back, for a mark drawn straight on a dark background. */
+export const Logo = ({ size = 22, outline }: { size?: number; outline?: boolean }) => {
   const id = useId();
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} fill="none" aria-hidden="true">
@@ -297,7 +298,7 @@ export const Logo = ({ size = 22 }: { size?: number }) => {
         </linearGradient>
       </defs>
       {/* head, bib, back and vent */}
-      <path d="M19.9 4.6C21.1 4.85 22.5 5.6 23.4 6.55C22.3 6.75 21.3 7.1 20.5 7.5C21 8.8 21 10.4 20.3 11.8C19.3 13.8 17.2 15.4 14.6 16.15C13.5 16.45 12.8 16.4 12.4 16.1L11.6 14.8C12.8 12.5 13.8 10.1 15 7.9C15 5.7 16.2 3.8 18 3.6C18.8 3.6 19.5 4 19.9 4.6Z" fill="#08090a" />
+      <path d="M19.9 4.6C21.1 4.85 22.5 5.6 23.4 6.55C22.3 6.75 21.3 7.1 20.5 7.5C21 8.8 21 10.4 20.3 11.8C19.3 13.8 17.2 15.4 14.6 16.15C13.5 16.45 12.8 16.4 12.4 16.1L11.6 14.8C12.8 12.5 13.8 10.1 15 7.9C15 5.7 16.2 3.8 18 3.6C18.8 3.6 19.5 4 19.9 4.6Z" fill="#08090a" {...(outline ? { stroke: 'rgba(255,255,255,.55)', strokeWidth: 1, strokeLinejoin: 'round' as const, paintOrder: 'stroke' } : {})} />
       {/* graduated tail */}
       <path d="M13.04 14.5L4.28 19.32C2.41 20.49 1.15 21.89 .86 22.58C1.61 22.66 3.44 22.21 5.35 21.13L13.76 15.7Z" fill={`url(#${id}t)`} />
       {/* white belly */}
