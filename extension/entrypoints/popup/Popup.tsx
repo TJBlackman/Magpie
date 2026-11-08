@@ -316,8 +316,8 @@ export function Popup() {
   return (
     <div data-popup-root className={`relative mx-auto flex h-[580px] w-[400px] flex-col overflow-hidden bg-ink bg-[radial-gradient(360px_200px_at_12%_-70px,rgba(31,216,207,.13),transparent_70%),radial-gradient(340px_200px_at_92%_-60px,rgba(133,90,231,.10),transparent_70%)] ${toast ? '[--toast-pad:64px]' : '[--toast-pad:0px]'}`}>
       <header className="flex h-[52px] shrink-0 items-center gap-2.5 px-3.5">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[#2e3135] shadow-[inset_0_0_0_1px_rgba(255,255,255,.08)]">
-          <Logo size={26} />
+        <div className="flex size-8 shrink-0 items-center justify-center">
+          <Logo size={32} />
         </div>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-[17px] leading-[20px] font-bold">Magpie</div>
