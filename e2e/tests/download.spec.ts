@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { download, expect, expectAudioMatch, expectAvPair, expectFramesMatch, finished, newestEntry, openCandidate, playAndWait, start, test, view } from '../fixtures';
+import { download, expect, expectAudioMatch, expectAvPair, expectFramesMatch, finished, newestEntry, openCandidate, openSettings, playAndWait, start, test, view } from '../fixtures';
 
 /** Open a candidate's sheet, check its top rendition's quality and the audio the sheet says is merged, and download that rendition. */
 async function downloadChecked(popup: Page, urlPart: string, quality: string, audio: RegExp) {
@@ -69,16 +69,29 @@ test('hls fmp4 master: quality picker, picks 480p', async ({ magpie }) => {
   expectFramesMatch(file, '480');
 });
 
-test("the card's arrow downloads the best quality in one click", async ({ magpie }) => {
+test("the card's arrow asks for a quality, the highest picked, unless the setting says to take the highest", async ({ magpie }) => {
   const page = await magpie.context.newPage();
   await playAndWait(page, '/hls-fmp4.html');
   const popup = await magpie.popup();
   const row = popup.locator('[data-testid="candidate"][data-url*="/media/hls-fmp4/master.m3u8"]').first();
   await expect(row).toBeVisible({ timeout: 15_000 });
+  // Off by default: three qualities, so the arrow opens the sheet with the top one picked.
   await row.getByTestId('quick').click();
-  // No sheet: the job starts at the top of the ladder, and a toast offers the way to it.
-  await expect(popup.getByTestId('sheet')).toHaveCount(0);
+  const sheet = popup.getByTestId('sheet');
+  await expect(sheet.getByTestId('variant')).toHaveCount(3, { timeout: 15_000 });
+  await expect(sheet.getByTestId('variant').first()).toHaveAttribute('aria-checked', 'true');
+  await expect(sheet.getByTestId('start')).toHaveText('Download 720p');
+  await popup.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+
+  await openSettings(popup);
+  await popup.getByTestId('auto-best').click();
+  await expect(popup.getByTestId('saved')).toHaveClass(/opacity-100/);
+  await popup.getByRole('button', { name: 'Back' }).click();
+  // On: no sheet, the job starts at the top of the ladder, and a toast offers the way to it.
+  await row.getByTestId('quick').click();
   await expect(popup.getByRole('status').filter({ hasText: 'Download started' })).toBeVisible();
+  await expect(sheet).toHaveCount(0);
   // The test stream is short, so the job may be done before Downloads is looked at: history has the file.
   await view(popup, 'History');
   await expect(popup.locator('[data-testid="archive-entry"][data-file="Night Train, multi rendition [720p].mp4"]')).toHaveCount(1, { timeout: 30_000 });

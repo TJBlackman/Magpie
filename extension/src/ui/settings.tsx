@@ -135,6 +135,9 @@ export function SettingsPanel({ latest, onClose }: { latest: string | null; onCl
             >
               The rest wait in line. Live recordings don't count. 2 or 3 fill a fast connection.
             </Row>
+            <Row whole label="Always download the highest quality" htmlFor="auto-best" control={<Switch id="auto-best" testId="auto-best" checked={settings.autoBest} onChange={(on) => void update({ autoBest: on })} />}>
+              The download arrow starts the highest quality right away. When off, a video with more than one quality asks which one, with the highest picked.
+            </Row>
             <Row whole label="Read video details" htmlFor="thumbnails" control={<Switch id="thumbnails" testId="thumbnails" checked={settings.thumbnails} onChange={(on) => void update({ thumbnails: on })} />}>
               Shows each video's frame, quality, length and size, and whether it is protected. Reads a small piece of each video while this popup is open.
             </Row>

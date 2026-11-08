@@ -173,7 +173,8 @@ export function leads(candidate: Candidate, thumbs: boolean, job?: CardJob): boo
 }
 
 /** What one click on the arrow does, shown in place of the meta line while the arrow is hovered or focused. */
-function quickText(candidate: Candidate): { what: string; size: string } {
+function quickText(candidate: Candidate, asks?: boolean): { what: string; size: string } {
+  if (asks) return { what: `Choose from ${candidate.info?.qualities} qualities`, size: '' };
   const files = candidate.post?.assets.length ?? 0;
   if (candidate.live) return { what: `Record${fmtHeight(candidate.info?.height) ? ` ${fmtHeight(candidate.info?.height)}` : ''}`, size: '' };
   if (candidate.kind === 'post') return { what: `Download ${files} ${files === 1 ? 'file' : 'files'}`, size: '' };
@@ -188,11 +189,11 @@ function bind(title: string): string {
 }
 
 /** The quick action over a frame: download now at the best quality, record now, or save every file of a post. */
-function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; variant?: 'row' | 'lead' | 'tile' }) {
+function QuickAction({ candidate, onQuick, variant = 'row', asks }: { candidate: Candidate; onQuick: (candidate: Candidate) => void; variant?: 'row' | 'lead' | 'tile'; asks?: boolean }) {
   const files = candidate.post?.assets.length ?? 0;
   const quality = fmtHeight(candidate.info?.height);
   const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration);
-  const label = candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
+  const label = asks ? `Choose a quality, ${candidate.info?.qualities} available` : candidate.live ? 'Record now' : candidate.kind === 'post' ? `Download ${files} ${files === 1 ? 'file' : 'files'} now` : `Download${quality ? ` ${quality}` : ''} now`;
   const look = {
     lead: `bottom-4 right-4 size-11 ${'bg-shine text-shine-ink hover:bg-[#4ee2da] active:bg-[#19bfb7]'} shadow-[0_6px_18px_rgba(0,0,0,.45),inset_0_1px_0_rgba(255,255,255,.35)]`,
     tile: 'disc top-3.5 right-3.5 size-8 bg-[#16181b]/90 text-white shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] ring-inset hover:bg-[#16181b] hover:text-[#83f3e5] hover:ring-white/30 active:bg-[#0b0c0d]',
@@ -201,7 +202,8 @@ function QuickAction({ candidate, onQuick, variant = 'row' }: { candidate: Candi
   return (
     <button
       type="button"
-      aria-label={[label, size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
+      aria-label={[label, !asks && size && `about ${size.replace(/^~/, '')}`].filter(Boolean).join(', ')}
+      title={asks ? 'Choose a quality. The highest is picked' : undefined}
       data-testid="quick"
       onClick={() => onQuick(candidate)}
       className={`quick absolute z-10 flex items-center justify-center rounded-full transition-colors focus-visible:shadow-[0_0_0_2px_#0b0c0d] ${look}`}
@@ -272,7 +274,9 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile, compact }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean; compact?: boolean }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile, compact, autoBest }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean; compact?: boolean; autoBest?: boolean }) {
+  // Without "Always download the highest quality", the arrow on a video with a choice of qualities opens the sheet.
+  const asks = !autoBest && candidate.kind !== 'post' && (candidate.info?.qualities ?? 0) > 1;
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
@@ -293,11 +297,11 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         asideTip={candidate.url}
         onOpen={() => onOpen(candidate, job?.id)}
         openTip={
-          candidate.archived ? 'Already downloaded. Download it again' : job ? 'Already downloading. Show it in Downloads' : candidate.info?.drm ? "Copy protected (DRM). Magpie can't save it" : candidate.live ? 'Record this stream' : 'Choose a quality, or use the arrow to download the best one now'
+          candidate.archived ? 'Already downloaded. Download it again' : job ? 'Already downloading. Show it in Downloads' : candidate.info?.drm ? "Copy protected (DRM). Magpie can't save it" : candidate.live ? 'Record this stream' : (autoBest ? 'Choose a quality, or use the arrow to download the best one now' : 'Choose a quality')
         }
         dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
         action={<CardAction candidate={candidate} job={job} />}
-        overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : job && candidate.live && !job.queued ? <StopAction job={job} row /> : undefined}
+        overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} asks={asks} /> : job && candidate.live && !job.queued ? <StopAction job={job} row /> : undefined}
       />
     );
   }
@@ -309,8 +313,8 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
         </span>
         {!job && quickable(candidate) && (
           <span className="hidden min-w-0 flex-1 truncate font-medium text-text group-has-[.quick:focus-visible]:inline group-has-[.quick:hover]:inline" aria-hidden="true">
-            {quickText(candidate).what}
-            {quickText(candidate).size && <span className="quick-size font-normal">{` · ${quickText(candidate).size}`}</span>}
+            {quickText(candidate, asks).what}
+            {quickText(candidate, asks).size && <span className="quick-size font-normal">{` · ${quickText(candidate, asks).size}`}</span>}
           </span>
         )}
       </>
@@ -325,7 +329,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
           ? 'Record this stream'
           : candidate.kind === 'post'
             ? 'Download every file of this post'
-            : 'Choose a quality, or use the arrow to download the best one now';
+            : (autoBest ? 'Choose a quality, or use the arrow to download the best one now' : 'Choose a quality');
   // The first media one click can save leads the page: its frame fills the card, its title sits on it.
   if (hero && leads(candidate, thumbs, job))
     return (
@@ -347,7 +351,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             )}
           </span>
         </button>
-        <QuickAction candidate={candidate} onQuick={onQuick} variant="lead" />
+        <QuickAction candidate={candidate} onQuick={onQuick} asks={asks} variant="lead" />
       </div>
     );
   if (tile) {
@@ -374,7 +378,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
             {meta && <span className="mt-1 flex h-[18px] items-center gap-1.5 text-[11.5px] text-mute">{meta}</span>}
           </span>
         </button>
-        {!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} variant="tile" /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : job && !candidate.live ? <JobAction job={job} /> : null}
+        {!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} asks={asks} variant="tile" /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : job && !candidate.live ? <JobAction job={job} /> : null}
       </div>
     );
   }
@@ -390,7 +394,7 @@ export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, jo
       openTip={openTip}
       dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
       action={<CardAction candidate={candidate} job={job} />}
-      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : undefined}
+      overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} asks={asks} /> : job && candidate.live && !job.queued ? <StopAction job={job} /> : undefined}
       inset
     />
   );

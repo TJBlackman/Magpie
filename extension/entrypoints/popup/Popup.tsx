@@ -218,8 +218,18 @@ export function Popup() {
       row?.addEventListener('animationend', () => row.classList.remove('flash'), { once: true });
     });
   }, []);
-  // The card's arrow: the best quality now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
+  // "Always download the highest quality", read through a ref so quickStart stays stable for the memoized cards.
+  const autoBest = settings?.autoBest ?? false;
+  const autoBestRef = useRef(autoBest);
+  autoBestRef.current = autoBest;
+  // The card's arrow. A video with more than one quality opens the sheet with the highest picked, unless the setting says to take it at once.
+  // Otherwise the best quality starts now, with a toast to follow it; anything the engine refuses opens the sheet, which says why.
   const quickStart = useCallback(async (c: Candidate) => {
+    if (!autoBestRef.current && c.kind !== 'post') {
+      // The frame capture counts the qualities when there is more than one. Before it has read the stream, ask the engine.
+      const many = c.info?.qualities ? c.info.qualities > 1 : c.kind !== 'file' && (await api.inspect(c.id).then((r) => r.ok && r.value.variants.filter((v) => !v.audioOnly).length > 1));
+      if (many) return void setSheetId(c.id);
+    }
     const r = await api.start(c.id, 'best');
     if (r.ok) setToast({ queued: !c.live && r.value.state === 'queued', text: c.live ? 'Recording started' : r.value.state === 'queued' ? `Added to the queue${r.value.queuePosition ? `, #${r.value.queuePosition} in line` : ''}` : 'Download started', detail: c.pageTitle, view: true, undo: r.value.id, live: c.live });
     else setSheetId(c.id);
@@ -409,7 +419,7 @@ export function Popup() {
                 )}
                 {listRuns(g.list, !compact && !scope?.all && gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
                   run.lead ? (
-                    <CandidateCard key={run.lead.id} candidate={run.lead} thumbs={thumbs} onOpen={openCard} onQuick={quickStart} hero />
+                    <CandidateCard key={run.lead.id} candidate={run.lead} thumbs={thumbs} onOpen={openCard} onQuick={quickStart} autoBest={autoBest} hero />
                   ) : (
                     <Fragment key={run.items[0]!.id}>
                       {run.archived && (
@@ -420,13 +430,13 @@ export function Popup() {
                       {compact ? (
                         <RowList>
                           {run.items.map((c) => (
-                            <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} compact />
+                            <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} autoBest={autoBest} compact />
                           ))}
                         </RowList>
                       ) : (
                         <div className="grid grid-cols-2 gap-x-2.5 gap-y-4 pt-1">
                           {run.items.map((c) => (
-                            <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tile />
+                            <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} autoBest={autoBest} tile />
                           ))}
                         </div>
                       )}
