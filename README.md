@@ -63,7 +63,7 @@ To poke at the test site by hand: `pnpm server`, then open http://127.0.0.1:8787
 pnpm preview
 ```
 
-Opens http://localhost:5179 with the real popup rendered against a fake background (`extension/preview/fake-browser.ts` stands in for `wxt/browser`): nature videos on a page, downloads that progress and queue, a live cam, history and settings. Edits under `extension/src/ui` and `extension/entrypoints/popup` hot reload. The bar above the popup switches between the toolbar popup view and the opened as a page view, and between scenarios (default, empty, busy). `?update=1` adds the new version line. Nothing in `extension/preview` ships in the extension.
+Opens http://localhost:5179 with the real popup rendered against a fake background (`extension/preview/fake-browser.ts` stands in for `wxt/browser`): nature videos on a page, downloads that progress and queue, a live cam, history and settings. Edits under `extension/src/ui` and `extension/entrypoints/popup` hot reload. The bar above the popup switches between the toolbar popup view and the opened as a page view, and between scenarios (default, empty, busy). `?update=1` adds the new version line. `?layout=list` starts in the compact list instead of cards. Nothing in `extension/preview` ships in the extension.
 
 ## Installing for daily use
 

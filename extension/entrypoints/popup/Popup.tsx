@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { api, openPage, useArchive, useCandidates, useJobs, useSettings, useUpdate } from '../../src/ui/api';
-import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, RowList, Section, TextButton, Toast, UpdateBanner } from '../../src/ui/components';
+import { Button, ConfirmButton, DownloadedToggle, Empty, IconButton, LayoutToggle, RowList, Section, TextButton, Toast, UpdateBanner } from '../../src/ui/components';
 import { CandidateCard, leads, QualitySheet, type CardJob } from '../../src/ui/candidates';
 import { GroupRow, JobRow } from '../../src/ui/jobs';
 import { HistoryList } from '../../src/ui/history';
@@ -190,6 +190,9 @@ export function Popup() {
   const recordingJob = active.find((j) => j.live && j.state !== 'queued');
   const recording = !!recordingJob;
   const thumbs = settings?.thumbnails ?? true;
+  // The compact list: every tab lists one line rows with a small frame, instead of cards.
+  const compact = settings?.layout === 'list';
+  const setLayout = (layout: 'cards' | 'list') => settings && void saveSettings({ ...settings, layout });
   const update = useUpdate(settings?.updateCheck ?? false);
 
   const archive = useArchive();
@@ -334,6 +337,7 @@ export function Popup() {
             REC <span className="font-medium tabular-nums">{fmtClock(recordingJob.duration ?? 0)}</span>
           </button>
         )}
+        {settings && <LayoutToggle layout={settings.layout} onChange={setLayout} />}
         <IconButton label="Settings" onClick={() => setSettingsOpen(true)} active={settingsOpen}>
           <IconSettings size={18} />
         </IconButton>
@@ -403,7 +407,7 @@ export function Popup() {
                     <span className="-ml-1 shrink-0 text-[12px] text-dim tabular-nums">{`· ${g.list.length}`}</span>
                   </div>
                 )}
-                {listRuns(g.list, !scope?.all && gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
+                {listRuns(g.list, !compact && !scope?.all && gi === 0 && leads(g.list[0]!, thumbs, byCard.get(g.list[0]!.id)), firstArchived).map((run) =>
                   run.lead ? (
                     <CandidateCard key={run.lead.id} candidate={run.lead} thumbs={thumbs} onOpen={openCard} onQuick={quickStart} hero />
                   ) : (
@@ -413,11 +417,19 @@ export function Popup() {
                           <DownloadedToggle count={downloaded} shown={showDownloaded} onToggle={toggleDownloaded} />
                         </div>
                       )}
-                      <div className="grid grid-cols-2 gap-x-2.5 gap-y-4 pt-1">
-                        {run.items.map((c) => (
-                          <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tile />
-                        ))}
-                      </div>
+                      {compact ? (
+                        <RowList>
+                          {run.items.map((c) => (
+                            <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} compact />
+                          ))}
+                        </RowList>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-x-2.5 gap-y-4 pt-1">
+                          {run.items.map((c) => (
+                            <CandidateCard key={c.id} candidate={c} thumbs={thumbs} job={byCard.get(c.id)} onOpen={openCard} onQuick={quickStart} tile />
+                          ))}
+                        </div>
+                      )}
                     </Fragment>
                   ),
                 )}
@@ -450,7 +462,13 @@ export function Popup() {
             {recordings.length > 0 && (
               <>
                 <Section title="Recording" count={recordings.length} />
-                {thumbs ? (
+                {compact ? (
+                  <RowList>
+                    {recordings.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} compact />
+                    ))}
+                  </RowList>
+                ) : thumbs ? (
                   <div className="flex flex-col gap-3">
                     {recordings.map((j) => (
                       <JobRow key={j.id} job={j} thumbs={thumbs} card />
@@ -477,7 +495,11 @@ export function Popup() {
                     </>
                   )}
                 </Section>
-                {thumbs ? (
+                {compact ? (
+                  <RowList>
+                    {rowsOf(running).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} compact /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} compact />))}
+                  </RowList>
+                ) : thumbs ? (
                   <div className="flex flex-col gap-3">
                     {rowsOf(running).map((r) =>
                       r.group !== undefined ? (
@@ -496,34 +518,14 @@ export function Popup() {
                 )}
               </>
             )}
-            {failed.length > 0 && (
-              <>
-                <Section title="Failed" count={failed.length}>
-                  {failed.length > 1 && (
-                    <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
-                      Clear failed
-                    </TextButton>
-                  )}
-                </Section>
-                {thumbs ? (
-                  <div className="flex flex-col gap-3">
-                    {failed.map((j) => (
-                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} card />
-                    ))}
-                  </div>
-                ) : (
-                  <RowList divided>
-                    {failed.map((j) => (
-                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
-                    ))}
-                  </RowList>
-                )}
-              </>
-            )}
             {waiting.length > 0 && (
               <>
                 <Section title="Queued" count={waiting.length} />
-                {thumbs ? (
+                {compact ? (
+                  <RowList>
+                    {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} compact /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} compact />))}
+                  </RowList>
+                ) : thumbs ? (
                   <div className="flex flex-col gap-3">
                     {rowsOf(waiting).map((r) =>
                       r.group !== undefined ? (
@@ -538,6 +540,36 @@ export function Popup() {
                 ) : (
                   <RowList divided>
                     {rowsOf(waiting).map((r) => (r.group !== undefined ? <GroupRow key={r.group} jobs={r.jobs} thumbs={thumbs} inset /> : <JobRow key={r.job.id} job={r.job} thumbs={thumbs} inset />))}
+                  </RowList>
+                )}
+              </>
+            )}
+            {failed.length > 0 && (
+              <>
+                <Section title="Failed" count={failed.length}>
+                  {failed.length > 1 && (
+                    <TextButton onClick={() => void api.clearFailed()} title="Remove failed downloads from the list">
+                      Clear failed
+                    </TextButton>
+                  )}
+                </Section>
+                {compact ? (
+                  <RowList>
+                    {failed.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} compact />
+                    ))}
+                  </RowList>
+                ) : thumbs ? (
+                  <div className="flex flex-col gap-3">
+                    {failed.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} card />
+                    ))}
+                  </div>
+                ) : (
+                  <RowList divided>
+                    {failed.map((j) => (
+                      <JobRow key={j.id} job={j} thumbs={thumbs} onRetry={failedRetry(j)} inset />
+                    ))}
                   </RowList>
                 )}
               </>
@@ -561,7 +593,7 @@ export function Popup() {
             {q ? <p className="flex h-11 shrink-0 items-center text-[12px] text-mute">{`${matches.length} ${matches.length === 1 ? 'match' : 'matches'}`}</p> : <div className="h-3 shrink-0" />}
           </>
         )}
-        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={shown.length ? () => setView('page') : undefined} browseLabel={foundLabel(shown.length)} />
+        <HistoryList entries={matches} total={archive.length} query={query} thumbs={thumbs} onMissing={onMissing} onBrowse={shown.length ? () => setView('page') : undefined} browseLabel={foundLabel(shown.length)} compact={compact} />
         {archive.length > 0 && !q && (
           <div className="-mr-2 mt-1 flex justify-end">
             <ConfirmButton onConfirm={() => void api.clearArchive()} confirm="Click again to clear" title="Forget every download in history. Saved files stay where they are.">

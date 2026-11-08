@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import type { Layout } from '../core/settings';
 import type { MediaKind } from '../core/types';
 import { kindLabel } from './format';
-import { IconAlert, IconCheck, IconClock, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconImages, IconInfo, IconLock, IconRadio, IconUpdate, IconX, Logo } from './icons';
+import { IconAlert, IconCheck, IconClock, IconError, IconExternal, IconEye, IconEyeOff, IconFilm, IconGrid, IconImages, IconInfo, IconLock, IconRadio, IconRows, IconUpdate, IconX, Logo } from './icons';
 
 export type Tone = 'default' | 'shine' | 'warn' | 'saved' | 'bad' | 'good' | 'post';
 
@@ -284,6 +285,115 @@ export function RowList({ children, testId, divided }: { children: ReactNode; te
   return (
     <div data-testid={testId} className={`card-surface flex flex-col rounded-[16px] p-1.5 ${divided ? '[&>*+*]:before:pointer-events-none [&>*+*]:before:absolute [&>*+*]:before:inset-x-2 [&>*+*]:before:top-0 [&>*+*]:before:h-px [&>*+*]:before:bg-white/[0.06]' : ''}`}>
       {children}
+    </div>
+  );
+}
+
+/** A thin bar along the bottom of a compact row: how far a download is. `pct` null slides. */
+function RowBar({ pct, tone }: { pct: number | null; tone: 'shine' | 'live' | 'idle' }) {
+  const color = { shine: 'bg-[linear-gradient(90deg,#3d8fe0,#1fd8cf)]', live: 'bg-live', idle: 'bg-edge3' }[tone];
+  return (
+    <span className="pointer-events-none absolute inset-x-2 bottom-[3px] h-[2px] overflow-hidden rounded-full bg-white/[0.08]" data-testid="row-bar" aria-hidden="true">
+      {pct === null ? <span className={`bar-indeterminate block h-full rounded-full ${color}`} /> : <span className={`block h-full rounded-full transition-[width] duration-300 ${color}`} style={{ width: `${Math.max(pct * 100, pct > 0 ? 2 : 0)}%` }} />}
+    </span>
+  );
+}
+
+/**
+ * One line of the compact list, the same on This page, Downloads and History:
+ * a small frame, the title, a short aside on the right (status, size, time),
+ * then the row's action. A running download draws its progress along the
+ * bottom; `below` adds a second line for what cannot be short (a failure and
+ * its fix). With `onOpen` the row up to the action is one button; `overlay`
+ * is a control drawn over the action slot, outside that button.
+ */
+export function CompactRow({
+  tile,
+  title,
+  titleTip,
+  titleTestId,
+  aside,
+  asideTip,
+  action,
+  onOpen,
+  openTip,
+  dim,
+  attrs,
+  progress,
+  below,
+  overlay,
+}: {
+  tile: ReactNode;
+  title: ReactNode;
+  titleTip?: string;
+  titleTestId?: string;
+  aside?: ReactNode;
+  asideTip?: string;
+  action?: ReactNode;
+  onOpen?: () => void;
+  openTip?: string;
+  dim?: boolean;
+  attrs?: Record<string, string | number | undefined>;
+  progress?: { pct: number | null; tone: 'shine' | 'live' | 'idle' };
+  below?: ReactNode;
+  overlay?: ReactNode;
+}) {
+  const body = (
+    <>
+      {tile}
+      <span className={`min-w-0 flex-1 truncate text-[13px] leading-[18px] font-medium ${dim ? 'text-fg2' : 'text-text'}`} data-testid={titleTestId} title={titleTip}>
+        {typeof title === 'string' ? <FitText text={title} /> : title}
+      </span>
+      {aside && (
+        <span className="flex max-w-[45%] min-w-0 shrink-0 items-center justify-end gap-1.5 text-[11.5px] whitespace-nowrap text-mute tabular-nums" title={asideTip}>
+          {aside}
+        </span>
+      )}
+    </>
+  );
+  return (
+    <div {...attrs} className={`group relative rounded-[10px] outline-offset-2 outline-text transition-colors duration-150 hover:z-10 has-[:focus-visible]:z-10 has-[[role=menu]]:z-30 has-[>button.row-main:focus-visible]:outline-2 ${onOpen ? 'hover:bg-row-hover has-[.row-main:focus-visible]:bg-row-hover has-[.quick:hover]:bg-transparent' : 'hover:bg-row-hover focus-within:bg-row-hover'}`}>
+      {onOpen ? (
+        <button type="button" onClick={onOpen} title={openTip} className="row-main flex h-10 w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-2 text-left focus-visible:outline-none">
+          {body}
+          {action}
+        </button>
+      ) : (
+        <div className="flex h-10 items-center gap-2.5 px-2">
+          {body}
+          {action && <div className="-mr-1 flex shrink-0 items-center gap-0.5">{action}</div>}
+        </div>
+      )}
+      {overlay}
+      {below && <div className="-mt-1 pr-2 pb-2 pl-[66px]">{below}</div>}
+      {progress && <RowBar {...progress} />}
+    </div>
+  );
+}
+
+/** The small frame at the left of a compact row. */
+export const COMPACT_TILE = 'h-[27px] w-12 [&>div]:rounded-[6px] [&_svg]:size-[15px]';
+
+/** Cards with frames, or the compact list: one choice for every tab, in the header. */
+export function LayoutToggle({ layout, onChange }: { layout: Layout; onChange: (l: Layout) => void }) {
+  const opt = (value: Layout, label: string, icon: ReactNode) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={layout === value}
+      aria-label={label}
+      title={label}
+      data-testid={`layout-${value}`}
+      onClick={() => onChange(value)}
+      className={`flex h-7 w-8 items-center justify-center rounded-[7px] transition-colors ${layout === value ? 'bg-[#313439] text-text shadow-[0_1px_3px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,255,255,.06)]' : 'text-dim hover:text-text'}`}
+    >
+      {icon}
+    </button>
+  );
+  return (
+    <div role="radiogroup" aria-label="Layout" className="flex shrink-0 gap-0.5 rounded-[10px] bg-[#17191c] p-[2px] ring-1 ring-white/[0.05] ring-inset">
+      {opt('cards', 'Cards', <IconGrid size={15} />)}
+      {opt('list', 'Compact list', <IconRows size={15} />)}
     </div>
   );
 }

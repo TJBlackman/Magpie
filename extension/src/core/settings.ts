@@ -12,12 +12,16 @@ export interface Settings {
   updateCheck: boolean;
   /** Leave media already in history out of This page. Off: it shows, gray, with when it was downloaded. */
   hideDownloaded: boolean;
+  /** How every tab lists media: cards with frames, or a compact list of one line rows. */
+  layout: Layout;
 }
+
+export type Layout = 'cards' | 'list';
 
 export const SETTINGS_KEY = 'settings';
 export const MAX_CONCURRENT_LIMIT = 10;
 export const ARCHIVE_LIMIT = 500;
-export const DEFAULT_SETTINGS: Settings = { maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true, updateCheck: true, hideDownloaded: false };
+export const DEFAULT_SETTINGS: Settings = { maxConcurrent: 2, archiveSize: 25, archivePrivate: false, thumbnails: true, updateCheck: true, hideDownloaded: false, layout: 'cards' };
 
 /** A whole number from storage clamped to [min, max], or `fallback` when there is none. */
 function int(v: unknown, min: number, max: number, fallback: number): number {
@@ -35,5 +39,6 @@ export function normalizeSettings(raw: unknown): Settings {
     thumbnails: o.thumbnails !== false,
     updateCheck: o.updateCheck !== false,
     hideDownloaded: o.hideDownloaded === true,
+    layout: o.layout === 'list' ? 'list' : 'cards',
   };
 }

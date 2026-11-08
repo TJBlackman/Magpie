@@ -310,3 +310,25 @@ export const Logo = ({ size = 22 }: { size?: number }) => {
     </svg>
   );
 };
+
+/** Four frames in a grid: the cards layout. */
+export const IconGrid = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="4" width="7.5" height="7" rx="1.5" />
+    <rect x="13" y="4" width="7.5" height="7" rx="1.5" />
+    <rect x="3.5" y="13" width="7.5" height="7" rx="1.5" />
+    <rect x="13" y="13" width="7.5" height="7" rx="1.5" />
+  </Icon>
+);
+
+/** Small frames, each with a line beside it: the compact list layout. */
+export const IconRows = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="3.5" y="5" width="5" height="3.5" rx="1" />
+    <rect x="3.5" y="10.25" width="5" height="3.5" rx="1" />
+    <rect x="3.5" y="15.5" width="5" height="3.5" rx="1" />
+    <path d="M11.5 6.75h9" />
+    <path d="M11.5 12h9" />
+    <path d="M11.5 17.25h9" />
+  </Icon>
+);

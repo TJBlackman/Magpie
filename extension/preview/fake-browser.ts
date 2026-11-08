@@ -10,6 +10,7 @@
  *   ?scenario=empty    first run, nothing anywhere
  *   ?scenario=busy     many pages, many downloads, long history
  *   ?update=1          the website has a newer version
+ *   ?layout=list       start in the compact list instead of cards
  */
 import type { ArchiveEntry } from '../src/core/archive';
 import { pickThumbs, withoutThumb } from '../src/core/thumbs';
@@ -184,7 +185,8 @@ function seedArchive(): ArchiveEntry[] {
 /* ---------- fake storage.local ---------- */
 
 type Changes = Record<string, { oldValue?: unknown; newValue?: unknown }>;
-const store: Record<string, unknown> = { [SETTINGS_KEY]: { ...DEFAULT_SETTINGS } };
+// ?layout=list starts in the compact list.
+const store: Record<string, unknown> = { [SETTINGS_KEY]: { ...DEFAULT_SETTINGS, ...(params.get('layout') === 'list' ? { layout: 'list' } : {}) } };
 if (params.get('update') === '1') store[UPDATE_KEY] = { checkedAt: now, ok: true, latest: '9.0.0' };
 const storageListeners = new Set<(changes: Changes, area: string) => void>();
 const settings = (): Settings => normalizeSettings(store[SETTINGS_KEY]);

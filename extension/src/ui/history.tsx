@@ -2,7 +2,7 @@ import { Fragment, memo, useEffect, useRef, useState, type ReactNode } from 'rea
 import type { ArchiveEntry } from '../core/archive';
 import { api, openPage } from './api';
 import { fmtBytes, fmtClock, fmtDateTime, fmtDay, hostOf, isWebUrl, kindOfUrl, qualityOfFile } from './format';
-import { Button, Empty, FitText, IconButton, MediaRow, MediaTile } from './components';
+import { Button, COMPACT_TILE, CompactRow, Empty, FitText, IconButton, MediaRow, MediaTile } from './components';
 import { IconExternal, IconFolder, IconHistory, IconMinusCircle, IconMore, IconSearch } from './icons';
 
 /**
@@ -113,7 +113,7 @@ function dayGroup(ms: number): string {
  * page or forgets it, so the media shows as new again. Memoized: entries only
  * change on an archive event, while the popup re-renders with every progress event.
  */
-export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMissing, grouped }: { entry: ArchiveEntry; thumbs: boolean; query: string; onMissing: () => void; grouped?: boolean }) {
+export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMissing, grouped, compact }: { entry: ArchiveEntry; thumbs: boolean; query: string; onMissing: () => void; grouped?: boolean; compact?: boolean }) {
   // Under a Today or Yesterday heading the time says more than the day again.
   const when = grouped && daysAgo(entry.at) <= 1 ? new Date(entry.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : fmtDay(entry.at);
   const page = entry.page;
@@ -123,6 +123,31 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
   // "2160p · 1.4 GB": the quality from the file name Magpie gave it, and the size it saved.
   const facts = [qualityOfFile(entry.file), entry.bytes ? fmtBytes(entry.bytes) : ''].filter(Boolean).join(' · ');
   const show = () => void api.showFile(entry.file, folder).then((r) => r.ok && !r.value && onMissing());
+  const menu = (
+    <RowMenu
+      items={[
+        { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
+        ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
+        { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
+      ]}
+    />
+  );
+  if (compact)
+    return (
+      <CompactRow
+        attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
+        tile={<MediaTile kind={kind} thumb={thumbs ? entry.thumb : undefined} className={COMPACT_TILE} />}
+        title={<FitText text={title} mark={query} />}
+        titleTip={entry.file}
+        titleTestId="archive-title"
+        aside={<span className="truncate">{[when, entry.bytes ? fmtBytes(entry.bytes) : qualityOfFile(entry.file)].filter(Boolean).join(' · ')}</span>}
+        asideTip={`Saved ${fmtDateTime(entry.at)}${facts ? ` · ${facts}` : ''}${entry.secs ? ` · ${fmtClock(entry.secs)} long` : ''}${page ? `\nfrom ${page}` : ''}`}
+        onOpen={show}
+        openTip={folder ? 'Show the folder' : 'Show in folder'}
+        action={<span className="h-8 w-7 shrink-0" aria-hidden="true" />}
+        overlay={menu}
+      />
+    );
   return (
     <MediaRow
       attrs={{ 'data-testid': 'archive-entry', 'data-job-id': entry.id, 'data-file': entry.file }}
@@ -140,21 +165,13 @@ export const HistoryRow = memo(function HistoryRow({ entry, thumbs, query, onMis
       openTip={folder ? 'Show the folder' : 'Show in folder'}
       action={<span className="h-9 w-7 shrink-0" aria-hidden="true" />}
       inset
-      overlay={
-        <RowMenu
-          items={[
-            { label: folder ? 'Show the folder' : 'Show in folder', hint: 'Where the file was saved', icon: <IconFolder size={15} />, run: show },
-            ...(page && isWebUrl(page) ? [{ label: 'Open page', hint: 'The page this video came from', icon: <IconExternal size={15} />, run: () => openPage(page) }] : []),
-            { label: 'Remove from history', hint: 'The file stays on disk', icon: <IconMinusCircle size={15} />, run: () => void api.removeArchive(entry.id), danger: true },
-          ]}
-        />
-      }
+      overlay={menu}
     />
   );
 });
 
 /** History entries, or a line saying there are none. */
-export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse, browseLabel }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse?: () => void; browseLabel: string }) {
+export const HistoryList = memo(function HistoryList({ entries, total, query, thumbs, onMissing, onBrowse, browseLabel, compact }: { entries: ArchiveEntry[]; total: number; query: string; thumbs: boolean; onMissing: () => void; onBrowse?: () => void; browseLabel: string; compact?: boolean }) {
   if (!total) {
     return (
       <Empty icon={<IconHistory size={22} />} title="Nothing downloaded yet" action={onBrowse ? <Button tone="accent" size="md" onClick={onBrowse}>{browseLabel}</Button> : undefined}>
@@ -183,7 +200,7 @@ export const HistoryList = memo(function HistoryList({ entries, total, query, th
         <Fragment key={`${g.label}${i}`}>
           {g.label && <h2 className={`px-2 pb-1 text-[12px] font-medium text-mute ${i ? 'pt-3' : 'pt-1.5'}`}>{g.label}</h2>}
           {g.items.map((e) => (
-            <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} />
+            <HistoryRow key={e.id} entry={e} thumbs={thumbs} query={query} onMissing={onMissing} grouped={grouped} compact={compact} />
           ))}
         </Fragment>
       ))}

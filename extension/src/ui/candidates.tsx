@@ -3,7 +3,7 @@ import { useDialogFocus } from './focus';
 import type { Archived, Candidate, Inspection, Variant } from '../core/types';
 import { api } from './api';
 import { codecNames, describeVariant, fmtAgo, fmtBytes, fmtClock, fmtEstimate, fmtHeight, hostOf, siteOf, sourceLabel } from './format';
-import { Badge, Button, Callout, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing, SMALL } from './components';
+import { Badge, Button, Callout, COMPACT_TILE, CompactRow, IconButton, LiveBadge, MediaRow, MediaTile, ProgressRing, SMALL } from './components';
 import { IconCheck, IconCheckCircle, IconInfo, IconChevron, IconClock, IconDownload, IconFile, IconFilm, IconFolder, IconImages, IconLock, IconRadio, IconX } from './icons';
 import { postPath } from '../core/reddit';
 import { buildFilename, withTimestamp } from '../core/filename';
@@ -234,9 +234,9 @@ function JobAction({ job }: { job: CardJob }) {
 }
 
 /** A running recording's own Stop button on This page: stops it and saves the file. */
-function StopAction({ job }: { job: CardJob }) {
+function StopAction({ job, row }: { job: CardJob; row?: boolean }) {
   return (
-    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className="disc absolute top-3.5 right-3.5 z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30">
+    <button type="button" onClick={() => void api.stop(job.id)} aria-label={`Stop and save, ${fmtClock(job.elapsed ?? 0)} recorded`} title="Stop recording and save the file" className={`disc absolute ${row ? 'top-1/2 right-2 -translate-y-1/2' : 'top-3.5 right-3.5'} z-10 flex size-8 focus-visible:shadow-[0_0_0_2px_#0b0c0d] items-center justify-center rounded-full bg-[#16181b]/90 text-live shadow-[0_2px_8px_rgba(0,0,0,.45)] ring-1 ring-[#6e7279] transition-colors ring-inset hover:bg-[#16181b] hover:ring-white/30`}>
       <span className="size-2.5 rounded-[2px] bg-current" />
     </button>
   );
@@ -272,12 +272,35 @@ function CardAction({ candidate, job }: { candidate: Candidate; job?: CardJob })
  * media already downloaded steps back. Memoized, since the list re-renders
  * with every progress event; `onOpen` must be a stable function for that to pay off.
  */
-export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean }) {
+export const CandidateCard = memo(function CandidateCard({ candidate, thumbs, job, onOpen, onQuick, hero, tile, compact }: { candidate: Candidate; thumbs: boolean; job?: CardJob; onOpen: (candidate: Candidate, queuedJobId?: string) => void; onQuick: (candidate: Candidate) => void; hero?: boolean; tile?: boolean; compact?: boolean }) {
   const full = candidate.pageTitle || sourceLabel(candidate.url);
   const title = candidate.kind === 'post' ? full.replace(/(\s*\[[^\]]*\])+\s*$/, '') || full : full;
   const duration = candidate.info?.duration ?? candidate.archived?.secs;
   const files = candidate.post?.assets.length ?? 0;
   const attrs = { 'data-testid': 'candidate', 'data-url': candidate.url, 'data-state': candidate.archived ? 'archived' : job ? 'queued' : 'fresh' };
+  if (compact) {
+    // One line: a status tag when there is one (live, queued, running, saved, protected), else the quality and size.
+    const size = fmtEstimate(candidate.info?.bitrate, candidate.info?.duration) || (candidate.kind === 'file' && candidate.contentLength ? fmtBytes(candidate.contentLength) : '');
+    const facts = candidate.kind === 'post' ? (files > 1 ? `${files} files` : postLabel(candidate).split(' · ').pop()) : [fmtHeight(candidate.info?.height), size].filter(Boolean).join(' · ');
+    return (
+      <CompactRow
+        attrs={attrs}
+        tile={<MediaTile kind={candidate.kind} live={candidate.live} locked={!!candidate.info?.drm && !candidate.archived} thumb={thumbs ? candidate.thumb : undefined} muted={!!candidate.archived} className={COMPACT_TILE} />}
+        title={title}
+        titleTip={full}
+        titleTestId="candidate-title"
+        aside={tagged(candidate, job) ? <StatusTags candidate={candidate} job={job} /> : facts ? <span className="truncate">{facts}</span> : undefined}
+        asideTip={candidate.url}
+        onOpen={() => onOpen(candidate, job?.id)}
+        openTip={
+          candidate.archived ? 'Already downloaded. Download it again' : job ? 'Already downloading. Show it in Downloads' : candidate.info?.drm ? "Copy protected (DRM). Magpie can't save it" : candidate.live ? 'Record this stream' : 'Choose a quality, or use the arrow to download the best one now'
+        }
+        dim={!!candidate.archived || (!!candidate.info?.drm && !job)}
+        action={<CardAction candidate={candidate} job={job} />}
+        overlay={!job && quickable(candidate) ? <QuickAction candidate={candidate} onQuick={onQuick} /> : job && candidate.live && !job.queued ? <StopAction job={job} row /> : undefined}
+      />
+    );
+  }
   const meta =
     candidate.kind === 'post' || tagged(candidate, job) || Object.values(sourceParts(candidate, false)).some(Boolean) ? (
       <>

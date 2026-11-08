@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'reac
 import type { Job } from '../core/types';
 import { api, openPage } from './api';
 import { fmtApprox, fmtBytes, fmtClock, fmtEta, fmtHeight, fmtRate, friendlyError, hostOf, jobProgress, nextRate, shortVariant, siteOf, type RateSample } from './format';
-import { Badge, Button, Callout, FitText, IconButton, MediaRow, MediaTile, textWidth } from './components';
+import { Badge, Button, Callout, COMPACT_TILE, CompactRow, FitText, IconButton, MediaRow, MediaTile, textWidth } from './components';
 import { IconClock, IconError, IconExternal, IconMinusCircle, IconRedo, IconStop, IconTrash, IconX } from './icons';
 
 /**
@@ -121,7 +121,7 @@ function StatusLine({ chip, left, right, testId = 'job-status' }: { chip?: React
  * failed one stay one row tall, with their state on the second line, so the
  * running downloads keep the room.
  */
-export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean; card?: boolean }) {
+export function JobRow({ job, thumbs, onRetry, inset, card, compact }: { job: Job; thumbs: boolean; onRetry?: () => void; inset?: boolean; card?: boolean; compact?: boolean }) {
   const [discarding, setDiscarding] = useState(false);
   const failed = job.state === 'error';
   // When a failure's reason and its fix do not both fit on the line, the fix takes its own line below.
@@ -194,6 +194,92 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
       {recover.label === 'Open page' && <IconExternal size={13} className="ml-1" />}
     </button>
   );
+  // The compact list: one line with the status on the right and the progress along the bottom. A failure, a note or a discard question adds a second line.
+  if (compact) {
+    const eta = job.state === 'downloading' && !job.live && rate > 0 ? fmtEta(remaining(job) / rate, !job.bytesTotal).replace(/^About /, '~').replace(/ left$/, '') : '';
+    const chipOf = STATE_CHIP[job.state];
+    const aside = failed ? undefined : recording ? (
+      <>
+        <span className="pulse size-1.5 shrink-0 rounded-full bg-live" aria-hidden="true" />
+        <span data-testid="job-status">
+          <span className="font-semibold text-text">{fmtClock(job.duration ?? 0)}</span>
+          {` · ${fmtBytes(job.bytes)}`}
+        </span>
+      </>
+    ) : chipOf ? (
+      <Badge tone={chipOf.tone}>{chipOf.label}</Badge>
+    ) : (
+      <span data-testid="job-status" className="truncate">
+        {queued ? statusText(job, pct) : [pct !== null ? `${Math.floor(pct * 100)}%` : fmtBytes(job.bytes), eta].filter(Boolean).join(' · ')}
+      </span>
+    );
+    const below = discarding ? (
+      <div
+        role="group"
+        aria-label="Discard the recording?"
+        className="flex items-center gap-2"
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape') return;
+          e.stopPropagation();
+          setDiscarding(false);
+        }}
+      >
+        <span className="min-w-0 flex-1 truncate text-[12px] text-fg2 tabular-nums">{`Discard ${fmtClock(job.duration ?? 0)}? No file is saved.`}</span>
+        <Button tone="default" onClick={() => setDiscarding(false)} autoFocus>
+          Keep
+        </Button>
+        <Button tone="destroy" onClick={() => api.cancel(job.id)}>
+          Discard
+        </Button>
+      </div>
+    ) : failed ? (
+      <div className="flex min-h-5 items-center gap-1.5 text-[11.5px] text-[#f5c76a]" title={`${job.error ?? ''}${job.bytes ? `\nStopped at ${fmtBytes(job.bytes)}` : ''}`} data-testid="job-error">
+        <IconError size={13} className="shrink-0" />
+        <span ref={reasonRef} className="min-w-0 flex-1 truncate">
+          <FitText text={reason} />
+        </span>
+        {fix}
+      </div>
+    ) : job.note ? (
+      <p data-testid="job-note" className="truncate text-[11.5px] text-mute" title={job.note}>
+        {job.note}
+      </p>
+    ) : undefined;
+    return (
+      <CompactRow
+        attrs={{ 'data-testid': 'job', 'data-job-id': job.id, 'data-state': job.state, 'data-filename': job.filename, 'data-pct': pct === null ? '' : Math.floor(pct * 100) }}
+        tile={<MediaTile kind={job.kind} live={job.live} thumb={thumbs ? job.thumb : undefined} muted={failed} className={COMPACT_TILE} />}
+        title={job.title || job.filename}
+        titleTip={[job.filename, rendition].filter(Boolean).join('\n')}
+        aside={aside}
+        asideTip={recording ? undefined : [statusText(job, pct), rate > 0 ? fmtRate(rate) : ''].filter(Boolean).join(' · ')}
+        progress={!failed && !queued && !job.live ? { pct, tone: 'shine' } : undefined}
+        below={below}
+        action={
+          failed ? (
+            <IconButton label="Remove from the list" tone="danger" onClick={() => api.removeJob(job.id)} className="size-8">
+              <IconX size={16} />
+            </IconButton>
+          ) : recording ? (
+            discarding ? null : (
+              <>
+                <IconButton label="Stop and save" onClick={() => api.stop(job.id)} className="size-8 !text-live">
+                  <IconStop size={15} />
+                </IconButton>
+                <IconButton label="Discard the recording" tone="danger" className="size-8" onClick={() => setDiscarding(true)}>
+                  <IconTrash size={15} />
+                </IconButton>
+              </>
+            )
+          ) : (
+            <IconButton label={queued ? 'Remove from the queue' : 'Cancel the download'} tone="danger" className="size-8" onClick={() => api.cancel(job.id)}>
+              <IconX size={16} />
+            </IconButton>
+          )
+        }
+      />
+    );
+  }
   const progress = (
     <>
           {!job.live && <Bar pct={pct} tone="shine" moving={job.state === 'downloading'} />}
@@ -343,7 +429,7 @@ export function JobRow({ job, thumbs, onRetry, inset, card }: { job: Job; thumbs
  * that are saved have left the list, and the engine says how many; a file
  * that failed is listed under Failed on its own.
  */
-export function GroupRow({ jobs, thumbs, inset }: { jobs: Job[]; thumbs: boolean; inset?: boolean }) {
+export function GroupRow({ jobs, thumbs, inset, compact }: { jobs: Job[]; thumbs: boolean; inset?: boolean; compact?: boolean }) {
   const first = jobs[0]!;
   const total = first.group?.total ?? jobs.length;
   const saved = Math.max(0, ...jobs.map((j) => j.group?.saved ?? 0));
@@ -355,6 +441,23 @@ export function GroupRow({ jobs, thumbs, inset }: { jobs: Job[]; thumbs: boolean
   const running = jobs.filter((j) => j.state === 'downloading').length;
   const parts = [`${saved} of ${total} files saved`];
   if (bytes) parts.push(fmtBytes(bytes));
+  if (compact)
+    return (
+      <CompactRow
+        attrs={{ 'data-testid': 'job-group', 'data-group-id': first.group?.id, 'data-jobs': ids, 'data-state': active ? 'downloading' : 'queued', 'data-saved': saved, 'data-pct': Math.floor(pct * 100) }}
+        tile={<MediaTile kind="post" thumb={thumbs ? first.thumb : undefined} className={COMPACT_TILE} />}
+        title={first.title || first.filename}
+        titleTip={first.filename}
+        aside={<span data-testid="job-status">{active ? `${saved} of ${total} files` : first.queuePosition ? `#${first.queuePosition} in line · ${total} files` : `Queued · ${total} files`}</span>}
+        asideTip={[...parts, rate > 0 ? fmtRate(rate) : ''].filter(Boolean).join(' · ')}
+        progress={active ? { pct, tone: 'shine' } : undefined}
+        action={
+          <IconButton label="Cancel the download" tone="danger" className="size-8" onClick={() => jobs.forEach((j) => void api.cancel(j.id))}>
+            <IconX size={16} />
+          </IconButton>
+        }
+      />
+    );
   return (
     <MediaRow
       inset={inset}

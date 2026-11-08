@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, finished, openSettings, playAndWait, start, test, view } from '../fixtures';
+import { download, expect, finished, openSettings, playAndWait, start, test, view } from '../fixtures';
 
 /** Record what the popup's job rows go through, so short lived states are not missed. */
 async function watchJobs(popup: Page) {
@@ -143,4 +143,30 @@ test('cancel drops a download at once and keeps the others running', async ({ ma
   await expect(jobs).toHaveCount(0, { timeout: 2_000 });
   await expect(popup.getByText('Nothing downloading')).toBeVisible();
   await expect(other.getByTestId('job')).toHaveCount(0, { timeout: 2_000 });
+});
+
+test('compact list: one line rows on every tab, kept for the next popup', async ({ magpie }) => {
+  const page = await magpie.context.newPage();
+  await playAndWait(page, '/hls-ts.html');
+  const popup = await magpie.popupFor(page);
+  const row = popup.locator('[data-testid="candidate"][data-url*="/media/hls-ts/index.m3u8"]').first();
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  await popup.getByRole('radio', { name: 'Compact list' }).click();
+  await expect(popup.getByRole('radio', { name: 'Compact list' })).toHaveAttribute('aria-checked', 'true');
+  expect((await row.boundingBox())!.height).toBeLessThanOrEqual(40);
+
+  const { filename } = await download(popup, '/media/hls-ts/index.m3u8');
+  expect(filename).toBe('Harbor at Dusk.mp4');
+  await view(popup, 'History');
+  const entry = popup.getByTestId('archive-entry').first();
+  await expect(entry.getByTestId('archive-title')).toHaveText('Harbor at Dusk');
+  expect((await entry.boundingBox())!.height).toBeLessThanOrEqual(40);
+  await view(popup, 'This page');
+  await expect(row).toHaveAttribute('data-state', 'archived');
+  expect((await row.boundingBox())!.height).toBeLessThanOrEqual(40);
+
+  const next = await magpie.popup();
+  await expect(next.getByRole('radio', { name: 'Compact list' })).toHaveAttribute('aria-checked', 'true');
+  await next.getByRole('radio', { name: 'Cards' }).click();
+  await expect(next.getByRole('radio', { name: 'Cards' })).toHaveAttribute('aria-checked', 'true');
 });
