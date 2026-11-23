@@ -125,11 +125,13 @@ async function main() {
     throw new Error('popup tab not found');
   }
 
-  /** The quality sheet is open: pick the top rendition and start it. */
+  /** The quality sheet is open: pick the top rendition, where it lists any (a live stream of one quality lists none), and start it. */
   async function startFromSheet() {
-    const variant = await driver.wait(until.elementLocated(By.css('[data-testid="sheet"] [data-testid="variant"]')), 15_000);
-    await variant.click();
-    await (await driver.findElement(By.css('[data-testid="sheet"] [data-testid="start"]'))).click();
+    const start = await driver.wait(until.elementLocated(By.css('[data-testid="sheet"] [data-testid="start"]')), 15_000);
+    await driver.wait(async () => (await driver.findElements(By.css('[data-testid="sheet"] [data-testid="variant"]'))).length > 0 || !(await start.getAttribute('disabled')), 15_000, 'sheet never offered a quality');
+    const [variant] = await driver.findElements(By.css('[data-testid="sheet"] [data-testid="variant"]'));
+    if (variant) await variant.click();
+    await start.click();
     await driver.wait(async () => (await driver.findElements(By.css('[data-testid="sheet"]'))).length === 0, 10_000, 'sheet never closed');
   }
 
@@ -215,7 +217,7 @@ async function main() {
         async () => {
           const failed = await driver.findElements(By.css('[data-testid="job"][data-state="error"]'));
           if (failed.length) return { failed: failed[0] };
-          const [entry] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-child'));
+          const [entry] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-of-type'));
           return entry && !seen.has(await entry.getAttribute('data-job-id')) ? { entry } : null;
         },
         90_000,
@@ -300,7 +302,7 @@ async function main() {
       await startFromSheet();
       const entry = await driver.wait(
         async () => {
-          const [first] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-child'));
+          const [first] = await driver.findElements(By.css('[data-testid="archive"] > [data-testid="archive-entry"]:first-of-type'));
           return first && !seen.has(await first.getAttribute('data-job-id')) ? first : null;
         },
         60_000,
