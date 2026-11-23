@@ -109,3 +109,36 @@ describe('Sniffer folding', () => {
     expect(rows.find((c) => c?.url.includes('token=zyxw'))?.parentId).toBe(master.id);
   });
 });
+
+describe('Sniffer.freshUrl', () => {
+  let sniffer: InstanceType<typeof Sniffer>;
+  beforeEach(() => {
+    sniffer = new Sniffer();
+    sniffer.listen();
+  });
+  const live = (token: string) => `https://cdn.example/hls/master.m3u8?token=${token}`;
+
+  it("gives the stream's newest URL: the row's own after the player renewed its token, a newer row's after the page reloaded", async () => {
+    await respond(live('aaaa1111bbbb2222cccc'), 'application/vnd.apple.mpegurl');
+    const started = (await sniffer.forTab(TAB))[0]!;
+    // What a recording took when it started.
+    const job = { ...started };
+    expect(await sniffer.freshUrl(job)).toBe(live('aaaa1111bbbb2222cccc'));
+    // The player renews its token: the same row, carrying the new URL.
+    await respond(live('dddd3333eeee4444ffff'), 'application/vnd.apple.mpegurl');
+    expect(await sniffer.freshUrl(job)).toBe(live('dddd3333eeee4444ffff'));
+    // The page is reloaded: the tab's list starts over, and the stream comes back as a new row.
+    sniffer.clear(TAB);
+    await respond(live('gggg5555hhhh6666iiii'), 'application/vnd.apple.mpegurl');
+    expect(await sniffer.freshUrl(job)).toBe(live('gggg5555hhhh6666iiii'));
+  });
+
+  it('never gives another stream of the tab', async () => {
+    await respond('https://cdn.example/hls/master.m3u8?cam=1', 'application/vnd.apple.mpegurl');
+    const job = { ...(await sniffer.forTab(TAB))[0]! };
+    sniffer.clear(TAB);
+    await respond('https://cdn.example/hls/master.m3u8?cam=2', 'application/vnd.apple.mpegurl');
+    await respond('https://cdn.example/other/master.m3u8', 'application/vnd.apple.mpegurl');
+    expect(await sniffer.freshUrl(job)).toBeUndefined();
+  });
+});

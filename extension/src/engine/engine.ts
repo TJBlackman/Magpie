@@ -1,4 +1,4 @@
-import { liveStartIndex, parseHls, variantLabel, type ByteRange, type HlsRendition, type HlsSegment, type MediaPlaylist } from '../core/hls';
+import { liveStartIndex, parseHls, variantLabel, type ByteRange, type HlsRendition, type HlsSegment, type HlsVariant, type MediaPlaylist } from '../core/hls';
 import { availableRange, chooseAudio, parseMpd, utcTimingTime, videoLabel, type DashLive, type DashManifest, type DashRepresentation, type DashUtcTiming } from '../core/dash';
 import { fmtDuration, languageName } from '../core/format';
 import { segmentsFromSidx } from '../core/sidx';
@@ -19,12 +19,29 @@ import { withoutThumb } from '../core/thumbs';
 /** A live recording starts this many seconds back, to cover what the player was showing. */
 const LIVE_LEAD_IN = 30;
 /**
- * Failures in a row after which a live recording ends and saves what it has:
- * playlist or MPD reloads that fail, and for live DASH also passes that had
- * segments of one side to fetch and loaded none of them, which must last
- * LIVE_DEAD_MS and LIVE_DEAD_SEGMENTS as well (see LiveCursor.endPass).
+ * Passes in a row of live DASH that had segments of one side to fetch and
+ * loaded none of them, after which the recording ends and saves what it has,
+ * once LIVE_DEAD_MS and LIVE_DEAD_SEGMENTS have passed as well (see
+ * LiveCursor.endPass).
  */
 const LIVE_MAX_FAILURES = 6;
+/**
+ * How long a live recording rides out a playlist or MPD that fails to load,
+ * and how it looks for the stream elsewhere meanwhile (see relocate):
+ * `silentMs` of failures in a row end the recording, which saves what it has;
+ * after `relocateMs` of failures (at once on an HTTP error, usually an expired
+ * token) it looks for the stream's current address, and again every
+ * `relocateMs`; and a playlist that answers without anything new for
+ * `staleMs`, or three target durations if longer, is looked past the same way,
+ * since the page may have moved on to another address. A dropped connection
+ * or a VPN reconnecting takes well under `silentMs`.
+ */
+export interface LiveTiming {
+  silentMs: number;
+  relocateMs: number;
+  staleMs: number;
+}
+const LIVE_TIMING: LiveTiming = { silentMs: 120_000, relocateMs: 10_000, staleMs: 30_000 };
 /**
  * A live DASH side that loads nothing ends the recording only once this much
  * wall clock has passed too, and this many of its segment durations. Passes
@@ -84,6 +101,7 @@ const LIVE_SILENT = 'The stream stopped answering';
 const liveEnded = (why: string) => `${why}, so the recording ended there.`;
 const nothingRecorded = (why: string | undefined) => (why ? `${why} before anything was recorded.` : 'No segments were recorded.');
 const LIVE_GAP = 'Some seconds are missing: segments left the live window before they could be fetched.';
+const LIVE_MOVED = 'The stream moved to a new address during the recording, and the recording followed it. A few seconds may be missing there.';
 
 /** Where a live recording writes, and how it starts a new part. */
 interface LiveOutput {
@@ -236,11 +254,13 @@ export class Engine {
 
   /**
    * `partBytes` is the size at which a live recording held in memory is saved
-   * as a part (MEMORY_PART_BYTES); tests make it small to reach a second part.
+   * as a part (MEMORY_PART_BYTES); tests make it small to reach a second part,
+   * and shorten `live` (see LiveTiming).
    */
   constructor(
     private readonly platform: Platform,
     private readonly partBytes = MEMORY_PART_BYTES,
+    private readonly live: LiveTiming = LIVE_TIMING,
   ) {
     void OutputFile.sweep(new Set());
   }
@@ -797,7 +817,7 @@ export class Engine {
           job.filename = withTimestamp(job.filename, new Date());
           job.state = 'downloading';
           this.pump();
-          await this.recordLive(variant.uri, media, liveOutput, write, job, candidate, signal, stop);
+          await this.recordLive(variant, media, liveOutput, write, job, candidate, signal, stop);
           secs = job.duration;
         } else {
           if (media.segments.length === 0) throw new Error('Playlist has no segments');
@@ -1052,11 +1072,13 @@ export class Engine {
   /**
    * Record a live media playlist: fetch the segments published so far (from
    * LIVE_LEAD_IN seconds back), then reload the playlist every target duration
-   * and append each new segment by media sequence number. Ends on Stop, on
-   * EXT-X-ENDLIST, or when the playlist stops answering, and saves what it has.
+   * and append each new segment by media sequence number. A playlist that
+   * fails to load, or stops growing, is looked for at its current address
+   * (relocate) and followed there. Ends on Stop, on EXT-X-ENDLIST, or when the
+   * playlist has not answered for LiveTiming.silentMs, and saves what it has.
    */
   private async recordLive(
-    url: string,
+    variant: Variant,
     first: MediaPlaylist,
     output: LiveOutput,
     write: Write,
@@ -1069,6 +1091,7 @@ export class Engine {
     const allow = this.hostRules(candidate);
     const gap = LIVE_GAP;
 
+    let url = variant.uri;
     let media = first;
     // The lead in counts live seconds; a preroll in the window is not footage.
     const liveAtStart = media.segments.filter((s) => !stitchedAd(media, s));
@@ -1089,7 +1112,14 @@ export class Engine {
     let afterAd = false;
     /** The next segment written starts on another clock than the last one did. */
     let cut = false;
-    let failures = 0;
+    /** When the playlist began failing to load, while it does. */
+    let failingSince: number | null = null;
+    /** When the playlist last listed something new; one that stops growing may have been left behind by the page. */
+    let lastNews = Date.now();
+    /** When the recording last looked for the stream's current address. */
+    let relocatedAt = 0;
+    /** The last segment the recording has dealt with (written, skipped or missed), to carry on after it at a new address. */
+    let last: HlsSegment | undefined;
     let finalPass = false;
     /** Why the recording ended early, if it did. */
     let why: string | undefined;
@@ -1199,26 +1229,65 @@ export class Engine {
         this.emitThrottled();
       }
       // Past any ads at the end of the window too, so they are not counted again next pass.
-      if (listed.length) next = listed.at(-1)!.sequence + 1;
+      if (listed.length) {
+        next = listed.at(-1)!.sequence + 1;
+        last = listed.at(-1);
+        lastNews = Date.now();
+      }
 
       if (media.endList || finalPass) break;
       const target = (media.targetDuration || 2) * 1000;
       // As the HLS spec asks: wait one target duration after a change (ads count), half of one when nothing was new.
-      await stop.sleep(listed.length ? target : target / 2, signal);
+      // While the playlist fails, a whole one between tries.
+      await stop.sleep(listed.length || failingSince !== null ? target : target / 2, signal);
       if (signal.aborted) throw new DOMException('aborted', 'AbortError');
       // After Stop, reload once more so the file runs up to the moment of the click.
       finalPass = stop.requested;
+      let failed: unknown = null;
       try {
         const parsed = parseHls(await fetchText(url, signal), url);
         if (parsed.kind !== 'media') throw new Error('The live playlist turned into a master playlist');
         media = parsed;
-        failures = 0;
+        failingSince = null;
       } catch (e) {
         if (signal.aborted) throw e;
-        if (finalPass || ++failures >= LIVE_MAX_FAILURES) {
-          why = LIVE_SILENT;
-          break;
+        failed = e;
+        failingSince ??= Date.now();
+      }
+      if (failed && finalPass) {
+        why = LIVE_SILENT;
+        break;
+      }
+      // Look for the stream at its current address: at once when the playlist answers with an HTTP error (often an
+      // expired token), once it has failed otherwise for relocateMs, or once it has answered without anything new
+      // for a while. Then again every relocateMs while that lasts.
+      const now = Date.now();
+      const lost =
+        failingSince !== null
+          ? failed instanceof HttpError || now - failingSince >= this.live.relocateMs
+          : now - lastNews >= Math.max(this.live.staleMs, 3 * target) && media.segments.every((s) => s.sequence < next);
+      if (lost && !finalPass && now - relocatedAt >= this.live.relocateMs) {
+        relocatedAt = now;
+        const found = await this.relocate(candidate, variant, url, allow, signal);
+        // Nothing new came for this long: about as far back as the new window may hold footage not yet recorded.
+        const resume = found && resumeAt(found.media, next, last, (Date.now() - lastNews) / 1000);
+        // A playlist that still answers is left only for one sure to hold something newer: a stream that merely
+        // paused would otherwise be recorded again from a guess, up to LIVE_LEAD_IN, at every relocation.
+        if (found && resume && (failingSince !== null || (resume.sure && found.media.segments.some((s) => s.sequence >= resume.next)))) {
+          url = found.url;
+          media = found.media;
+          failingSince = null;
+          lastNews = Date.now();
+          next = resume.next;
+          cut ||= resume.cut;
+          job.note = LIVE_MOVED;
+          this.emit();
+          continue;
         }
+      }
+      if (failingSince !== null && Date.now() - failingSince >= this.live.silentMs) {
+        why = LIVE_SILENT;
+        break;
       }
     }
 
@@ -1227,6 +1296,44 @@ export class Engine {
     job.state = 'muxing';
     this.emit();
     await finishPart();
+  }
+
+  /**
+   * The live playlist at the stream's current address, for a recording whose
+   * playlist stopped answering or growing: where the page itself fetched the
+   * stream last (a player that renewed its token, or a reloaded page, see
+   * Platform.freshUrl), else the candidate's own master playlist read again
+   * for the quality's current URL. Null when neither gives a playlist other
+   * than `current` that loads and lists segments.
+   */
+  private async relocate(
+    candidate: Candidate,
+    variant: Variant,
+    current: string,
+    allow: (uri: string) => Promise<void>,
+    signal: AbortSignal,
+  ): Promise<{ url: string; media: MediaPlaylist } | null> {
+    const fromPage = await this.platform.freshUrl?.(candidate).catch(() => undefined);
+    for (const source of new Set([fromPage, candidate.url])) {
+      if (!source) continue;
+      try {
+        await allow(source);
+        let url = source;
+        let parsed = parseHls(await fetchText(source, signal), source);
+        if (parsed.kind === 'master') {
+          const v = sameVariant(parsed.variants, variant);
+          if (!v || v.uri === current) continue;
+          url = v.uri;
+          await allow(url);
+          parsed = parseHls(await fetchText(url, signal), url);
+        }
+        if (parsed.kind !== 'media' || url === current || !parsed.segments.length) continue;
+        return { url, media: parsed };
+      } catch (e) {
+        if (signal.aborted) throw e;
+      }
+    }
+    return null;
   }
 
   /**
@@ -1240,7 +1347,9 @@ export class Engine {
    * after one more pass; when the MPD turns static, after fetching the rest;
    * when the Period or a followed representation goes away; when an init
    * segment's bytes change (see initState); when segment times go back (an
-   * encoder restart); when the MPD stops answering; or when one side has
+   * encoder restart); when the MPD has not answered for LiveTiming.silentMs,
+   * meanwhile followed to the address the page fetched it from last, if that
+   * changed (Platform.freshUrl); or when one side has
    * loaded none of the segments it asked for long enough (see
    * LiveCursor.endPass; an expired token answers 401 or 403 on every segment
    * while the MPD still loads). Saves what it has in every case.
@@ -1264,7 +1373,11 @@ export class Engine {
     let startSec: number | undefined;
     /** Seconds in the current part; the whole recording unless it is saved in parts. */
     let partDuration = 0;
-    let failures = 0;
+    /** When passes began failing (an MPD that does not load, an init that cannot be read), while they do. */
+    let failingSince: number | null = null;
+    /** When the recording last asked for the MPD's current address, and whether it moved there and has yet to load it. */
+    let relocatedAt = 0;
+    let moved = false;
     let finalPass = false;
     /** Why the recording ended early, if it did. */
     let why: string | undefined;
@@ -1284,12 +1397,29 @@ export class Engine {
         manifest = parseMpd(await fetchText(url, signal), url, Date.now() + plan.clockOffset * 1000);
       } catch (e) {
         if (signal.aborted) throw e;
-        if (finalPass || ++failures >= LIVE_MAX_FAILURES) {
+        failingSince ??= Date.now();
+        if (finalPass || Date.now() - failingSince >= this.live.silentMs) {
           why = LIVE_SILENT;
           break;
         }
+        // An HTTP error is often an expired token, and the page may have fetched the MPD since at a new address
+        // (Platform.freshUrl). Asked at once for one, after relocateMs for other failures, then every relocateMs.
+        const now = Date.now();
+        if ((e instanceof HttpError || now - failingSince >= this.live.relocateMs) && now - relocatedAt >= this.live.relocateMs) {
+          relocatedAt = now;
+          const fresh = await this.platform.freshUrl?.(candidate).catch(() => undefined);
+          if (fresh && fresh !== url) {
+            await allow(fresh);
+            url = fresh;
+            moved = true;
+          }
+        }
       }
 
+      if (manifest && moved) {
+        moved = false;
+        job.note = LIVE_MOVED;
+      }
       if (manifest) {
         const reps: Partial<Record<Side, DashRepresentation>> = {};
         for (const s of sides) reps[s] = findRep(manifest, follow[s]!.id, follow[s]!.type);
@@ -1319,10 +1449,13 @@ export class Engine {
           unreadable ||= state === 'unreadable';
         }
         if (why) break;
-        if (!unreadable) failures = 0;
-        else if (finalPass || ++failures >= LIVE_MAX_FAILURES) {
-          why = LIVE_SILENT;
-          break;
+        if (!unreadable) failingSince = null;
+        else {
+          failingSince ??= Date.now();
+          if (finalPass || Date.now() - failingSince >= this.live.silentMs) {
+            why = LIVE_SILENT;
+            break;
+          }
         }
         if (!merger && sides.every((s) => maps[s])) {
           for (const s of sides) await allow(maps[s]!.uri);
@@ -1723,6 +1856,50 @@ async function streamFile(
  */
 export function stitchedAd(media: MediaPlaylist, seg: HlsSegment): boolean {
   return media.twitch && /^Amazon(\||$)/.test(seg.title);
+}
+
+/**
+ * The quality a live recording follows, in a master playlist read again: the
+ * variant with its URL, else the one with its resolution and the nearest
+ * bandwidth, else the nearest bandwidth of all. Undefined only for a master
+ * without variants.
+ */
+export function sameVariant(variants: HlsVariant[], want: Pick<Variant, 'uri' | 'bandwidth' | 'resolution'>): HlsVariant | undefined {
+  const nearest = (list: HlsVariant[]) => {
+    const off = (v: HlsVariant) => Math.abs((v.bandwidth ?? 0) - (want.bandwidth ?? 0));
+    return [...list].sort((a, b) => off(a) - off(b))[0];
+  };
+  return variants.find((v) => v.uri === want.uri) ?? nearest(variants.filter((v) => want.resolution && v.resolution === want.resolution)) ?? nearest(variants);
+}
+
+/**
+ * Where a live recording carries on in `media`, its playlist at a new address:
+ * the sequence number of the first segment to record, and whether the file
+ * needs a cut before it. `next` is the number the old address would have had
+ * next, `last` the last segment dealt with there, and `gapSec` how long the
+ * old address went without anything new.
+ *
+ * Where both playlists date their segments (PROGRAM-DATE-TIME), the first one
+ * that starts where `last` ended, give or take half a second. Else, where
+ * `next` falls in the new window, the numbering is the same and the recording
+ * goes on as if nothing happened. Else the new address numbers its segments
+ * its own way, and the recording goes back `gapSec` from the newest segment,
+ * at most LIVE_LEAD_IN, as a guess at what it missed, after a cut. `sure` is
+ * false for that guess.
+ */
+export function resumeAt(media: MediaPlaylist, next: number, last: HlsSegment | undefined, gapSec: number): { next: number; cut: boolean; sure: boolean } {
+  const head = media.segments[0];
+  const tail = media.segments.at(-1);
+  if (!head || !tail) return { next, cut: false, sure: false };
+  if (last?.date !== undefined && tail.date !== undefined) {
+    const end = last.date + last.duration * 1000;
+    const from = media.segments.find((s) => s.date !== undefined && s.date >= end - 500)?.sequence ?? tail.sequence + 1;
+    return { next: from, cut: from !== next, sure: true };
+  }
+  if (next >= head.sequence && next <= tail.sequence + 1) return { next, cut: false, sure: true };
+  const kept = media.segments.filter((s) => !stitchedAd(media, s));
+  const from = kept[liveStartIndex({ ...media, segments: kept }, Math.min(LIVE_LEAD_IN, Math.max(0, gapSec)))]?.sequence ?? tail.sequence;
+  return { next: from, cut: true, sure: false };
 }
 
 /** Fetches each distinct EXT-X-MAP init segment once per job. One that failed is fetched again for the next segment that lists it. */

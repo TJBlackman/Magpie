@@ -1,5 +1,60 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchRange, HttpError, orderedPool, RangeIgnoredError } from './fetcher';
+import { fetchBytes, fetchRange, HttpError, orderedPool, RangeIgnoredError, StalledError } from './fetcher';
+
+describe('fetchBytes', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** A fetch that answers only once its request is aborted, the way a connection that hangs does. */
+  const hanging = (calls: { n: number }) =>
+    vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_, reject) => {
+          calls.n++;
+          init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
+    );
+
+  it('gives up a request that sends no headers within the idle limit, and tries it once more', async () => {
+    const calls = { n: 0 };
+    vi.stubGlobal('fetch', hanging(calls));
+    const err = await fetchBytes('https://cdn.example/s1.ts', { signal: new AbortController().signal, idleMs: 20 }).catch((e) => e);
+    expect(err).toBeInstanceOf(StalledError);
+    // A network failure to every caller that leaves a gap or retries on one.
+    expect(err).toBeInstanceOf(TypeError);
+    expect(calls.n).toBe(2);
+  });
+
+  it('gives up a body that stops partway, and keeps one that arrives slowly but steadily', async () => {
+    const trickle = (stopAfter: number) => {
+      let i = 0;
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          async pull(c) {
+            if (i === stopAfter) return new Promise<void>(() => {});
+            if (i++ === 6) return c.close();
+            await new Promise((r) => setTimeout(r, 10));
+            c.enqueue(new Uint8Array([i]));
+          },
+        }),
+      );
+    };
+    vi.stubGlobal('fetch', vi.fn(async () => trickle(3)));
+    await expect(fetchBytes('https://cdn.example/s1.ts', { signal: new AbortController().signal, idleMs: 40, retries: 0 })).rejects.toBeInstanceOf(StalledError);
+    // Each chunk restarts the limit: 60 ms in all, never 40 ms without bytes.
+    vi.stubGlobal('fetch', vi.fn(async () => trickle(-1)));
+    expect(await fetchBytes('https://cdn.example/s1.ts', { signal: new AbortController().signal, idleMs: 40 })).toEqual(new Uint8Array([1, 2, 3, 4, 5, 6]));
+  });
+
+  it('passes the caller abort through as an abort, not a stall', async () => {
+    vi.stubGlobal('fetch', hanging({ n: 0 }));
+    const abort = new AbortController();
+    const got = fetchBytes('https://cdn.example/s1.ts', { signal: abort.signal, idleMs: 1000 }).catch((e) => e);
+    abort.abort();
+    const err = await got;
+    expect(err).not.toBeInstanceOf(StalledError);
+    expect((err as Error).name).toBe('AbortError');
+  });
+});
 
 describe('orderedPool', () => {
   it('rejects next() with the task error and leaves no unhandled rejection behind', async () => {

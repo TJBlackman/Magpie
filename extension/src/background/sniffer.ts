@@ -71,6 +71,25 @@ export class Sniffer {
   }
 
   /**
+   * The newest URL the tab has fetched for the stream `c` came from: the
+   * candidate's own latest URL (a player that renews its token keeps one row,
+   * see onResponse), or the URL of a newer row of the same stream after the
+   * page was reloaded, which starts the tab's list over. Undefined when the
+   * tab has neither.
+   */
+  async freshUrl(c: Pick<Candidate, 'id' | 'tabId' | 'url' | 'kind'>): Promise<string | undefined> {
+    await this.restored;
+    const tab = this.byTab.get(c.tabId);
+    if (!tab) return undefined;
+    let newest: Candidate | undefined;
+    for (const x of tab.values()) {
+      if (x.kind !== c.kind || (x.id !== c.id && !sameStream(x.url, c.url))) continue;
+      if (!newest || x.seenAt > newest.seenAt) newest = x;
+    }
+    return newest?.url;
+  }
+
+  /**
    * Apply what inspecting a manifest found: a playlist without an end is live,
    * a master's variant and rendition playlists get hidden under it, and so do
    * the files an MPD lists.

@@ -1,5 +1,5 @@
 import type { ArchiveEntry } from '../core/archive';
-import type { Job } from '../core/types';
+import type { Candidate, Job } from '../core/types';
 
 /**
  * What the engine needs from the browser that differs per host context.
@@ -20,4 +20,10 @@ export interface Platform {
   jobsChanged(jobs: Job[]): void;
   /** Record a finished download. False when the archive is off; the job then stays in the list as done. */
   archive(entry: ArchiveEntry): Promise<boolean>;
+  /**
+   * The newest URL the page has fetched for the stream `candidate` came from:
+   * another one when the player renewed its token or the page was reloaded.
+   * A live recording whose playlist stops answering follows it there.
+   */
+  freshUrl?(candidate: Candidate): Promise<string | undefined>;
 }

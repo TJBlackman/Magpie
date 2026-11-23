@@ -20,4 +20,5 @@ hostEngine({
     toBg({ type: 'jobsChanged', jobs }).catch(() => {});
   },
   archive: (entry) => toBg<boolean>({ type: 'archive', entry }),
+  freshUrl: (candidate) => toBg<string | null>({ type: 'freshUrl', candidate }).then((url) => url ?? undefined),
 });

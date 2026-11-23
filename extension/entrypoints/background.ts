@@ -160,6 +160,7 @@ export default defineBackground(() => {
           broadcastJobs(jobs);
         },
         archive: archiveFinished,
+        freshUrl: (candidate) => sniffer.freshUrl(candidate),
       });
       direct = (req) => handle(engine, req);
       await settingsReady;
@@ -441,6 +442,13 @@ export default defineBackground(() => {
       if (r.type === 'archive') {
         archiveFinished(r.entry)
           .then((added) => sendResponse(ok(added)))
+          .catch((e) => sendResponse(err(String(e))));
+        return true;
+      }
+      if (r.type === 'freshUrl') {
+        sniffer
+          .freshUrl(r.candidate)
+          .then((url) => sendResponse(ok(url ?? null)))
           .catch((e) => sendResponse(err(String(e))));
         return true;
       }

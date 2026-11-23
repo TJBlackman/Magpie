@@ -87,6 +87,28 @@ c.ts`,
     expect(p.segments.map((s) => s.duration)).toEqual([2, 2, 2, 2]);
     expect(p.segments.map((s) => s.discontinuity)).toEqual([true, true, false, false]);
   });
+
+  it('dates each segment from the last PROGRAM-DATE-TIME plus the durations since', () => {
+    const p = parseHls(
+      `#EXTM3U
+#EXT-X-TARGETDURATION:2
+#EXT-X-MEDIA-SEQUENCE:40
+#EXTINF:2,
+early.ts
+#EXT-X-PROGRAM-DATE-TIME:2026-11-23T20:00:00.000Z
+#EXTINF:2.002,
+a.ts
+#EXTINF:2,
+b.ts
+#EXT-X-PROGRAM-DATE-TIME:2026-11-23T20:01:00.500+00:00
+#EXTINF:2,
+c.ts`,
+      'https://cdn.example/live/index.m3u8',
+    );
+    if (p.kind !== 'media') throw new Error('not a media playlist');
+    const at = Date.parse('2026-11-23T20:00:00.000Z');
+    expect(p.segments.map((s) => s.date)).toEqual([undefined, at, at + 2002, at + 60_500]);
+  });
 });
 
 describe('detect', () => {

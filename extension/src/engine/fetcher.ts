@@ -4,7 +4,17 @@ export interface FetchOptions {
   signal: AbortSignal;
   byteRange?: ByteRange;
   retries?: number;
+  /** Milliseconds without headers or body bytes after which a request is given up (StalledError); fetchIdle.ms when unset. */
+  idleMs?: number;
 }
+
+/**
+ * How long a request may send nothing, headers or body, before it is given
+ * up, in milliseconds. Without a limit one connection that hangs holds a
+ * download, or a live recording, forever: fetch() itself never times out.
+ * An object so tests can shorten it.
+ */
+export const fetchIdle = { ms: 15_000 };
 
 // Plain fields, not constructor parameter properties, in the error classes: scripts/merge-check.ts loads this
 // module under Node, which strips types but does not transform parameter properties.
@@ -19,23 +29,45 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * A request that went quiet for the idle limit (see fetchIdle). A
+ * TypeError like the network failures fetch() throws, so every caller that
+ * retries those, or leaves a gap for them, does the same for a stall.
+ */
+export class StalledError extends TypeError {
+  url: string;
+
+  constructor(url: string, ms: number) {
+    super(`Timed out: nothing from ${url} for ${Math.round(ms / 1000)} s`);
+    this.url = url;
+  }
+}
+
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
-    const t = setTimeout(resolve, ms);
-    signal.addEventListener('abort', () => {
+    const onAbort = () => {
       clearTimeout(t);
       reject(new DOMException('aborted', 'AbortError'));
-    });
+    };
+    const t = setTimeout(() => {
+      // A live recording's signal lives for hours; a listener left on it for every retry would pile up.
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 
 /**
  * Fetch bytes with cookies, optional Range, and bounded retries. Fetches run
  * from the extension origin; Referer/Origin are patched by the platform
- * adapter (DNR on Chrome, webRequest on Firefox) before the job starts.
+ * adapter (DNR on Chrome, webRequest on Firefox) before the job starts. A
+ * request that sends nothing for the idle limit is a StalledError, tried
+ * once more at most, since each one costs the whole limit.
  */
 export async function fetchBytes(url: string, opts: FetchOptions): Promise<Uint8Array> {
   const retries = opts.retries ?? 3;
   let attempt = 0;
+  let stalls = 0;
   for (;;) {
     try {
       const headers: Record<string, string> = {};
@@ -43,16 +75,8 @@ export async function fetchBytes(url: string, opts: FetchOptions): Promise<Uint8
         const { offset, length } = opts.byteRange;
         headers.Range = `bytes=${offset}-${offset + length - 1}`;
       }
-      const res = await fetch(url, {
-        credentials: 'include',
-        cache: 'no-store',
-        redirect: 'follow',
-        headers,
-        signal: opts.signal,
-      });
-      if (!res.ok) throw new HttpError(res.status, url);
-      const buf = new Uint8Array(await res.arrayBuffer());
-      if (opts.byteRange && res.status === 200 && buf.byteLength > opts.byteRange.length) {
+      const { status, body: buf } = await readAll(url, { credentials: 'include', cache: 'no-store', redirect: 'follow', headers }, opts.signal, opts.idleMs ?? fetchIdle.ms);
+      if (opts.byteRange && status === 200 && buf.byteLength > opts.byteRange.length) {
         // Server ignored Range and sent the whole file; slice locally.
         return buf.subarray(opts.byteRange.offset, opts.byteRange.offset + opts.byteRange.length);
       }
@@ -61,9 +85,73 @@ export async function fetchBytes(url: string, opts: FetchOptions): Promise<Uint8
       if (opts.signal.aborted) throw e;
       // These do not change on a retry. 410 Gone is final by definition, and a missing last DASH segment answers with it.
       if (e instanceof HttpError && (e.status === 403 || e.status === 404 || e.status === 410 || e.status === 401)) throw e;
+      if (e instanceof StalledError && stalls++ >= 1) throw e;
       if (attempt++ >= retries) throw e;
       await sleep(400 * 2 ** attempt, opts.signal);
     }
+  }
+}
+
+/**
+ * One request read to its end: the status and the body. HttpError when the
+ * status is not ok, StalledError when headers or the next body bytes take
+ * longer than `idleMs`.
+ */
+async function readAll(url: string, init: RequestInit, signal: AbortSignal, idleMs: number): Promise<{ status: number; body: Uint8Array }> {
+  const ctl = new AbortController();
+  const onAbort = () => ctl.abort(signal.reason);
+  if (signal.aborted) onAbort();
+  else signal.addEventListener('abort', onAbort, { once: true });
+  let stalled = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  // Every wait races this, so a stall ends the call even where aborting the request does not end its body.
+  let fail!: (e: unknown) => void;
+  const stall = new Promise<never>((_, reject) => (fail = reject));
+  stall.catch(() => {});
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      stalled = true;
+      ctl.abort();
+      reader?.cancel().catch(() => {});
+      fail(new StalledError(url, idleMs));
+    }, idleMs);
+  };
+  try {
+    arm();
+    const res = await Promise.race([fetch(url, { ...init, signal: ctl.signal }), stall]);
+    if (!res.ok) {
+      await res.body?.cancel().catch(() => {});
+      throw new HttpError(res.status, url);
+    }
+    if (!res.body) return { status: res.status, body: new Uint8Array(await Promise.race([res.arrayBuffer(), stall])) };
+    reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    for (;;) {
+      arm();
+      const { done, value } = await Promise.race([reader.read(), stall]);
+      if (stalled) throw new StalledError(url, idleMs);
+      if (done) break;
+      chunks.push(value);
+      total += value.byteLength;
+    }
+    const only = chunks.length === 1 ? chunks[0]! : null;
+    if (only && only.byteOffset === 0 && only.byteLength === only.buffer.byteLength) return { status: res.status, body: only };
+    const body = new Uint8Array(total);
+    let pos = 0;
+    for (const c of chunks) {
+      body.set(c, pos);
+      pos += c.byteLength;
+    }
+    return { status: res.status, body };
+  } catch (e) {
+    if (stalled && !signal.aborted) throw new StalledError(url, idleMs);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener('abort', onAbort);
   }
 }
 

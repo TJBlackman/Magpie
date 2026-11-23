@@ -61,6 +61,12 @@ export interface HlsSegment {
   /** Init segment for fMP4 (EXT-X-MAP). Null for TS. */
   map: { uri: string; byteRange?: ByteRange } | null;
   discontinuity: boolean;
+  /**
+   * When the segment starts on the wall clock, epoch ms: its own
+   * EXT-X-PROGRAM-DATE-TIME, or the last one before it plus the durations
+   * since, as the HLS spec has it. Unset before the first such tag.
+   */
+  date?: number;
 }
 
 export interface HlsMedia {
@@ -171,6 +177,8 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
   let prevEnd = 0;
   let mapPrevEnd = 0;
   let start = 0;
+  /** The wall clock time the next segment starts at, once a PROGRAM-DATE-TIME has been seen. */
+  let date: number | undefined;
 
   for (const line of lines) {
     if (line.startsWith('#EXT-X-TARGETDURATION:')) {
@@ -183,6 +191,9 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
       pendingDiscontinuity = true;
     } else if (line.startsWith('#EXT-X-TWITCH-')) {
       twitch = true;
+    } else if (line.startsWith('#EXT-X-PROGRAM-DATE-TIME:')) {
+      const t = Date.parse(line.slice('#EXT-X-PROGRAM-DATE-TIME:'.length).trim());
+      if (Number.isFinite(t)) date = t;
     } else if (line.startsWith('#EXT-X-KEY:')) {
       const a = parseAttributes(line.slice('#EXT-X-KEY:'.length));
       key = {
@@ -221,7 +232,9 @@ function parseMedia(lines: string[], baseUrl: string): HlsMedia {
         key: { ...key },
         map,
         discontinuity: pendingDiscontinuity,
+        ...(date !== undefined ? { date } : {}),
       });
+      if (date !== undefined) date += pendingDuration * 1000;
       start += pendingDuration;
       pendingDuration = null;
       pendingTitle = '';

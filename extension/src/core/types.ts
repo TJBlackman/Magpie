@@ -228,7 +228,8 @@ export type EngineToBg =
   | { type: 'saveBlob'; blobUrl: string; filename: string; jobId: string }
   | { type: 'headerRule'; host: string; referer: string; origin: string }
   | { type: 'jobsChanged'; jobs: Job[] }
-  | { type: 'archive'; entry: ArchiveEntry };
+  | { type: 'archive'; entry: ArchiveEntry }
+  | { type: 'freshUrl'; candidate: Candidate };
 
 export type Envelope =
   | { magpie: 'bg'; req: UiRequest }
